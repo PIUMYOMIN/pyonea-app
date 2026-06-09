@@ -14,6 +14,9 @@ import {
 } from "react-native";
 
 import { AppLayout } from "@/components/layout/app-layout";
+import { SITE_CONTAINER_CLASS } from "@/constants/layout";
+import { CheckoutPaymentModal } from "@/components/checkout/checkout-payment-modal";
+import { useCartCount } from "@/context/cart-count-context";
 import { useNativeAuth } from "@/context/native-auth";
 import { getMyanmarStates } from "@/data/myanmar-locations";
 import { useAppTranslation } from "@/i18n";
@@ -33,6 +36,7 @@ import {
   fetchCheckoutProfile,
   fetchCheckoutSellerPolicies,
   fetchPaymentMethods,
+  fetchPaymentReceipt,
   formatMMK,
   requestCheckoutOtp,
   validateCheckoutCoupon,
@@ -43,6 +47,7 @@ import {
   type CheckoutCoupon,
   type CheckoutLocationRow,
   type CheckoutOrderResult,
+  type CheckoutProfile,
   type CheckoutSellerPolicy,
 } from "@/utils/native-api";
 import { emitCartCountChanged } from "@/utils/native-cart-events";
@@ -50,11 +55,6 @@ import { emitCartCountChanged } from "@/utils/native-cart-events";
 const CheckoutLocationSelect = lazy(() =>
   import("@/components/checkout/checkout-location-select").then((module) => ({
     default: module.CheckoutLocationSelect,
-  })),
-);
-const CheckoutPaymentModal = lazy(() =>
-  import("@/components/checkout/checkout-payment-modal").then((module) => ({
-    default: module.CheckoutPaymentModal,
   })),
 );
 
@@ -447,19 +447,25 @@ export function CheckoutNative() {
   const { language, t } = useAppTranslation();
   const router = useRouter();
   const { user, isAuthenticated, isLoading: authLoading } = useNativeAuth();
+  const { cartSnapshot } = useCartCount();
   const isBuyer = hasUserRole(user, "buyer");
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const checkoutBusyRef = useRef(false);
   const idempotencyKeyRef = useRef(
     globalThis.crypto?.randomUUID?.() ??
       `checkout-${Date.now()}-${Math.random().toString(36).slice(2)}`
   );
-  const [cart, setCart] = useState<CartResult | null>(null);
+  const [cart, setCart] = useState<CartResult | null>(() => cartSnapshot);
   const [address, setAddress] = useState<CheckoutAddress>(emptyAddress);
   const [paymentMethod, setPaymentMethod] = useState("cash_on_delivery");
   const [enabledMethods, setEnabledMethods] = useState<string[]>([
     "cash_on_delivery",
   ]);
+  const [checkoutApiStates, setCheckoutApiStates] = useState<
+    { state: string; cities: string[] }[] | null
+  >(null);
+  const [savedProfile, setSavedProfile] = useState<CheckoutProfile | null>(null);
   const [orderNotes, setOrderNotes] = useState("");
   const [shippingFee, setShippingFee] = useState(5000);
   const [taxRate, setTaxRate] = useState(0.05);
@@ -476,7 +482,7 @@ export function CheckoutNative() {
     {},
   );
   const [policyError, setPolicyError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(() => !cartSnapshot);
   const [submitting, setSubmitting] = useState(false);
   const [message, setMessage] = useState("");
   const [otpVisible, setOtpVisible] = useState(false);
@@ -537,24 +543,60 @@ export function CheckoutNative() {
   const needsTownship = Boolean(selectedCityNode?.engTownships?.length);
 
   useEffect(() => {
+    if (cartSnapshot) {
+      setCart(cartSnapshot);
+    }
+  }, [cartSnapshot]);
+
+  useEffect(() => {
     const controller = new AbortController();
 
     const loadCheckout = async () => {
-      setLoading(true);
+      if (!cartSnapshot) {
+        setLoading(true);
+      }
+
       try {
-        const [cartResult, methods] = await Promise.all([
-          fetchCart(controller.signal),
+        const cartPromise = cartSnapshot
+          ? Promise.resolve(cartSnapshot)
+          : fetchCart(controller.signal);
+
+        const [cartResult, methods, apiStates, profile] = await Promise.all([
+          cartPromise,
           fetchPaymentMethods(controller.signal),
+          fetchCheckoutLocations(controller.signal),
+          fetchCheckoutProfile(controller.signal).catch(() => null),
         ]);
-        if (!controller.signal.aborted) {
-          setCart(cartResult);
-          emitCartCountChanged(cartResult.totalItems);
-          setEnabledMethods(methods);
-          setPaymentMethod((current) =>
-            methods.includes(current)
-              ? current
-              : methods[0] || "cash_on_delivery",
+
+        if (controller.signal.aborted) return;
+
+        setCart(cartResult);
+        emitCartCountChanged({ cart: cartResult });
+        setEnabledMethods(methods);
+        setPaymentMethod((current) =>
+          methods.includes(current) ? current : methods[0] || "cash_on_delivery",
+        );
+        setCheckoutApiStates(apiStates);
+        setLocationRows(buildCheckoutLocationRows(apiStates, displayTree));
+
+        if (profile) {
+          setSavedProfile(profile);
+          const { engState, engCity, engTownship } = resolveCanonicalLocation(
+            displayTree,
+            profile.state,
+            profile.city,
+            profile.township,
           );
+          setAddress((current) => ({
+            ...current,
+            full_name: current.full_name || profile.name,
+            phone: current.phone || profile.phone,
+            address: current.address || profile.address,
+            state: current.state || engState,
+            city: current.city || engCity,
+            township: current.township || engTownship,
+            postal_code: current.postal_code || profile.postalCode,
+          }));
         }
       } catch (err) {
         if (!controller.signal.aborted) {
@@ -564,10 +606,13 @@ export function CheckoutNative() {
               : "Failed to load checkout",
           );
           setCart(null);
-          emitCartCountChanged(0);
+          emitCartCountChanged({ count: 0 });
         }
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) {
+          setLoading(false);
+          setLocationLoading(false);
+        }
       }
     };
 
@@ -577,55 +622,30 @@ export function CheckoutNative() {
   }, []);
 
   useEffect(() => {
-    const controller = new AbortController();
-    const loadLocations = async () => {
-      setLocationLoading(true);
-      try {
-        const apiStates = await fetchCheckoutLocations(controller.signal);
-        if (!controller.signal.aborted) {
-          setLocationRows(buildCheckoutLocationRows(apiStates, displayTree));
-        }
-      } catch {
-        if (!controller.signal.aborted) {
-          setLocationRows(buildCheckoutLocationRows(null, displayTree));
-        }
-      } finally {
-        if (!controller.signal.aborted) setLocationLoading(false);
-      }
-    };
-
-    void loadLocations();
-    return () => controller.abort();
-  }, [displayTree]);
+    setLocationRows(buildCheckoutLocationRows(checkoutApiStates, displayTree));
+  }, [checkoutApiStates, displayTree]);
 
   useEffect(() => {
-    const controller = new AbortController();
-    const loadProfile = async () => {
-      try {
-        const profile = await fetchCheckoutProfile(controller.signal);
-        if (controller.signal.aborted) return;
-        const { engState, engCity, engTownship } = resolveCanonicalLocation(
-          displayTree,
-          profile.state,
-          profile.city,
-          profile.township,
-        );
-        setAddress((current) => ({
-          ...current,
-          full_name: current.full_name || profile.name,
-          phone: current.phone || profile.phone,
-          address: current.address || profile.address,
-          state: current.state || engState,
-          city: current.city || engCity,
-          township: current.township || engTownship,
-          postal_code: current.postal_code || profile.postalCode,
-        }));
-      } catch {}
-    };
+    if (!savedProfile) return;
 
-    void loadProfile();
-    return () => controller.abort();
-  }, [displayTree]);
+    const { engState, engCity, engTownship } = resolveCanonicalLocation(
+      displayTree,
+      savedProfile.state,
+      savedProfile.city,
+      savedProfile.township,
+    );
+
+    setAddress((current) => ({
+      ...current,
+      full_name: current.full_name || savedProfile.name,
+      phone: current.phone || savedProfile.phone,
+      address: current.address || savedProfile.address,
+      state: current.state || engState,
+      city: current.city || engCity,
+      township: current.township || engTownship,
+      postal_code: current.postal_code || savedProfile.postalCode,
+    }));
+  }, [displayTree, savedProfile]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -674,7 +694,7 @@ export function CheckoutNative() {
         .finally(() => {
           if (!controller.signal.aborted) setFeesLoading(false);
         });
-    }, 700);
+    }, 400);
 
     return () => {
       clearTimeout(timeout);
@@ -747,6 +767,7 @@ export function CheckoutNative() {
 
   useEffect(() => {
     if (authLoading) return;
+    if (checkoutBusyRef.current || paymentVisible || otpVisible) return;
 
     if (!isAuthenticated) {
       router.replace("/login?returnTo=/checkout" as Href);
@@ -759,15 +780,37 @@ export function CheckoutNative() {
       );
       router.replace("/products" as Href);
     }
-  }, [authLoading, isAuthenticated, isBuyer, router, t]);
+  }, [authLoading, isAuthenticated, isBuyer, otpVisible, paymentVisible, router, t]);
 
   const finishOrder = async (order: CheckoutOrderResult) => {
+    checkoutBusyRef.current = true;
     setRedirecting(true);
+    setPaymentVisible(false);
+    setPaymentOrder(null);
+    setOtpVisible(false);
     await clearCartItems().catch(() => {});
     setCart((current) =>
       current ? { ...current, items: [], totalItems: 0, subtotalValue: 0, subtotal: "0 MMK" } : current
     );
-    emitCartCountChanged(0);
+    emitCartCountChanged({
+      cart: {
+        items: [],
+        subtotalValue: 0,
+        subtotal: "0 MMK",
+        totalItems: 0,
+        summary: {
+          subtotalValue: 0,
+          shippingFeeValue: 0,
+          taxRate: 0.05,
+          taxValue: 0,
+          totalValue: 0,
+          subtotal: "0 MMK",
+          shippingFee: "0 MMK",
+          tax: "0 MMK",
+          total: "0 MMK",
+        },
+      },
+    });
     router.replace({
       pathname: "/payment-success",
       params: { order_id: String(order.id) },
@@ -847,6 +890,7 @@ export function CheckoutNative() {
 
   const handleRequestOtp = async () => {
     if (!cart || !validateBeforeOtp()) return;
+    checkoutBusyRef.current = true;
     setSubmitting(true);
     setOtpError("");
 
@@ -904,13 +948,16 @@ export function CheckoutNative() {
       );
 
       if (pendingPayment) {
+        checkoutBusyRef.current = true;
         setPaymentOrder({ ...order, paymentMethod });
         setPaymentVisible(true);
+        setOtpVisible(false);
         return;
       }
 
       await finishOrder(order);
     } catch (err) {
+      checkoutBusyRef.current = false;
       showMessage(
         err instanceof Error ? err.message : t("checkout.order_create_failed"),
       );
@@ -920,9 +967,36 @@ export function CheckoutNative() {
   };
 
   const completePaidOrder = async (order: CheckoutOrderResult) => {
-    setPaymentVisible(false);
-    setPaymentOrder(null);
-    await finishOrder(order);
+    try {
+      const receipt = await fetchPaymentReceipt(order.id);
+      const isPaid = String(receipt.paymentStatus).toLowerCase() === "paid";
+      const isCod = receipt.paymentMethod === "cash_on_delivery";
+
+      if (!isCod && !isPaid) {
+        showMessage(
+          t("checkout.payment_not_confirmed_yet", {
+            defaultValue: "Payment is not confirmed yet. Please complete payment first.",
+          }),
+        );
+        setPaymentOrder({ ...order, paymentMethod: receipt.paymentMethod });
+        setPaymentVisible(true);
+        return;
+      }
+
+      setPaymentVisible(false);
+      setPaymentOrder(null);
+      await finishOrder({
+        ...order,
+        paymentStatus: receipt.paymentStatus,
+        paymentMethod: receipt.paymentMethod,
+      });
+    } catch (err) {
+      showMessage(
+        err instanceof Error
+          ? err.message
+          : t("checkout.payment_confirmed_load_failed"),
+      );
+    }
   };
 
   const handleVerifyOtp = async () => {
@@ -936,12 +1010,12 @@ export function CheckoutNative() {
     try {
       await verifyCheckoutOtp(otp);
       setOtpVerified(true);
+      checkoutBusyRef.current = true;
       if (timerRef.current) clearInterval(timerRef.current);
-      setTimeout(() => {
-        setOtpVisible(false);
-        void placeOrder();
-      }, 700);
+      setOtpVisible(false);
+      await placeOrder();
     } catch (err) {
+      checkoutBusyRef.current = false;
       setOtpError(
         err instanceof Error ? err.message : t("checkout.otp_incorrect"),
       );
@@ -966,8 +1040,8 @@ export function CheckoutNative() {
   if (loading) {
     return (
       <AppLayout>
-        <View className="bg-gray-50 px-4 py-8 dark:bg-slate-950 sm:px-6 lg:px-8">
-          <View className="mx-auto w-full max-w-7xl gap-6">
+        <View className={`${SITE_CONTAINER_CLASS} bg-gray-50 py-8 dark:bg-slate-950`}>
+          <View className="gap-6">
             <View className="h-8 w-48 rounded bg-gray-200 dark:bg-slate-800" />
             <View className="gap-6 lg:flex-row">
               <View className="min-h-96 flex-1 rounded-2xl bg-gray-200 dark:bg-slate-800" />
@@ -1007,14 +1081,13 @@ export function CheckoutNative() {
   }
 
   return (
-    <AppLayout>
+    <AppLayout showNativeBottomTabs={!paymentVisible && !otpVisible}>
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         enabled={Platform.OS === "ios"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 72 : 0}
       >
-        <View className="bg-gray-50 px-4 py-8 dark:bg-slate-950 sm:px-6 lg:px-8">
-          <View className="mx-auto w-full max-w-7xl">
+        <View className={`${SITE_CONTAINER_CLASS} bg-gray-50 py-8 dark:bg-slate-950`}>
           <View className="mb-8">
             <Text className="font-sans text-3xl font-bold text-gray-950 dark:text-slate-100">
               {t("checkout.title")}
@@ -1414,7 +1487,6 @@ export function CheckoutNative() {
               </View>
             </View>
           </View>
-          </View>
         </View>
       </KeyboardAvoidingView>
 
@@ -1428,6 +1500,7 @@ export function CheckoutNative() {
         verified={otpVerified}
         onChangeOtp={setOtp}
         onClose={() => {
+          checkoutBusyRef.current = false;
           setOtpVisible(false);
           setOtp("");
           setOtpError("");
@@ -1436,28 +1509,25 @@ export function CheckoutNative() {
         onVerify={handleVerifyOtp}
         onResend={handleRequestOtp}
       />
-      {paymentVisible ? (
-        <Suspense fallback={null}>
-          <CheckoutPaymentModal
-            visible={paymentVisible}
-            order={paymentOrder}
-            paymentMethod={paymentOrder?.paymentMethod || paymentMethod}
-            onSuccess={(order) => {
-              void completePaidOrder(order);
-            }}
-            onCancel={() => {
-              setPaymentVisible(false);
-              setPaymentOrder(null);
-              showMessage(
-                t("checkout.payment_cancelled_saved", {
-                  defaultValue:
-                    "Payment was cancelled. Your order is saved in your dashboard.",
-                }),
-              );
-            }}
-          />
-        </Suspense>
-      ) : null}
+      <CheckoutPaymentModal
+        visible={paymentVisible}
+        order={paymentOrder}
+        paymentMethod={paymentOrder?.paymentMethod || paymentMethod}
+        onSuccess={(order) => {
+          void completePaidOrder(order);
+        }}
+        onCancel={() => {
+          checkoutBusyRef.current = false;
+          setPaymentVisible(false);
+          setPaymentOrder(null);
+          showMessage(
+            t("checkout.payment_cancelled_saved", {
+              defaultValue:
+                "Payment was cancelled. Your order is saved in your dashboard.",
+            }),
+          );
+        }}
+      />
       <CheckoutMessageToast message={message} onClose={hideMessage} />
     </AppLayout>
   );

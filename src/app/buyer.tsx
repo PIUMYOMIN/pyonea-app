@@ -1,3 +1,5 @@
-import { BuyerDashboardNative } from '@/pages/buyer-dashboard-native';
+import { Redirect } from 'expo-router';
 
-export default BuyerDashboardNative;
+export default function BuyerRedirectRoute() {
+  return <Redirect href="/buyer/dashboard" />;
+}

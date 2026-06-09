@@ -3,6 +3,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
+import { SITE_CONTAINER_CLASS } from '@/constants/layout';
 import { useAppTranslation } from '@/i18n';
 
 type HelpCategory = 'buying' | 'selling' | 'payments';
@@ -72,8 +73,8 @@ export function HelpCenterNative() {
 
   return (
     <AppLayout>
-      <View className="bg-gray-50 px-4 py-8 dark:bg-slate-950 sm:px-6 lg:px-8">
-        <View className="mx-auto w-full max-w-7xl">
+      <View className="bg-gray-50 py-8 dark:bg-slate-950">
+        <View className={SITE_CONTAINER_CLASS}>
           <Text className="mb-8 font-sans text-xl font-bold text-gray-950 dark:text-slate-100 sm:text-3xl">
             {t('helpCenter.page_title')}
           </Text>

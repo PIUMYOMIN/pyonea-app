@@ -1,10 +1,12 @@
 import Feather from '@expo/vector-icons/Feather';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
-import { Link, useRouter, type Href } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { Link, usePathname, useRouter, type Href } from 'expo-router';
+import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
+import { SITE_CONTAINER_CLASS } from '@/constants/layout';
+import { useCartCount } from '@/context/cart-count-context';
 import { CategoryListCard, ProductListCard } from '@/components/marketplace-list-screen';
 import { useAppTranslation } from '@/i18n';
 import {
@@ -22,6 +24,11 @@ import {
   type HomeProduct,
 } from '@/utils/native-api';
 import { emitCartCountChanged } from '@/utils/native-cart-events';
+import { getScreenCache, setScreenCache } from '@/utils/screen-cache';
+
+const HOME_PRODUCTS_CACHE_KEY = 'home-feed:products';
+const HOME_CATEGORIES_CACHE_KEY = 'home-feed:categories';
+const HOME_CACHE_TTL_MS = 2 * 60 * 1000;
 
 const placeholderProduct = require('@/assets/images/placeholder-product.png');
 
@@ -491,54 +498,82 @@ function EmptyCartRecommendations({
 export function CartNative() {
   const { t } = useAppTranslation();
   const router = useRouter();
-  const [cart, setCart] = useState<CartResult>(emptyCart);
-  const [loading, setLoading] = useState(true);
+  const pathname = usePathname();
+  const { cartSnapshot } = useCartCount();
+  const [cart, setCart] = useState<CartResult>(() => cartSnapshot ?? emptyCart);
+  const [loading, setLoading] = useState(() => !cartSnapshot);
   const [error, setError] = useState('');
   const [updatingItemId, setUpdatingItemId] = useState<string | number | null>(null);
   const [removingItemId, setRemovingItemId] = useState<string | number | null>(null);
   const [confirmingRemoveId, setConfirmingRemoveId] = useState<string | number | null>(null);
   const [confirmClear, setConfirmClear] = useState(false);
   const [clearingCart, setClearingCart] = useState(false);
-  const [recommendedProducts, setRecommendedProducts] = useState<HomeProduct[]>([]);
-  const [recommendedCategories, setRecommendedCategories] = useState<HomeCategory[]>([]);
-  const [recommendationsLoading, setRecommendationsLoading] = useState(true);
+  const cachedFeed = getScreenCache<{ categories: HomeCategory[]; products: HomeProduct[] }>(
+    'home-feed',
+    HOME_CACHE_TTL_MS,
+  );
+  const cachedProducts = getScreenCache<HomeProduct[]>(
+    HOME_PRODUCTS_CACHE_KEY,
+    HOME_CACHE_TTL_MS,
+  );
+  const cachedCategories = getScreenCache<HomeCategory[]>(
+    HOME_CATEGORIES_CACHE_KEY,
+    HOME_CACHE_TTL_MS,
+  );
+  const [recommendedProducts, setRecommendedProducts] = useState<HomeProduct[]>(
+    () => cachedProducts ?? cachedFeed?.products ?? [],
+  );
+  const [recommendedCategories, setRecommendedCategories] = useState<HomeCategory[]>(
+    () => cachedCategories ?? cachedFeed?.categories ?? [],
+  );
+  const [recommendationsLoading, setRecommendationsLoading] = useState(
+    () => !(cachedProducts ?? cachedFeed?.products) && !(cachedCategories ?? cachedFeed?.categories),
+  );
+
+  const loadCart = useCallback(async (signal?: AbortSignal) => {
+    setError('');
+
+    try {
+      const result = await fetchCart(signal);
+      if (signal?.aborted) return;
+      setCart(result);
+      emitCartCountChanged({ cart: result });
+    } catch (err) {
+      if (signal?.aborted) return;
+      setCart(emptyCart);
+      emitCartCountChanged({ cart: emptyCart });
+      if (!(err instanceof ApiError && err.status === 401)) {
+        setError(err instanceof Error ? err.message : 'Failed to fetch cart');
+      }
+    } finally {
+      if (!signal?.aborted) setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
+    if (cartSnapshot) {
+      setCart(cartSnapshot);
+    }
+  }, [cartSnapshot]);
+
+  useEffect(() => {
+    if (pathname !== '/cart') return;
+
     const controller = new AbortController();
-
-    const loadCart = async () => {
+    if (!cartSnapshot) {
       setLoading(true);
-      setError('');
-
-      try {
-        const result = await fetchCart(controller.signal);
-        if (!controller.signal.aborted) {
-          setCart(result);
-          emitCartCountChanged(result.totalItems);
-        }
-      } catch (err) {
-        if (!controller.signal.aborted) {
-          setCart(emptyCart);
-          emitCartCountChanged(0);
-          if (!(err instanceof ApiError && err.status === 401)) {
-            setError(err instanceof Error ? err.message : 'Failed to fetch cart');
-          }
-        }
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    };
-
-    void loadCart();
-
+    }
+    void loadCart(controller.signal);
     return () => controller.abort();
-  }, []);
+  }, [cartSnapshot, loadCart, pathname]);
 
   useEffect(() => {
     const controller = new AbortController();
 
     const loadRecommendations = async () => {
-      setRecommendationsLoading(true);
+      if (!(cachedProducts ?? cachedFeed?.products) && !(cachedCategories ?? cachedFeed?.categories)) {
+        setRecommendationsLoading(true);
+      }
       try {
         const [products, categories] = await Promise.all([
           fetchFeaturedProducts(controller.signal).catch(() => []),
@@ -547,6 +582,8 @@ export function CartNative() {
         if (!controller.signal.aborted) {
           setRecommendedProducts(products);
           setRecommendedCategories(categories);
+          setScreenCache(HOME_PRODUCTS_CACHE_KEY, products);
+          setScreenCache(HOME_CATEGORIES_CACHE_KEY, categories);
         }
       } finally {
         if (!controller.signal.aborted) setRecommendationsLoading(false);
@@ -560,7 +597,7 @@ export function CartNative() {
 
   const replaceCart = (nextCart: CartResult) => {
     setCart(nextCart);
-    emitCartCountChanged(nextCart.totalItems);
+    emitCartCountChanged({ cart: nextCart });
   };
 
   const handleUpdateQuantity = async (item: CartItem, nextQuantity: number) => {
@@ -586,30 +623,8 @@ export function CartNative() {
 
     try {
       await removeCartItem(item.id);
-      setCart((current) => {
-        const items = current.items.filter((cartItem) => cartItem.id !== item.id);
-        const subtotalValue = items.reduce((sum, cartItem) => sum + cartItem.subtotalValue, 0);
-        const totalItems = items.reduce((sum, cartItem) => sum + cartItem.quantity, 0);
-        const taxValue = Math.round(subtotalValue * current.summary.taxRate * 100) / 100;
-        const totalValue = subtotalValue + taxValue + current.summary.shippingFeeValue;
-
-        return {
-          ...current,
-          items,
-          subtotalValue,
-          subtotal: `${new Intl.NumberFormat('en-MM').format(subtotalValue)} MMK`,
-          totalItems,
-          summary: {
-            ...current.summary,
-            subtotalValue,
-            taxValue,
-            totalValue,
-            tax: `${new Intl.NumberFormat('en-MM').format(taxValue)} MMK`,
-            total: `${new Intl.NumberFormat('en-MM').format(totalValue)} MMK`,
-          },
-        };
-      });
-      emitCartCountChanged();
+      const result = await fetchCart();
+      replaceCart(result);
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to remove item');
     } finally {
@@ -625,7 +640,7 @@ export function CartNative() {
     try {
       await clearCartItems();
       setCart(emptyCart);
-      emitCartCountChanged(0);
+      emitCartCountChanged({ cart: emptyCart });
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Failed to clear cart');
     } finally {
@@ -641,8 +656,7 @@ export function CartNative() {
   if (loading && cart.items.length === 0) {
     return (
       <AppLayout>
-        <View className="bg-white px-4 py-12 dark:bg-slate-950 sm:px-6 lg:px-8">
-          <View className="mx-auto w-full max-w-7xl">
+        <View className={`${SITE_CONTAINER_CLASS} py-12`}>
             <View className="mb-8 h-8 w-48 rounded bg-gray-200 dark:bg-slate-700" />
             <View className="gap-12 lg:flex-row">
               <View className="min-w-0 flex-1">
@@ -654,7 +668,6 @@ export function CartNative() {
                 <SummarySkeleton />
               </View>
             </View>
-          </View>
         </View>
       </AppLayout>
     );
@@ -662,8 +675,7 @@ export function CartNative() {
 
   return (
     <AppLayout>
-      <View className="bg-white px-4 py-12 dark:bg-slate-950 sm:px-6 lg:px-8">
-        <View className="mx-auto w-full max-w-7xl">
+      <View className={`${SITE_CONTAINER_CLASS} py-12`}>
           <Text className="font-sans text-2xl font-extrabold text-gray-900 dark:text-slate-100 sm:text-3xl">
             {t('cart.title')} ({cart.totalItems} {itemLabel})
           </Text>
@@ -779,7 +791,6 @@ export function CartNative() {
               </View>
             </>
           )}
-        </View>
       </View>
     </AppLayout>
   );

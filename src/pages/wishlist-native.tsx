@@ -1,13 +1,17 @@
 import Feather from '@expo/vector-icons/Feather';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
-import { Link, type Href } from 'expo-router';
+import { Link, useRouter, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, Text, View } from 'react-native';
 
+import { SITE_CONTAINER_CLASS } from '@/constants/layout';
 import { AppLayout } from '@/components/layout/app-layout';
-import { useAppTranslation } from '@/i18n';
+import { useNativeAuth } from '@/context/native-auth';
+import { useWishlist } from '@/context/wishlist-context';
+import { localizeBilingualName, useAppTranslation } from '@/i18n';
+import { getRoleDestination, hasUserRole } from '@/utils/auth-routing';
 import {
-  fetchWishlist,
+  getProductApiId,
   removeWishlistItem,
   type HomeProduct,
 } from '@/utils/native-api';
@@ -36,8 +40,14 @@ function WishlistCard({
   product: HomeProduct;
   onRemove: (product: HomeProduct) => void;
 }) {
-  const { t } = useAppTranslation();
+  const { t, language } = useAppTranslation();
   const href = `/products/${product.id}` as Href;
+  const productName = localizeBilingualName(
+    language,
+    product.nameEn,
+    product.nameMm,
+    product.name,
+  );
 
   return (
     <View className="w-full rounded-xl border border-gray-200 bg-white p-3 shadow-sm dark:border-slate-700 dark:bg-slate-800 sm:w-[48%] lg:w-[31%]">
@@ -59,7 +69,7 @@ function WishlistCard({
                 <Text
                   className="font-sans text-sm font-semibold leading-5 text-gray-900 dark:text-slate-100"
                   numberOfLines={2}>
-                  {product.name}
+                  {productName}
                 </Text>
               </Pressable>
             </Link>
@@ -162,35 +172,25 @@ function RemoveConfirmModal({
 
 export function WishlistNative() {
   const { t } = useAppTranslation();
-  const [items, setItems] = useState<HomeProduct[]>([]);
-  const [loading, setLoading] = useState(true);
+  const router = useRouter();
+  const { user, isAuthenticated, isLoading: authLoading } = useNativeAuth();
+  const { items, loading, refreshWishlist } = useWishlist();
   const [error, setError] = useState('');
   const [removeTarget, setRemoveTarget] = useState<HomeProduct | null>(null);
   const [removing, setRemoving] = useState(false);
 
   useEffect(() => {
-    const controller = new AbortController();
+    if (authLoading) return;
 
-    const loadWishlist = async () => {
-      setLoading(true);
-      setError('');
-      try {
-        const result = await fetchWishlist(controller.signal);
-        if (!controller.signal.aborted) setItems(result);
-      } catch {
-        if (!controller.signal.aborted) {
-          setItems([]);
-          setError(t('buyer_dashboard.failed_load_wishlist'));
-        }
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    };
+    if (!isAuthenticated) {
+      router.replace('/login?returnTo=/wishlist' as Href);
+      return;
+    }
 
-    void loadWishlist();
-
-    return () => controller.abort();
-  }, [t]);
+    if (!hasUserRole(user, 'buyer') && user) {
+      router.replace(getRoleDestination(user));
+    }
+  }, [authLoading, isAuthenticated, router, user]);
 
   const handleConfirmRemove = async () => {
     if (!removeTarget) return;
@@ -198,9 +198,10 @@ export function WishlistNative() {
     setError('');
 
     try {
-      await removeWishlistItem(removeTarget.id);
-      setItems((current) => current.filter((item) => String(item.id) !== String(removeTarget.id)));
+      const productId = getProductApiId(removeTarget);
+      await removeWishlistItem(productId);
       setRemoveTarget(null);
+      await refreshWishlist();
     } catch {
       setError(t('buyer_dashboard.failed_remove_item'));
     } finally {
@@ -210,8 +211,8 @@ export function WishlistNative() {
 
   return (
     <AppLayout>
-      <View className="bg-gray-50 px-4 py-8 dark:bg-slate-950 sm:px-6 lg:px-8">
-        <View className="mx-auto w-full max-w-7xl">
+      <View className="bg-gray-50 py-8 dark:bg-slate-950">
+        <View className={SITE_CONTAINER_CLASS}>
           <View className="mb-8 rounded-2xl bg-green-700 p-6 sm:p-8">
             <View className="gap-4 sm:flex-row sm:items-center sm:justify-between">
               <View className="min-w-0 flex-1">

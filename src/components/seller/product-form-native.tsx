@@ -1,6 +1,6 @@
 import { Feather } from '@expo/vector-icons';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
-import { router } from 'expo-router';
+import { router, type Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
@@ -18,6 +18,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { useTheme } from '@/context/theme';
 import { useAppTranslation } from '@/i18n';
 import { ProductOptionsEditorNative } from '@/components/seller/product-options-editor-native';
+import { VariantTableNative } from '@/components/seller/variant-table-native';
 import {
   appendUploadFile,
   pickImageFromCamera,
@@ -25,13 +26,16 @@ import {
 } from '@/utils/native-image-picker';
 import {
   createSellerProduct,
+  fetchAdminProductForEdit,
   fetchSellerProductCategories,
   fetchSellerProductForEdit,
   fetchSellerWholesaleTiers,
   formatMMK,
   getNativeImageUrl,
   syncSellerWholesaleTiers,
+  updateAdminProduct,
   updateSellerProduct,
+  uploadAdminProductImage,
   uploadSellerProductImage,
   type SellerProductCategory,
   type SellerProductFormData,
@@ -62,6 +66,8 @@ const steps = [
   { id: 4, title: 'Shipping', description: 'Delivery & more' },
   { id: 5, title: 'Variants', description: 'Options & stock' },
 ];
+
+const adminSteps = steps.slice(0, 4);
 
 const emptyForm: SellerProductFormData = {
   name_en: '',
@@ -317,6 +323,149 @@ function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) 
   );
 }
 
+function imageAngleLabel(
+  angle: string,
+  t: (key: string, options?: Record<string, unknown>) => string,
+) {
+  const defaults: Record<string, string> = {
+    front: 'Front View',
+    back: 'Back View',
+    side: 'Side View',
+    top: 'Top View',
+    default: 'Other View',
+  };
+  return t(`product_form.image_angles.${angle}`, { defaultValue: defaults[angle] || angle });
+}
+
+function ProductImagePreviewGrid({
+  images,
+  onSetPrimary,
+  onRemove,
+  onChangeAngle,
+  onPreview,
+  t,
+  isDark,
+}: {
+  images: SellerProductImage[];
+  onSetPrimary: (index: number) => void;
+  onRemove: (index: number) => void;
+  onChangeAngle: (index: number, angle: string) => void;
+  onPreview: (url: string) => void;
+  t: (key: string, options?: Record<string, unknown>) => string;
+  isDark: boolean;
+}) {
+  const [anglePickerIndex, setAnglePickerIndex] = useState<number | null>(null);
+  const angleOptions = imageAngles.map((angle) => ({
+    value: angle,
+    label: imageAngleLabel(angle, t),
+  }));
+
+  return (
+    <>
+      <View className="-mx-0.5 flex-row flex-wrap gap-3">
+        {images.map((image, index) => (
+          <View
+            key={`${image.url}-${index}`}
+            className={`w-[47%] overflow-hidden rounded-lg border-2 sm:w-[31%] md:w-[23%] lg:w-[15%] ${
+              image.isPrimary
+                ? 'border-green-500 ring-2 ring-green-200 dark:ring-green-900/40'
+                : 'border-gray-200 dark:border-slate-600'
+            }`}>
+            <View className="relative aspect-square bg-gray-100 dark:bg-slate-800">
+              <Pressable className="h-full w-full" onPress={() => onPreview(image.url)}>
+                <Image
+                  source={{ uri: getNativeImageUrl(image.url) || image.url }}
+                  className="h-full w-full"
+                  contentFit="cover"
+                />
+              </Pressable>
+              {image.isPrimary ? (
+                <View className="absolute left-1.5 top-1.5 flex-row items-center rounded-full bg-green-600 px-1.5 py-0.5">
+                  <Feather name="check-circle" size={10} color="#ffffff" />
+                  <Text className="ml-0.5 font-sans text-[10px] font-semibold text-white">
+                    {t('product_form.labels.primary', { defaultValue: 'Primary' })}
+                  </Text>
+                </View>
+              ) : null}
+              <Pressable
+                onPress={() => setAnglePickerIndex(index)}
+                className="absolute right-1 top-1 max-w-[72px] rounded bg-black/60 px-1.5 py-0.5">
+                <Text className="font-sans text-[10px] text-white" numberOfLines={1}>
+                  {imageAngleLabel(image.angle, t)}
+                </Text>
+              </Pressable>
+            </View>
+            <View className="flex-row items-center justify-between border-t border-gray-100 bg-white px-1 py-1 dark:border-slate-700 dark:bg-slate-900">
+              <Pressable
+                onPress={() => onSetPrimary(index)}
+                className="h-7 flex-1 items-center justify-center rounded-md">
+                <Feather
+                  name="star"
+                  size={14}
+                  color={image.isPrimary ? '#16a34a' : isDark ? '#94a3b8' : '#64748b'}
+                />
+              </Pressable>
+              <Pressable
+                onPress={() => onPreview(image.url)}
+                className="h-7 flex-1 items-center justify-center rounded-md">
+                <Feather name="eye" size={14} color={isDark ? '#94a3b8' : '#64748b'} />
+              </Pressable>
+              <Pressable
+                onPress={() => onRemove(index)}
+                className="h-7 flex-1 items-center justify-center rounded-md">
+                <Feather name="trash-2" size={14} color="#dc2626" />
+              </Pressable>
+            </View>
+          </View>
+        ))}
+      </View>
+
+      <Modal
+        visible={anglePickerIndex !== null}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setAnglePickerIndex(null)}>
+        <Pressable
+          className="flex-1 justify-end bg-black/40 md:items-center md:justify-center"
+          onPress={() => setAnglePickerIndex(null)}>
+          <Pressable
+            className="rounded-t-3xl bg-white p-4 dark:bg-slate-900 md:w-[360px] md:rounded-2xl"
+            onPress={() => undefined}>
+            <Text className="mb-3 font-sans text-base font-bold text-gray-900 dark:text-slate-100">
+              {t('product_form.labels.image_angle', { defaultValue: 'Image angle' })}
+            </Text>
+            {angleOptions.map((option) => {
+              const active =
+                anglePickerIndex !== null && images[anglePickerIndex]?.angle === option.value;
+              return (
+                <Pressable
+                  key={option.value}
+                  onPress={() => {
+                    if (anglePickerIndex === null) return;
+                    onChangeAngle(anglePickerIndex, option.value);
+                    setAnglePickerIndex(null);
+                  }}
+                  className={`mb-2 rounded-lg border px-3 py-2.5 ${
+                    active
+                      ? 'border-green-500 bg-green-50 dark:border-green-600 dark:bg-green-900/20'
+                      : 'border-gray-200 dark:border-slate-700'
+                  }`}>
+                  <Text
+                    className={`font-sans text-sm ${
+                      active ? 'font-semibold text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-slate-300'
+                    }`}>
+                    {option.label}
+                  </Text>
+                </Pressable>
+              );
+            })}
+          </Pressable>
+        </Pressable>
+      </Modal>
+    </>
+  );
+}
+
 const emptyTier = (): SellerWholesaleTier => ({
   minQty: '',
   pricePerUnit: '',
@@ -558,9 +707,21 @@ function WholesaleTiersEditorNative({
   );
 }
 
-export function ProductFormNative({ productId }: { productId?: string }) {
+export function ProductFormNative({
+  productId,
+  mode = 'seller',
+  returnHref,
+}: {
+  productId?: string;
+  mode?: 'seller' | 'admin';
+  returnHref?: Href;
+}) {
   const { t, language } = useAppTranslation();
   const { isDark } = useTheme();
+  const isAdminMode = mode === 'admin';
+  const formSteps = isAdminMode ? adminSteps : steps;
+  const dashboardHref = (returnHref ||
+    (isAdminMode ? '/admin/dashboard?tab=products' : '/seller/dashboard?tab=products')) as Href;
   const [form, setForm] = useState<SellerProductFormData>(emptyForm);
   const [categories, setCategories] = useState<SellerProductCategory[]>([]);
   const [images, setImages] = useState<SellerProductImage[]>([]);
@@ -577,9 +738,11 @@ export function ProductFormNative({ productId }: { productId?: string }) {
   const [specValue, setSpecValue] = useState('');
   const [leaveModal, setLeaveModal] = useState(false);
   const [clearImagesModal, setClearImagesModal] = useState(false);
+  const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
   const categoryOptions = useMemo(() => buildCategoryOptions(categories, language), [categories, language]);
   const editing = Boolean(productId);
+  const savedProductId = form.id || productId || null;
 
   const update = <K extends keyof SellerProductFormData>(key: K, value: SellerProductFormData[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -593,7 +756,12 @@ export function ProductFormNative({ productId }: { productId?: string }) {
         setError('');
         const [nextCategories, productResult] = await Promise.all([
           fetchSellerProductCategories(controller.signal),
-          productId ? fetchSellerProductForEdit(productId, controller.signal) : Promise.resolve(null),
+          productId
+            ? (isAdminMode ? fetchAdminProductForEdit : fetchSellerProductForEdit)(
+                productId,
+                controller.signal,
+              )
+            : Promise.resolve(null),
         ]);
         if (controller.signal.aborted) return;
         setCategories(nextCategories);
@@ -613,7 +781,7 @@ export function ProductFormNative({ productId }: { productId?: string }) {
 
     load();
     return () => controller.abort();
-  }, [productId]);
+  }, [isAdminMode, productId]);
 
   const validateStep = (step: number) => {
     if (step === 1) return Boolean(form.name_en && form.description_en && form.category_id && form.product_type);
@@ -629,7 +797,7 @@ export function ProductFormNative({ productId }: { productId?: string }) {
     }
     setError('');
     setCompletedSteps((prev) => new Set(prev).add(currentStep));
-    setCurrentStep((prev) => Math.min(prev + 1, steps.length));
+    setCurrentStep((prev) => Math.min(prev + 1, formSteps.length));
   };
 
   const addImageFromUrl = () => {
@@ -667,7 +835,11 @@ export function ProductFormNative({ productId }: { productId?: string }) {
         const formData = new FormData();
         appendUploadFile(formData, 'image', file);
         formData.append('angle', imageAngles[images.length + uploaded.length] || 'default');
-        const result = await uploadSellerProductImage(formData, form.id || productId || undefined);
+        const uploadTargetId = form.id || productId;
+        const result =
+          isAdminMode && uploadTargetId
+            ? await uploadAdminProductImage(formData, uploadTargetId)
+            : await uploadSellerProductImage(formData, uploadTargetId || undefined);
         if (result) {
           uploaded.push({
             ...result,
@@ -753,13 +925,23 @@ export function ProductFormNative({ productId }: { productId?: string }) {
     try {
       setSaving(true);
       setError('');
-      const result = editing && productId
-        ? await updateSellerProduct(productId, payload())
-        : await createSellerProduct(payload());
+      const result =
+        editing && productId
+          ? isAdminMode
+            ? await updateAdminProduct(productId, payload())
+            : await updateSellerProduct(productId, payload())
+          : await createSellerProduct(payload());
       const savedId = toStringValue(result.product.id || productId);
       setForm((prev) => ({ ...prev, ...result.product, id: savedId || prev.id }));
       if (result.images.length) setImages(result.images);
       setCompletedSteps(new Set([1, 2, 3, 4]));
+
+      if (isAdminMode) {
+        setSuccess(t('admin.productManagement.notifications.updated', 'Product updated successfully.'));
+        setTimeout(() => router.replace(dashboardHref), 900);
+        return;
+      }
+
       setCurrentStep(5);
       setSuccess(editing ? 'Product updated! Now review options and variants.' : 'Product created! Now define your options and variants.');
     } catch (nextError) {
@@ -771,7 +953,7 @@ export function ProductFormNative({ productId }: { productId?: string }) {
 
   const finish = () => {
     setSuccess('All done. Your product listing is ready.');
-    setTimeout(() => router.replace('/seller/dashboard?tab=products'), 900);
+    setTimeout(() => router.replace(dashboardHref), 900);
   };
 
   const renderStepContent = () => {
@@ -916,15 +1098,15 @@ export function ProductFormNative({ productId }: { productId?: string }) {
                 </View>
               </View>
             ) : null}
-            <View className="gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 p-4 dark:border-slate-600 dark:bg-slate-800">
+            <View className="min-h-[10rem] justify-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-5 dark:border-slate-600 dark:bg-slate-800">
               <View className="items-center">
-              <Feather name="image" size={40} color={isDark ? '#64748b' : '#9ca3af'} />
-              <Text className="mt-2 text-center font-sans text-base font-medium text-gray-600 dark:text-slate-400">
-                {images.length > 0 ? t('product_form.actions.add_more_images') : t('product_form.actions.click_upload_images')}
-              </Text>
-              <Text className="mt-1 text-center font-sans text-sm text-gray-500 dark:text-slate-500">
-                {t('product_form.hints.image_formats')}
-              </Text>
+                <Feather name="image" size={32} color={isDark ? '#64748b' : '#9ca3af'} />
+                <Text className="mt-2 text-center font-sans text-sm font-medium text-gray-600 dark:text-slate-400">
+                  {images.length > 0 ? t('product_form.actions.add_more_images') : t('product_form.actions.click_upload_images')}
+                </Text>
+                <Text className="mt-1 text-center font-sans text-xs text-gray-500 dark:text-slate-500">
+                  {t('product_form.hints.image_formats')}
+                </Text>
               </View>
               <View className="gap-2 sm:flex-row">
                 <Pressable
@@ -948,40 +1130,17 @@ export function ProductFormNative({ productId }: { productId?: string }) {
           </View>
 
           {images.length > 0 && (
-            <View className="gap-3 md:grid md:grid-cols-2">
-              {images.map((image, index) => (
-                <View key={`${image.url}-${index}`} className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-                  <Image source={{ uri: getNativeImageUrl(image.url) || image.url }} className="h-44 w-full bg-gray-100 dark:bg-slate-700" contentFit="cover" />
-                  <View className="gap-3 p-4">
-                    <View className="flex-row items-center justify-between gap-2">
-                      <Text className="min-w-0 flex-1 font-sans text-sm font-semibold text-gray-900 dark:text-slate-100" numberOfLines={1}>
-                        {image.name || `Image ${index + 1}`}
-                      </Text>
-                      {image.isPrimary && (
-                        <View className="rounded-full bg-green-100 px-2 py-1 dark:bg-green-900/30">
-                          <Text className="font-sans text-[11px] font-bold text-green-700 dark:text-green-300">Primary</Text>
-                        </View>
-                      )}
-                    </View>
-                    <SelectModal
-                      label="Image angle"
-                      value={image.angle}
-                      options={imageAngles.map((angle) => ({ value: angle, label: angle === 'default' ? 'Other View' : `${angle} view` }))}
-                      placeholder="Select angle"
-                      onChange={(value) => setImages((prev) => prev.map((item, itemIndex) => (itemIndex === index ? { ...item, angle: value } : item)))}
-                    />
-                    <View className="flex-row gap-2">
-                      <Pressable onPress={() => setPrimaryImage(index)} className="flex-1 rounded-lg border border-gray-300 px-3 py-2 dark:border-slate-600">
-                        <Text className="text-center font-sans text-xs font-semibold text-gray-700 dark:text-slate-300">Set Primary</Text>
-                      </Pressable>
-                      <Pressable onPress={() => removeImage(index)} className="rounded-lg border border-red-300 px-3 py-2 dark:border-red-700">
-                        <Feather name="trash-2" size={16} color="#dc2626" />
-                      </Pressable>
-                    </View>
-                  </View>
-                </View>
-              ))}
-            </View>
+            <ProductImagePreviewGrid
+              images={images}
+              isDark={isDark}
+              t={t}
+              onSetPrimary={setPrimaryImage}
+              onRemove={removeImage}
+              onChangeAngle={(index, angle) =>
+                setImages((prev) => prev.map((item, itemIndex) => (itemIndex === index ? { ...item, angle } : item)))
+              }
+              onPreview={(url) => setPreviewImageUrl(url)}
+            />
           )}
 
           <View className="gap-4">
@@ -989,20 +1148,18 @@ export function ProductFormNative({ productId }: { productId?: string }) {
               {t('product_form.labels.specifications')}{' '}
               <Text className="text-xs text-gray-400">(Optional)</Text>
             </Text>
-            <View className="gap-2 md:flex-row">
-              <TextInput value={specKey} onChangeText={setSpecKey} placeholder={t('product_form.placeholders.spec_name')} placeholderTextColor="#9ca3af" className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100" />
-              <TextInput value={specValue} onChangeText={setSpecValue} placeholder={t('product_form.placeholders.spec_value')} placeholderTextColor="#9ca3af" className="flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100" />
+            <View className="flex-row items-center gap-2">
+              <TextInput value={specKey} onChangeText={setSpecKey} placeholder={t('product_form.placeholders.spec_name')} placeholderTextColor="#9ca3af" className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100" />
+              <TextInput value={specValue} onChangeText={setSpecValue} placeholder={t('product_form.placeholders.spec_value')} placeholderTextColor="#9ca3af" className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100" />
               <Pressable onPress={addSpecification} className="items-center justify-center rounded-lg bg-green-600 px-4 py-3">
                 <Text className="font-sans text-sm font-bold text-white">{t('product_form.actions.add_spec')}</Text>
               </Pressable>
             </View>
             {Object.entries(form.specifications).map(([key, value]) => (
-              <View key={key} className="flex-row items-center gap-3 rounded-lg bg-gray-50 p-3 dark:bg-slate-900/60">
-                <View className="min-w-0 flex-1">
-                  <Text className="font-sans text-sm font-bold text-gray-900 dark:text-slate-100">{key}</Text>
-                  <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">{value}</Text>
-                </View>
-                <Pressable onPress={() => removeSpecification(key)}>
+              <View key={key} className="flex-row items-center justify-between rounded-lg border border-gray-200 bg-white p-3 dark:border-slate-600 dark:bg-slate-800">
+                <Text className="min-w-[120px] font-sans text-sm font-medium text-gray-900 dark:text-slate-100">{key}:</Text>
+                <Text className="ml-2 min-w-0 flex-1 font-sans text-sm text-gray-600 dark:text-slate-400">{value}</Text>
+                <Pressable onPress={() => removeSpecification(key)} className="ml-2 p-1">
                   <Feather name="x" size={18} color="#ef4444" />
                 </Pressable>
               </View>
@@ -1036,37 +1193,92 @@ export function ProductFormNative({ productId }: { productId?: string }) {
               <Field label="Shipping Cost" keyboardType="numeric" value={toStringValue(form.shipping_cost)} onChange={(value) => update('shipping_cost', value)} />
             )}
             <ToggleRow label="Make this product active and visible" value={form.is_active} onChange={(value) => update('is_active', value)} />
+            {isAdminMode ? (
+              <ToggleRow
+                label={t('product_form.labels.is_featured', 'Feature on homepage')}
+                value={Boolean(form.is_featured)}
+                onChange={(value) => update('is_featured', value)}
+                tone="amber"
+              />
+            ) : null}
             <ToggleRow label="Mark as new product" value={form.is_new} onChange={(value) => update('is_new', value)} tone="amber" />
           </View>
         </View>
       );
     }
 
-    return (
-      <View className="gap-6">
-        <SectionTitle
-          title="Options & Variants"
-          subtitle="Define choices buyers can select, then generate and price variants."
-        />
-        <View className="rounded-xl border border-gray-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
-          <Text className="font-sans text-xs font-bold uppercase text-gray-400 dark:text-slate-500">Step A - Define Options</Text>
-          <View className="mt-4">
-            <ProductOptionsEditorNative
-              productId={form.id || productId || null}
-              onSaved={() => setSuccess('Options saved. You can now generate and price variants.')}
-            />
+    if (currentStep === 5 && !isAdminMode) {
+      return (
+        <View className="gap-8">
+          <View>
+            <Text className="font-sans text-lg font-semibold text-gray-900 dark:text-slate-100">
+              {t('product_form.sections.variants_title', 'Options & Variants')}
+            </Text>
+            <Text className="mt-1 font-sans text-sm text-gray-500 dark:text-slate-400">
+              {t(
+                'product_form.sections.variants_subtitle',
+                'Define the choices buyers can select (Color, Size, etc.), then generate and price your variants.',
+              )}
+            </Text>
+            {!savedProductId ? (
+              <View className="mt-3 flex-row items-center gap-2 rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 dark:border-amber-700 dark:bg-amber-900/20">
+                <Feather name="alert-circle" color="#d97706" size={16} />
+                <Text className="min-w-0 flex-1 font-sans text-sm text-amber-700 dark:text-amber-300">
+                  {t(
+                    'product_form.messages.complete_steps_first',
+                    'Complete Steps 1-4 first to save the product, then configure variants here.',
+                  )}
+                </Text>
+              </View>
+            ) : null}
           </View>
+
+          {savedProductId ? (
+            <>
+              <View className="rounded-xl border border-gray-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
+                <Text className="font-sans text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500">
+                  {t('product_form.sections.step_a_options', 'Step A - Define Options')}
+                </Text>
+                <View className="mt-4">
+                  <ProductOptionsEditorNative
+                    productId={savedProductId}
+                    onSaved={() =>
+                      setSuccess(
+                        t('product_form.options.saved', 'Options saved! Now generate your variants below.'),
+                      )
+                    }
+                  />
+                </View>
+              </View>
+
+              <View className="rounded-xl border border-gray-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
+                <Text className="font-sans text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500">
+                  {t('product_form.sections.step_b_variants', 'Step B - Generate & Price Variants')}
+                </Text>
+                <View className="mt-4">
+                  <VariantTableNative productId={savedProductId} onUpdated={() => undefined} />
+                </View>
+              </View>
+
+              <Pressable onPress={finish} className="self-end flex-row items-center gap-2 rounded-lg bg-green-600 px-8 py-3">
+                <Feather name="check-circle" size={18} color="#ffffff" />
+                <Text className="font-sans text-sm font-bold text-white">
+                  {t('product_form.actions.finish_listing', 'Done - Finish Listing')}
+                </Text>
+              </Pressable>
+            </>
+          ) : (
+            <View className="items-center rounded-xl border-2 border-dashed border-gray-200 py-12 dark:border-slate-700">
+              <Text className="font-sans text-sm text-gray-400 dark:text-slate-500">
+                {t('product_form.messages.save_steps_first', 'Save the product in Steps 1-4 first.')}
+              </Text>
+            </View>
+          )}
         </View>
-        <View className="rounded-xl border border-gray-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
-          <Text className="font-sans text-xs font-bold uppercase text-gray-400 dark:text-slate-500">Step B - Generate & Price Variants</Text>
-          <Text className="mt-3 font-sans text-sm leading-6 text-gray-600 dark:text-slate-400">Generated stock rows, SKU, price overrides, and active toggles will appear here.</Text>
-        </View>
-        <Pressable onPress={finish} className="self-end flex-row items-center gap-2 rounded-lg bg-green-600 px-6 py-3">
-          <Feather name="check-circle" size={18} color="#ffffff" />
-          <Text className="font-sans text-sm font-bold text-white">Done - Finish Listing</Text>
-        </Pressable>
-      </View>
-    );
+      );
+    }
+
+    return null;
   };
 
   if (loading) {
@@ -1077,7 +1289,7 @@ export function ProductFormNative({ productId }: { productId?: string }) {
     );
   }
 
-  const current = steps[currentStep - 1];
+  const current = formSteps[currentStep - 1];
 
   return (
     <SafeAreaView className="flex-1 bg-gray-50 dark:bg-slate-900">
@@ -1106,10 +1318,10 @@ export function ProductFormNative({ productId }: { productId?: string }) {
             <View className="px-6 py-5">
               <View className="mb-3 flex-row items-center justify-between md:hidden">
                 <Text className="font-sans text-sm font-bold text-gray-800 dark:text-slate-200">{current.title}</Text>
-                <Text className="font-sans text-xs font-bold text-green-700 dark:text-green-400">Step {currentStep} of {steps.length}</Text>
+                <Text className="font-sans text-xs font-bold text-green-700 dark:text-green-400">Step {currentStep} of {formSteps.length}</Text>
               </View>
               <View className="flex-row items-start">
-                {steps.map((step, index) => {
+                {formSteps.map((step, index) => {
                   const done = completedSteps.has(step.id);
                   const active = currentStep === step.id;
                   return (
@@ -1120,7 +1332,7 @@ export function ProductFormNative({ productId }: { productId?: string }) {
                         </View>
                         <Text className={`mt-2 hidden w-20 text-center font-sans text-[11px] font-semibold md:flex ${active ? 'text-green-700 dark:text-green-400' : 'text-gray-400 dark:text-slate-500'}`}>{step.title}</Text>
                       </Pressable>
-                      {index < steps.length - 1 && <View className={`mx-2 mt-4 h-0.5 flex-1 rounded-full ${done ? 'bg-green-400' : 'bg-gray-200 dark:bg-slate-700'}`} />}
+                      {index < formSteps.length - 1 && <View className={`mx-2 mt-4 h-0.5 flex-1 rounded-full ${done ? 'bg-green-400' : 'bg-gray-200 dark:bg-slate-700'}`} />}
                     </View>
                   );
                 })}
@@ -1142,7 +1354,7 @@ export function ProductFormNative({ productId }: { productId?: string }) {
               </View>
             )}
             <View className="p-6 md:p-8">{renderStepContent()}</View>
-            {currentStep < 5 && (
+            {currentStep <= formSteps.length && (
               <View className="flex-row items-center justify-between gap-3 border-t border-gray-200 px-4 py-5 dark:border-slate-700 md:px-8">
                 <View>
                   {currentStep > 1 && (
@@ -1152,10 +1364,18 @@ export function ProductFormNative({ productId }: { productId?: string }) {
                     </Pressable>
                   )}
                 </View>
-                {currentStep === 4 ? (
+                {currentStep === formSteps.length ? (
                   <Pressable disabled={saving} onPress={saveCore} className="flex-row items-center gap-2 rounded-lg bg-green-600 px-5 py-3 disabled:opacity-60">
                     {saving ? <ActivityIndicator color="#ffffff" /> : <Feather name="check-circle" size={17} color="#ffffff" />}
-                    <Text className="font-sans text-sm font-bold text-white">{saving ? 'Saving...' : editing ? 'Update & Continue' : 'Save & Continue'}</Text>
+                    <Text className="font-sans text-sm font-bold text-white">
+                      {saving
+                        ? 'Saving...'
+                        : isAdminMode
+                          ? t('admin.productManagement.buttons.update', 'Update')
+                          : editing
+                            ? 'Update & Continue'
+                            : 'Save & Continue'}
+                    </Text>
                   </Pressable>
                 ) : (
                   <Pressable onPress={nextStep} className="flex-row items-center gap-2 rounded-lg bg-green-600 px-5 py-3">
@@ -1179,7 +1399,7 @@ export function ProductFormNative({ productId }: { productId?: string }) {
               <Pressable onPress={() => setLeaveModal(false)} className="rounded-lg border border-gray-300 px-4 py-2 dark:border-slate-600">
                 <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">Keep Editing</Text>
               </Pressable>
-              <Pressable onPress={() => router.replace('/seller/dashboard?tab=products')} className="rounded-lg bg-gray-800 px-4 py-2 dark:bg-slate-700">
+              <Pressable onPress={() => router.replace(dashboardHref)} className="rounded-lg bg-gray-800 px-4 py-2 dark:bg-slate-700">
                 <Text className="font-sans text-sm font-semibold text-white">Leave</Text>
               </Pressable>
             </View>
@@ -1206,6 +1426,23 @@ export function ProductFormNative({ productId }: { productId?: string }) {
               </Pressable>
             </View>
           </View>
+        </View>
+      </Modal>
+
+      <Modal visible={Boolean(previewImageUrl)} transparent animationType="fade" onRequestClose={() => setPreviewImageUrl(null)}>
+        <View className="flex-1 items-center justify-center bg-black/90 px-4">
+          <Pressable
+            onPress={() => setPreviewImageUrl(null)}
+            className="absolute right-4 top-12 z-10 h-10 w-10 items-center justify-center rounded-full bg-white/10">
+            <Feather name="x" size={22} color="#ffffff" />
+          </Pressable>
+          {previewImageUrl ? (
+            <Image
+              source={{ uri: getNativeImageUrl(previewImageUrl) || previewImageUrl }}
+              className="h-[70vh] w-full max-w-3xl"
+              contentFit="contain"
+            />
+          ) : null}
         </View>
       </Modal>
     </SafeAreaView>

@@ -123,18 +123,24 @@ function CategoryGradientPlaceholder({
   );
 }
 
-function CategorySlidingText({ items }: { items: string[] }) {
+function CategorySlidingText({
+  items,
+  animate = false,
+}: {
+  items: string[];
+  animate?: boolean;
+}) {
   const [index, setIndex] = useState(0);
 
   useEffect(() => {
-    if (items.length <= 1) return undefined;
+    if (!animate || items.length <= 1) return undefined;
 
     const timer = setInterval(() => {
       setIndex((current) => (current + 1) % items.length);
     }, 2200);
 
     return () => clearInterval(timer);
-  }, [items.length]);
+  }, [animate, items.length]);
 
   if (items.length === 0) return null;
 
@@ -158,12 +164,18 @@ function CategorySlidingText({ items }: { items: string[] }) {
 function CategoryCardShell({
   children,
   className,
+  animate = false,
 }: {
   children: React.ReactNode;
   className: string;
+  animate?: boolean;
 }) {
   if (Platform.OS === 'web') {
-    return <View className={`animate-card-in ${className}`}>{children}</View>;
+    return <View className={`${animate ? 'animate-card-in ' : ''}${className}`}>{children}</View>;
+  }
+
+  if (!animate) {
+    return <View className={className}>{children}</View>;
   }
 
   return (
@@ -199,6 +211,7 @@ export function CategoryCard({
 
   return (
     <CategoryCardShell
+      animate={priority}
       className={`overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800 dark:shadow-slate-900/50 ${className}`}>
       <Link href={href} asChild>
         <Pressable
@@ -238,7 +251,7 @@ export function CategoryCard({
 
           {slidingItems.length > 0 ? (
             <View className="mt-1 bg-green-300 px-2 py-2 sm:px-3 sm:py-3 dark:bg-green-300">
-              <CategorySlidingText items={slidingItems} />
+              <CategorySlidingText animate={priority} items={slidingItems} />
             </View>
           ) : null}
         </Pressable>

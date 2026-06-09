@@ -1,7 +1,8 @@
-import { Feather } from '@expo/vector-icons';
+import Feather from '@expo/vector-icons/Feather';
 import { useEffect, useState } from 'react';
 import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 
+import { useAppTranslation } from '@/i18n';
 import { apiGet, apiPost } from '@/utils/native-api';
 
 type OptionType = 'color' | 'size' | 'text' | 'image' | 'input';
@@ -26,13 +27,7 @@ type ProductOptionDraft = {
 
 type UnknownRecord = Record<string, unknown>;
 
-const optionTypes: { value: OptionType; label: string; hint: string }[] = [
-  { value: 'color', label: 'Color', hint: 'Use color swatches such as Red, Blue, Black.' },
-  { value: 'size', label: 'Size', hint: 'Use size choices such as S, M, L, XL.' },
-  { value: 'text', label: 'Text', hint: 'Use simple text choices such as Cotton or Leather.' },
-  { value: 'image', label: 'Image', hint: 'Use image swatches for patterns or styles.' },
-  { value: 'input', label: 'Input', hint: 'Buyer enters custom text. No predefined values needed.' },
-];
+const optionTypeKeys: OptionType[] = ['color', 'size', 'text', 'image', 'input'];
 
 const randomId = () => Math.random().toString(36).slice(2);
 
@@ -110,14 +105,16 @@ function OptionTypeSelect({
   value: OptionType;
   onChange: (value: OptionType) => void;
 }) {
+  const { t } = useAppTranslation();
+
   return (
     <View className="flex-row flex-wrap gap-2">
-      {optionTypes.map((type) => {
-        const active = value === type.value;
+      {optionTypeKeys.map((type) => {
+        const active = value === type;
         return (
           <Pressable
-            key={type.value}
-            onPress={() => onChange(type.value)}
+            key={type}
+            onPress={() => onChange(type)}
             className={`rounded-lg border px-3 py-2 ${
               active
                 ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
@@ -127,7 +124,7 @@ function OptionTypeSelect({
               className={`font-sans text-xs font-bold ${
                 active ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-slate-300'
               }`}>
-              {type.label}
+              {t(`product_form.options.types.${type}`, type)}
             </Text>
           </Pressable>
         );
@@ -147,20 +144,22 @@ function ValueRow({
   onChange: (value: OptionValueDraft) => void;
   onRemove: () => void;
 }) {
+  const { t } = useAppTranslation();
+
   return (
     <View className="gap-2 rounded-lg border border-gray-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
       <View className="gap-2 md:grid md:grid-cols-3">
         <TextInput
           value={value.label}
           onChangeText={(label) => onChange({ ...value, label, value: value.value || slugify(label) })}
-          placeholder="Value label"
+          placeholder={t('product_form.options.value_label_placeholder', 'Label (e.g. Red)')}
           placeholderTextColor="#9ca3af"
           className="rounded-lg border border-gray-300 bg-white px-3 py-2 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
         />
         <TextInput
           value={value.value}
           onChangeText={(nextValue) => onChange({ ...value, value: slugify(nextValue) })}
-          placeholder="English slug"
+          placeholder={t('product_form.options.slug_placeholder', 'Slug (auto-filled)')}
           placeholderTextColor="#9ca3af"
           className="rounded-lg border border-gray-300 bg-white px-3 py-2 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
         />
@@ -183,7 +182,7 @@ function ValueRow({
           <TextInput
             value={value.meta.image_url || ''}
             onChangeText={(imageUrl) => onChange({ ...value, meta: { ...value.meta, image_url: imageUrl } })}
-            placeholder="https://.../image.jpg"
+            placeholder={t('product_form.options.image_url', 'Image URL')}
             placeholderTextColor="#9ca3af"
             className="rounded-lg border border-gray-300 bg-white px-3 py-2 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           />
@@ -205,8 +204,9 @@ function OptionBlock({
   onChange: (option: ProductOptionDraft) => void;
   onRemove: () => void;
 }) {
+  const { t } = useAppTranslation();
   const [open, setOpen] = useState(true);
-  const typeInfo = optionTypes.find((type) => type.value === option.type);
+  const typeHint = t(`product_form.options.types.${option.type}_hint`, '');
 
   const updateValue = (index: number, nextValue: OptionValueDraft) => {
     const nextValues = [...option.values];
@@ -224,7 +224,7 @@ function OptionBlock({
           <TextInput
             value={option.name}
             onChangeText={(name) => onChange({ ...option, name })}
-            placeholder="Option name"
+            placeholder={t('product_form.options.option_name_placeholder', 'Option name (e.g. Color)')}
             placeholderTextColor="#9ca3af"
             className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 font-sans text-sm font-bold text-gray-900 dark:border-slate-500 dark:bg-slate-700 dark:text-slate-100"
           />
@@ -246,13 +246,17 @@ function OptionBlock({
             }`}>
             {option.is_required && <Feather name="check" size={11} color="#ffffff" />}
           </View>
-          <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">Required</Text>
+          <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">
+            {t('product_form.options.required', 'Required')}
+          </Text>
         </Pressable>
       </Pressable>
 
       {open && (
         <View className="gap-3 bg-white px-4 py-3 dark:bg-slate-900">
-          <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">{typeInfo?.hint || ''}</Text>
+          {typeHint ? (
+            <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">{typeHint}</Text>
+          ) : null}
           {option.type !== 'input' ? (
             <View className="gap-2">
               {option.values.map((value, index) => (
@@ -261,18 +265,24 @@ function OptionBlock({
                   optType={option.type}
                   value={value}
                   onChange={(nextValue) => updateValue(index, nextValue)}
-                  onRemove={() => onChange({ ...option, values: option.values.filter((_, itemIndex) => itemIndex !== index) })}
+                  onRemove={() =>
+                    onChange({ ...option, values: option.values.filter((_, itemIndex) => itemIndex !== index) })
+                  }
                 />
               ))}
               <Pressable
                 onPress={() => onChange({ ...option, values: [...option.values, emptyValue()] })}
                 className="mt-1 flex-row items-center gap-2 self-start rounded-lg px-2.5 py-2">
                 <Feather name="plus" size={16} color="#16a34a" />
-                <Text className="font-sans text-sm font-semibold text-green-600 dark:text-green-400">Add Value</Text>
+                <Text className="font-sans text-sm font-semibold text-green-600 dark:text-green-400">
+                  {t('product_form.options.add_value', 'Add value')}
+                </Text>
               </Pressable>
             </View>
           ) : (
-            <Text className="font-sans text-sm italic text-gray-500 dark:text-slate-400">No predefined values for buyer input fields.</Text>
+            <Text className="font-sans text-sm italic text-gray-500 dark:text-slate-400">
+              {t('product_form.options.no_predefined_values', 'No predefined values - the buyer will type their own.')}
+            </Text>
           )}
         </View>
       )}
@@ -287,6 +297,7 @@ export function ProductOptionsEditorNative({
   productId?: string | number | null;
   onSaved?: () => void;
 }) {
+  const { t } = useAppTranslation();
   const [options, setOptions] = useState<ProductOptionDraft[]>([]);
   const [loading, setLoading] = useState(Boolean(productId));
   const [saving, setSaving] = useState(false);
@@ -314,17 +325,35 @@ export function ProductOptionsEditorNative({
   }, [productId]);
 
   const validate = () => {
-    if (!productId) return 'Save the product in Steps 1-4 first.';
+    if (!productId) {
+      return t('product_form.save_steps_first', 'Save the product in Steps 1-4 first.');
+    }
 
     for (let index = 0; index < options.length; index += 1) {
       const option = options[index];
-      if (!option.name.trim()) return `Option ${index + 1} needs a name.`;
-      if (option.type !== 'input' && option.values.length === 0) return `${option.name} needs at least one value.`;
+      if (!option.name.trim()) {
+        return t('product_form.options.error_missing_name', 'Option #{{number}} is missing a name. Fill it in or remove it.', {
+          number: index + 1,
+        });
+      }
+      if (option.type !== 'input' && option.values.length === 0) {
+        return t('product_form.options.error_needs_value', 'Option "{{name}}" needs at least one value.', {
+          name: option.name,
+        });
+      }
 
       for (const value of option.values) {
-        if (!value.label.trim()) return `${option.name} has a value without a label.`;
+        if (!value.label.trim()) {
+          return t('product_form.options.error_value_label', 'All values in option "{{name}}" need a label.', {
+            name: option.name,
+          });
+        }
         const slug = slugify(value.value || value.label);
-        if (!slug || !isValidSlug(slug)) return `Value "${value.label}" in option "${option.name}" needs an English slug.`;
+        if (!slug || !isValidSlug(slug)) {
+          return t('product_form.options.error_value_label', 'All values in option "{{name}}" need a label.', {
+            name: option.name,
+          });
+        }
       }
     }
 
@@ -353,10 +382,14 @@ export function ProductOptionsEditorNative({
           })),
         })),
       });
-      setSuccess('Options saved.');
+      setSuccess(t('product_form.options.saved', 'Options saved! Now generate your variants below.'));
       onSaved?.();
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : 'Failed to save options.');
+      setError(
+        nextError instanceof Error
+          ? nextError.message
+          : t('product_form.options.save_failed', 'Failed to save options.'),
+      );
     } finally {
       setSaving(false);
     }
@@ -374,23 +407,31 @@ export function ProductOptionsEditorNative({
     <View className="gap-4">
       <View className="gap-3 sm:flex-row sm:items-center sm:justify-between">
         <View className="min-w-0 flex-1">
-          <Text className="font-sans text-base font-bold text-gray-900 dark:text-slate-100">Product Options</Text>
+          <Text className="font-sans text-base font-bold text-gray-900 dark:text-slate-100">
+            {t('product_form.options.title', 'Product Options')}
+          </Text>
           <Text className="mt-1 font-sans text-sm text-gray-500 dark:text-slate-400">
-            Add buyer choices like color, size, text, image, or custom input.
+            {t('product_form.options.subtitle', 'Define the choices buyers can select (e.g. Color, Size).')}
           </Text>
         </View>
         <Pressable
           onPress={() => setOptions((prev) => [...prev, emptyOption()])}
           className="flex-row items-center justify-center gap-2 self-start rounded-lg bg-green-600 px-3 py-2 sm:self-auto">
           <Feather name="plus" size={16} color="#ffffff" />
-          <Text className="font-sans text-sm font-bold text-white">Add Option</Text>
+          <Text className="font-sans text-sm font-bold text-white">
+            {t('product_form.options.add_option', 'Add Option')}
+          </Text>
         </Pressable>
       </View>
 
       {options.length === 0 ? (
         <View className="items-center rounded-xl border-2 border-dashed border-gray-300 py-10 dark:border-slate-600">
-          <Text className="font-sans text-sm text-gray-400 dark:text-slate-500">No product options yet.</Text>
-          <Text className="mt-1 font-sans text-xs text-gray-400 dark:text-slate-500">Add Color, Size, or any buyer choice.</Text>
+          <Text className="font-sans text-sm text-gray-400 dark:text-slate-500">
+            {t('product_form.options.empty_title', 'No options yet.')}
+          </Text>
+          <Text className="mt-1 font-sans text-xs text-gray-400 dark:text-slate-500">
+            {t('product_form.options.empty_hint', 'Click "Add Option" to define Color, Size, etc.')}
+          </Text>
         </View>
       ) : (
         <View className="gap-3">
@@ -427,7 +468,11 @@ export function ProductOptionsEditorNative({
           disabled={saving}
           onPress={saveOptions}
           className="h-10 items-center justify-center rounded-lg bg-green-600 px-4 disabled:opacity-50">
-          <Text className="font-sans text-sm font-bold text-white">{saving ? 'Saving...' : 'Save Options'}</Text>
+          <Text className="font-sans text-sm font-bold text-white">
+            {saving
+              ? t('product_form.buttons.saving', 'Saving...')
+              : t('product_form.options.save_options', 'Save Options')}
+          </Text>
         </Pressable>
       )}
     </View>

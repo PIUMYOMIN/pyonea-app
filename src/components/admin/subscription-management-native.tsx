@@ -134,7 +134,23 @@ function FeatureRow({ label, enabled }: { label: string; enabled: boolean }) {
   );
 }
 
-function SubscriptionCard({
+function SubscriptionStatusBadge({ status, label }: { status: string; label: string }) {
+  return (
+    <View className={`self-start rounded-full px-2 py-0.5 ${statusTone(status)}`}>
+      <Text className="font-sans text-[11px] font-semibold capitalize">{label}</Text>
+    </View>
+  );
+}
+
+function SubscriptionPlanBadge({ slug, name }: { slug?: string; name: string }) {
+  return (
+    <View className={`self-start rounded-full px-2 py-0.5 ${planTone(slug)}`}>
+      <Text className="font-sans text-[11px] font-semibold">{name}</Text>
+    </View>
+  );
+}
+
+function SubscriptionTableRow({
   subscription,
   saving,
   onApprove,
@@ -147,73 +163,86 @@ function SubscriptionCard({
   onReject: (subscription: SellerSubscription) => void;
   onOverride: (subscription: SellerSubscription) => void;
 }) {
-  const sellerName = subscription.seller?.store || subscription.seller?.name || `Seller #${subscription.userId}`;
+  const sellerName = subscription.seller?.store || subscription.seller?.name || '—';
+  const sellerEmail = subscription.seller?.email || `User #${subscription.userId}`;
   const isPending = subscription.status === 'pending_payment';
+  const expiresSoon =
+    subscription.daysRemaining != null && subscription.daysRemaining <= 7 && Boolean(subscription.endsAt);
 
   return (
-    <View className="rounded-2xl border border-gray-200 bg-white p-4 dark:border-slate-800 dark:bg-slate-900">
-      <View className="gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <View className="min-w-0 flex-1">
-          <View className="flex-row items-start gap-3">
-            <View className="h-11 w-11 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-              <Feather name="user" color="#15803d" size={20} />
-            </View>
-            <View className="min-w-0 flex-1">
-              <Text className="font-sans text-base font-bold text-gray-950 dark:text-slate-100" numberOfLines={1}>
-                {sellerName}
-              </Text>
-              <Text className="font-sans text-xs text-gray-400 dark:text-slate-500" numberOfLines={1}>
-                {subscription.seller?.email || `User #${subscription.userId}`}
-              </Text>
-              <View className="mt-2 flex-row flex-wrap gap-2">
-                <View className={`rounded-full px-2.5 py-1 ${planTone(subscription.plan?.slug)}`}>
-                  <Text className="font-sans text-xs font-bold">{subscription.plan?.name || '-'}</Text>
-                </View>
-                <View className={`rounded-full px-2.5 py-1 ${statusTone(subscription.status)}`}>
-                  <Text className="font-sans text-xs font-bold">{subscription.statusLabel || subscription.status.replaceAll('_', ' ')}</Text>
-                </View>
-              </View>
-            </View>
-          </View>
-        </View>
-
-        <View className="grid-cols-2 gap-3 sm:grid">
-          <MetricRow label="Started" value={dateLabel(subscription.startsAt)} />
-          <MetricRow label="Expires" value={subscription.endsAt ? dateLabel(subscription.endsAt) : 'No expiry'} />
-          <MetricRow label="Paid" value={money(subscription.amountPaidValue)} />
-          <MetricRow label="Method" value={paymentMethodLabel(subscription.paymentMethod)} />
-          <MetricRow label="Payment Ref" value={subscription.paymentReference || '-'} />
-          <MetricRow label="Days Left" value={subscription.daysRemaining == null ? '-' : `${subscription.daysRemaining}d`} />
-        </View>
+    <View className="flex-row border-t border-gray-100 px-4 py-3 dark:border-slate-700">
+      <View className="w-[160px] justify-center px-2">
+        <Text className="font-sans text-sm font-medium text-gray-900 dark:text-slate-100" numberOfLines={1}>
+          {sellerName}
+        </Text>
+        <Text className="font-sans text-[10px] text-gray-400 dark:text-slate-500" numberOfLines={1}>
+          {sellerEmail}
+        </Text>
       </View>
-
-      <View className="mt-4 flex-row flex-wrap gap-2 border-t border-gray-100 pt-4 dark:border-slate-800">
+      <View className="w-[120px] justify-center px-2">
+        <SubscriptionPlanBadge slug={subscription.plan?.slug} name={subscription.plan?.name || '—'} />
+      </View>
+      <View className="w-[120px] justify-center px-2">
+        <SubscriptionStatusBadge
+          status={subscription.status}
+          label={subscription.statusLabel || subscription.status.replaceAll('_', ' ')}
+        />
+      </View>
+      <View className="w-[110px] justify-center px-2">
+        <Text className="font-sans text-xs text-gray-600 dark:text-slate-400">{dateLabel(subscription.startsAt)}</Text>
+      </View>
+      <View className="w-[130px] justify-center px-2">
+        {subscription.endsAt ? (
+          <Text
+            className={`font-sans text-xs ${
+              expiresSoon ? 'font-medium text-amber-600 dark:text-amber-400' : 'text-gray-600 dark:text-slate-400'
+            }`}>
+            {dateLabel(subscription.endsAt)}
+            {expiresSoon ? ` (${subscription.daysRemaining}d)` : ''}
+          </Text>
+        ) : (
+          <Text className="font-sans text-xs text-gray-400 dark:text-slate-500">No expiry</Text>
+        )}
+      </View>
+      <View className="w-[110px] justify-center px-2">
+        <Text className="font-sans text-xs font-medium text-gray-700 dark:text-slate-200">
+          {money(subscription.amountPaidValue)}
+        </Text>
+      </View>
+      <View className="w-[110px] justify-center px-2">
+        <Text className="font-sans text-xs capitalize text-gray-600 dark:text-slate-400">
+          {paymentMethodLabel(subscription.paymentMethod)}
+        </Text>
+      </View>
+      <View className="w-[120px] justify-center px-2">
+        <Text className="font-sans text-[10px] text-gray-600 dark:text-slate-400" numberOfLines={1}>
+          {subscription.paymentReference || '—'}
+        </Text>
+      </View>
+      <View className="w-[200px] flex-row flex-wrap items-center justify-end gap-1.5 px-2">
         {isPending ? (
           <>
             <Pressable
               disabled={saving}
               onPress={() => onApprove(subscription)}
-              className="flex-row items-center gap-1.5 rounded-lg bg-green-600 px-3 py-2 disabled:opacity-50"
-            >
-              <Feather name="shield" color="#fff" size={14} />
-              <Text className="font-sans text-xs font-bold text-white">Approve</Text>
+              className="flex-row items-center gap-1 rounded-lg bg-green-600 px-3 py-1.5 disabled:opacity-50">
+              <Feather name="shield" color="#fff" size={12} />
+              <Text className="font-sans text-[11px] font-medium text-white">Approve</Text>
             </Pressable>
             <Pressable
               disabled={saving}
               onPress={() => onReject(subscription)}
-              className="flex-row items-center gap-1.5 rounded-lg bg-red-50 px-3 py-2 dark:bg-red-900/25 disabled:opacity-50"
-            >
-              <Feather name="x-circle" color="#dc2626" size={14} />
-              <Text className="font-sans text-xs font-bold text-red-700 dark:text-red-300">Reject</Text>
+              className="flex-row items-center gap-1 rounded-lg bg-red-50 px-3 py-1.5 dark:bg-red-900/20 disabled:opacity-50">
+              <Feather name="x-circle" color="#dc2626" size={12} />
+              <Text className="font-sans text-[11px] font-medium text-red-700 dark:text-red-300">Reject</Text>
             </Pressable>
           </>
         ) : null}
         <Pressable
           onPress={() => onOverride(subscription)}
-          className="flex-row items-center gap-1.5 rounded-lg bg-gray-100 px-3 py-2 dark:bg-slate-800"
-        >
-          <Feather name="edit-3" color="#475569" size={14} />
-          <Text className="font-sans text-xs font-bold text-gray-700 dark:text-slate-200">Override</Text>
+          className="flex-row items-center gap-1 rounded-lg bg-gray-100 px-3 py-1.5 dark:bg-slate-800">
+          <Feather name="edit-2" color="#475569" size={12} />
+          <Text className="font-sans text-[11px] font-medium text-gray-700 dark:text-slate-200">Override</Text>
         </Pressable>
       </View>
     </View>
@@ -648,25 +677,53 @@ export function AdminSubscriptionManagementNative() {
           </Text>
 
           {loading ? (
-            <View className="rounded-2xl border border-gray-200 bg-white p-10 dark:border-slate-800 dark:bg-slate-900">
-              <ActivityIndicator color="#16a34a" />
+            <View className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+              <View className="items-center px-6 py-14">
+                <ActivityIndicator color="#16a34a" />
+              </View>
             </View>
           ) : subscriptions.length === 0 ? (
-            <View className="items-center rounded-2xl border border-gray-200 bg-white p-10 dark:border-slate-800 dark:bg-slate-900">
+            <View className="items-center rounded-2xl border border-gray-200 bg-white px-6 py-14 dark:border-slate-800 dark:bg-slate-900">
               <Feather name="inbox" color="#94a3b8" size={28} />
               <Text className="mt-3 font-sans text-sm font-semibold text-gray-500 dark:text-slate-400">No subscriptions found.</Text>
             </View>
           ) : (
-            subscriptions.map((subscription) => (
-              <SubscriptionCard
-                key={subscription.id}
-                subscription={subscription}
-                saving={saving}
-                onApprove={handleApprove}
-                onReject={setRejectSub}
-                onOverride={setOverrideSub}
-              />
-            ))
+            <View className="overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-slate-800 dark:bg-slate-900">
+              <ScrollView horizontal showsHorizontalScrollIndicator contentContainerClassName="min-w-full">
+                <View className="w-full min-w-[1260px]">
+                  <View className="flex-row bg-gray-50 px-4 py-3 dark:bg-slate-900/50">
+                    {[
+                      { key: 'seller', label: 'Seller', width: 'w-[160px]' },
+                      { key: 'plan', label: 'Plan', width: 'w-[120px]' },
+                      { key: 'status', label: 'Status', width: 'w-[120px]' },
+                      { key: 'started', label: 'Started', width: 'w-[110px]' },
+                      { key: 'expires', label: 'Expires', width: 'w-[130px]' },
+                      { key: 'paid', label: 'Paid (MMK)', width: 'w-[110px]' },
+                      { key: 'method', label: 'Method', width: 'w-[110px]' },
+                      { key: 'paymentRef', label: 'Payment Ref', width: 'w-[120px]' },
+                      { key: 'actions', label: 'Actions', width: 'w-[200px]' },
+                    ].map((column) => (
+                      <View key={column.key} className={`${column.width} px-2`}>
+                        <Text className="font-sans text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
+                          {column.label}
+                        </Text>
+                      </View>
+                    ))}
+                  </View>
+
+                  {subscriptions.map((subscription) => (
+                    <SubscriptionTableRow
+                      key={String(subscription.id)}
+                      subscription={subscription}
+                      saving={saving}
+                      onApprove={handleApprove}
+                      onReject={setRejectSub}
+                      onOverride={setOverrideSub}
+                    />
+                  ))}
+                </View>
+              </ScrollView>
+            </View>
           )}
 
           {meta.lastPage > 1 ? (

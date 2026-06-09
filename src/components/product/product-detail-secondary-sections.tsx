@@ -3,7 +3,7 @@ import { Link, type Href } from 'expo-router';
 import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 import { useState } from 'react';
 
-import { ProductListCard } from '@/components/marketplace-list-screen';
+import { ProductListCard, PRODUCT_CARD_CAROUSEL_CLASS } from '@/components/marketplace-list-screen';
 import { useAppTranslation } from '@/i18n';
 import type { HomeProduct, ProductDetail, ProductReview } from '@/utils/native-api';
 
@@ -132,7 +132,7 @@ export function ProductDetailSecondarySections({
               <ProductListCard
                 key={String(item.id)}
                 product={item}
-                className="h-[320px] w-48 flex-shrink-0 sm:h-[354px] sm:w-52 lg:h-[376px] lg:w-56"
+                className={PRODUCT_CARD_CAROUSEL_CLASS}
               />
             ))}
           </ScrollView>

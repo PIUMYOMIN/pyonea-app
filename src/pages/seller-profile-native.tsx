@@ -3,12 +3,13 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { Link, useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, Share, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { ProductListCard } from '@/components/marketplace-list-screen';
-import { SITE_PUBLIC_URL } from '@/config/native';
+import { SocialSharePanel } from '@/components/ui/social-share-panel';
 import { useNativeAuth } from '@/context/native-auth';
+import { useAppTranslation } from '@/i18n';
 import {
   fetchSellerDeliveryAreas,
   fetchSellerProfile,
@@ -22,6 +23,7 @@ import {
   type SellerReviewStats,
 } from '@/utils/native-api';
 import { hasUserRole } from '@/utils/auth-routing';
+import { buildSocialSharePayload } from '@/utils/social-share';
 
 const tabKeys = ['products', 'reviews', 'about', 'policies', 'delivery'] as const;
 
@@ -486,6 +488,7 @@ export function SellerProfileNative({
   slug: string;
   initialProfile?: SellerProfileResult | null;
 }) {
+  const { t, language } = useAppTranslation();
   const router = useRouter();
   const { user, isAuthenticated } = useNativeAuth();
   const [seller, setSeller] = useState<SellerProfile | null>(initialProfile?.seller || null);
@@ -512,6 +515,7 @@ export function SellerProfileNative({
   const [error, setError] = useState('');
   const [descriptionExpanded, setDescriptionExpanded] = useState(false);
   const [logoError, setLogoError] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const hasInitialSeller = Boolean(initialProfile?.seller);
   const isBuyer = hasUserRole(user, 'buyer');
   const canWriteReview = isAuthenticated && isBuyer && !isOwnStore;
@@ -698,7 +702,22 @@ export function SellerProfileNative({
   }
 
   const rating = Number(seller.rating) || 0;
-  const profileUrl = `${SITE_PUBLIC_URL}/sellers/${seller.slug || slug}`;
+  const shareText = t('seller.share_text', { name: seller.name });
+  const sharePayload = (() => {
+    const payload = buildSocialSharePayload({
+      path: `/sellers/${seller.slug || slug}`,
+      title: seller.name,
+      text: shareText,
+      description: '',
+      language,
+      imageUrl: seller.imageUrl,
+    });
+
+    return {
+      ...payload,
+      description: t('seller.share_description', { url: payload.url }),
+    };
+  })();
   const descriptionPreview =
     seller.description.length > 220 && !descriptionExpanded
       ? `${seller.description.slice(0, 220).trim()}...`
@@ -708,11 +727,7 @@ export function SellerProfileNative({
   const socialLinks = Object.entries(seller.socialLinks).filter(([, value]) => Boolean(value));
 
   const shareProfile = () => {
-    void Share.share({
-      title: seller.name,
-      message: `Seller profile on Pyonea: ${profileUrl}`,
-      url: profileUrl,
-    });
+    setShareOpen((current) => !current);
   };
 
   const openContact = () => {
@@ -790,10 +805,14 @@ export function SellerProfileNative({
               </Pressable>
               <Pressable
                 onPress={shareProfile}
-                className="flex-row items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 dark:border-slate-700 dark:bg-slate-900">
+                className={`flex-row items-center gap-2 rounded-lg border px-4 py-2.5 ${
+                  shareOpen
+                    ? 'border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
+                    : 'border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900'
+                }`}>
                 <Feather name="share-2" color="#16a34a" size={16} />
                 <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-200">
-                  Share
+                  {t('seller.share_product')}
                 </Text>
               </Pressable>
               {contactHref ? (
@@ -807,6 +826,24 @@ export function SellerProfileNative({
                 </Pressable>
               ) : null}
             </View>
+
+            {shareOpen ? (
+              <SocialSharePanel
+                payload={sharePayload}
+                heading={t('seller.share_product')}
+                shareOnLabel={t('seller.share_on')}
+                copyLinkLabel={t('productDetail.copy_link')}
+                copiedLabel={t('productDetail.copied')}
+                platformLabels={{
+                  facebook: t('productDetail.share_facebook'),
+                  whatsapp: t('productDetail.share_whatsapp'),
+                  viber: t('productDetail.share_viber'),
+                  telegram: t('productDetail.share_telegram'),
+                  x: t('productDetail.share_x'),
+                }}
+                className="mt-4"
+              />
+            ) : null}
           </View>
 
           <View className="mb-6 flex-row flex-wrap gap-3">

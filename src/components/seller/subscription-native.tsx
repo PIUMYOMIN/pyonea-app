@@ -2,7 +2,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Linking, Modal, Pressable, Text, View } from 'react-native';
 
-import { OptimizedImage as Image } from '@/components/ui/optimized-image';
+import { PaymentQrBadge, PaymentQrDisplay } from '@/components/checkout/payment-qr-display';
 import { useAppTranslation } from '@/i18n';
 import {
   createSellerSubscriptionPaymentSession,
@@ -273,19 +273,20 @@ function PaymentModal({
                 </View>
               </View>
 
-              {session.qrImageUrl ? (
+              {(session.qrImageUrl || session.qrString || method === 'mmqr') ? (
                 <View className="items-center gap-2">
+                  <PaymentQrBadge paymentMethod={method} />
                   <View className="h-48 w-48 items-center justify-center rounded-2xl border-4 border-white bg-white p-2 shadow-sm dark:border-slate-700">
-                    <Image source={{ uri: session.qrImageUrl }} className="h-full w-full rounded-xl" resizeMode="contain" />
+                    <PaymentQrDisplay
+                      qrImageUrl={session.qrImageUrl || undefined}
+                      qrString={session.qrString || undefined}
+                      size={176}
+                      loadingLabel="QR code is being generated."
+                    />
                   </View>
                   <Text className="text-center font-sans text-xs leading-4 text-gray-500 dark:text-slate-400">
                     Scan this QR code with your payment app, enter your PIN there, then return here.
                   </Text>
-                </View>
-              ) : session.qrString ? (
-                <View className="rounded-lg bg-white/80 p-3 dark:bg-slate-800/80">
-                  <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">QR payload</Text>
-                  <Text className="mt-1 font-mono text-xs text-gray-800 dark:text-slate-200">{session.qrString}</Text>
                 </View>
               ) : null}
 

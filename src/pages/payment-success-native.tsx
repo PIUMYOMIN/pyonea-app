@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Pressable, Share, Text, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
+import { SITE_CONTAINER_CLASS } from '@/constants/layout';
 import { GoogleCustomerReviewsOptIn } from '@/components/ui/google-customer-reviews-opt-in';
 import { useAppTranslation } from '@/i18n';
 import {
@@ -408,8 +409,8 @@ export function PaymentSuccessNative() {
   if (loading) {
     return (
       <AppLayout>
-        <View className="bg-gray-50 px-4 py-16 dark:bg-slate-950 sm:px-6 lg:px-8">
-          <View className="mx-auto w-full max-w-7xl gap-6">
+        <View className="bg-gray-50 py-16 dark:bg-slate-950">
+          <View className={`${SITE_CONTAINER_CLASS} gap-6`}>
             <View className="h-36 rounded-2xl bg-gray-200 dark:bg-slate-800" />
             <View className="gap-6 lg:flex-row">
               <View className="min-h-96 flex-1 rounded-2xl bg-gray-200 dark:bg-slate-800" />
@@ -476,7 +477,7 @@ export function PaymentSuccessNative() {
       <GoogleCustomerReviewsOptIn order={order} />
       <View className="bg-gray-50 dark:bg-slate-950">
         <View className="bg-green-700">
-          <View className="mx-auto w-full max-w-7xl items-center px-4 py-12 sm:px-6 sm:py-16 lg:px-8">
+          <View className={`${SITE_CONTAINER_CLASS} items-center py-12 sm:py-16`}>
             <View className="h-20 w-20 items-center justify-center rounded-full bg-white/15">
               <View className="h-14 w-14 items-center justify-center rounded-full bg-white">
                 <Feather name="check" color="#16a34a" size={34} />
@@ -486,7 +487,11 @@ export function PaymentSuccessNative() {
               {t('payment_success.title')}
             </Text>
             <Text className="mt-3 max-w-2xl text-center font-sans text-base leading-7 text-green-100 sm:text-lg">
-              {t('payment_success.success_message')}
+              {isCodPending
+                ? t('payment_success.success_message_cod')
+                : t('payment_success.success_message_paid', {
+                    defaultValue: t('payment_success.success_message'),
+                  })}
             </Text>
             <View className="mt-6 rounded-full border border-green-300 bg-white/10 px-5 py-2">
               <Text className="font-sans text-sm font-semibold text-white">
@@ -496,7 +501,7 @@ export function PaymentSuccessNative() {
           </View>
         </View>
 
-        <View className="mx-auto w-full max-w-7xl gap-8 px-4 py-8 sm:px-6 sm:py-12 lg:flex-row lg:items-start lg:px-8">
+        <View className={`${SITE_CONTAINER_CLASS} gap-8 py-8 sm:py-12 lg:flex-row lg:items-start`}>
           <View className="min-w-0 flex-1">
             <View className="overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
               <View className="gap-4 border-b border-gray-100 p-5 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between sm:p-6">

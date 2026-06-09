@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, Text, TextInput, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
+import { SITE_CONTAINER_6XL_CLASS } from '@/constants/layout';
 import { useAppTranslation } from '@/i18n';
 import { fetchLocalDealsPage, type LocalDeal } from '@/utils/native-api';
 
@@ -281,8 +282,8 @@ export function LocalDealsNative() {
 
   return (
     <AppLayout>
-      <View className="bg-gray-50 px-4 py-8 dark:bg-slate-950 sm:px-6 lg:px-8">
-        <View className="mx-auto w-full max-w-6xl">
+      <View className="bg-gray-50 py-8 dark:bg-slate-950">
+        <View className={SITE_CONTAINER_6XL_CLASS}>
           <Text className="font-sans text-2xl font-bold text-gray-900 dark:text-slate-100 sm:text-3xl">
             {t('localDeals.title')}
           </Text>

@@ -4,6 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
+import { SITE_CONTAINER_CLASS } from '@/constants/layout';
 import { useNativeAuth } from '@/context/native-auth';
 import { useAppTranslation } from '@/i18n';
 import { hasUserRole } from '@/utils/auth-routing';
@@ -338,11 +339,11 @@ export function PricingNative() {
 
   return (
     <AppLayout>
-      <View className="bg-gray-50 px-4 py-12 dark:bg-slate-950 sm:px-6 lg:px-8">
+      <View className="bg-gray-50 py-12 dark:bg-slate-950">
         {loading ? (
           <PricingSkeleton />
         ) : (
-          <View className="mx-auto w-full max-w-7xl gap-16">
+          <View className={`${SITE_CONTAINER_CLASS} gap-16`}>
             <View className="mx-auto max-w-2xl items-center gap-4">
               <View className="flex-row items-center gap-2 rounded-full border border-green-200 bg-green-50 px-4 py-1.5 dark:border-green-800 dark:bg-green-900/20">
                 <Feather name="star" color="#16a34a" size={15} />

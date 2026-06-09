@@ -2277,11 +2277,12 @@
     "added_to_wishlist": "Wishlist ထဲ ထည့်ပြီးပါပြီ",
     "removed_from_wishlist": "Wishlist မှ ဖယ်ရှားပြီးပါပြီ",
     "wishlist_update_failed": "Wishlist ကို ပြောင်းလဲ၍မရပါ",
-    "add_to_wishlist": "Wishlist ထဲ ထည့်ရန်",
+    "add_to_wishlist": "Wishlist ထည့်ရန်",
     "remove_from_wishlist": "Wishlist မှ ဖယ်ရှားရန်",
     "share_product": "ကုန်ပစ္စည်း မျှဝေရန်",
     "share_text": "Pyonea ပေါ်ရှိ \"{{title}}\" ကို ကြည့်ရှုပါ။",
     "share_description": "Pyonea လက်ကားကုန်ပစ္စည်း • {{url}}",
+    "share_on": "မျှဝေရန်",
     "share_facebook": "Facebook တွင် မျှဝေရန်",
     "share_whatsapp": "Chat သို့ ပို့ရန်",
     "share_viber": "မိုဘိုင်းအက်ပ်လင့်ခ်",
@@ -2345,6 +2346,8 @@
     "seller_center": "ရောင်းချသူစင်တာ",
     "share_product": "ဆိုင်မျှဝေရန်",
     "share_text": "Pyonea ပေါ်ရှိ \"{{name}}\" ဆိုင်ကို ကြည့်ရှုပါ။",
+    "share_description": "Pyonea တွင် အတည်ပြုထားသော ဆိုင် • {{url}}",
+    "share_on": "မျှဝေရန်",
     "view_profile": "ပရိုဖိုင်း ကြည့်ရန်",
     "open_sidebar": "ဘေးမီနူး ဖွင့်ရန်",
     "back_to_sellers": "ရောင်းချသူများသို့ ပြန်သွားရန်",
@@ -2991,6 +2994,481 @@
         "noProductsSelectedMsg": "လုပ်ဆောင်မှုတစ်ခုမလုပ်မီ ကုန်ပစ္စည်းအနည်းဆုံး တစ်ခုကို ရွေးချယ်ပါ။",
         "noActionSelected": "လုပ်ဆောင်မှုမရွေးချယ်ရသေးပါ",
         "noActionSelectedMsg": "ကျေးဇူးပြု၍ Apply မနှိပ်မီ dropdown မှ လုပ်ဆောင်မှုတစ်ခုကို ရွေးချယ်ပါ။"
+      }
+    },
+    "orderManagement": {
+      "title": "အော်ဒါ စီမံခန့်ခွဲမှု",
+      "count": "အော်ဒါ {{count}} ခု",
+      "searchPlaceholder": "အော်ဒါ # သို့မဟုတ် ဝယ်သူအမည် ရှာပါ…",
+      "refresh": "ပြန်လည်ဖွင့်ရန်",
+      "retry": "ထပ်မံကြိုးစားရန်",
+      "view": "ကြည့်ရန်",
+      "cancel": "ပယ်ဖျက်ရန်",
+      "changeStatus": "အော်ဒါအခြေအနေ ပြောင်းရန်",
+      "statusLabel": "အခြေအနေ",
+      "updating": "ပြောင်းလဲနေသည်...",
+      "date": "ရက်စွဲ",
+      "buyer": "ဝယ်သူ",
+      "payment": "ငွေချေမှု",
+      "paymentMethod": "ငွေချေနည်း",
+      "total": "စုစုပေါင်း",
+      "subtotal": "ခွဲစုစုပေါင်း",
+      "shipping": "ပို့ဆောင်ခ",
+      "tax": "အခွန်",
+      "coupon": "ကူပွန်",
+      "collected": "စုဆောင်းငွေ",
+      "sellerPayout": "ရောင်းသူထုတ်ပေးငွေ",
+      "sellerPayoutShort": "ရောင်းသူ",
+      "commission": "ကော်မရှင်",
+      "escrow": "Escrow",
+      "shipTo": "ပို့ဆောင်ရမည့်လိပ်စာ",
+      "items": "ပစ္စည်းများ",
+      "orderNumber": "အော်ဒါ #{{number}}",
+      "awaitingSellerMethod": "ရောင်းသူ delivery နည်းလမ်း စောင့်နေသည်",
+      "empty": "အော်ဒါ မရှိသေးပါ။",
+      "emptyFiltered": "စစ်ထုတ်မှုနှင့် ကိုက်ညီသော အော်ဒါ မရှိပါ။",
+      "filters": {
+        "all": "အခြေအနေအားလုံး"
+      },
+      "status": {
+        "pending": "စောင့်ဆိုင်းနေသည်",
+        "confirmed": "အတည်ပြုပြီး",
+        "processing": "လုပ်ဆောင်နေသည်",
+        "shipped": "ပို့ပြီး",
+        "delivered": "ပို့ဆောင်ပြီး",
+        "cancelled": "ပယ်ဖျက်ပြီး"
+      },
+      "paymentStatus": {
+        "paid": "ပေးချေပြီး",
+        "pending": "စောင့်ဆိုင်းနေသည်",
+        "failed": "မအောင်မြင်",
+        "refunded": "ပြန်အမ်းပြီး"
+      },
+      "delivery": {
+        "title": "ပို့ဆောင်မှု",
+        "platform": "Platform",
+        "self": "Self"
+      },
+      "messages": {
+        "updated": "အော်ဒါအခြေအနေ ပြောင်းလဲပြီးပါပြီ။"
+      },
+      "errors": {
+        "load": "အော်ဒါများ ဖွင့်၍မရပါ။",
+        "update": "အခြေအနေ ပြောင်း၍မရပါ။",
+        "detail": "အော်ဒါအသေးစိတ် မဖွင့်နိုင်ပါ — စာရင်းမှ အချက်အလက်သာ ပြထားသည်။"
+      },
+      "columns": {
+        "order": "အော်ဒါ #",
+        "fund": "ရန်ပုံငွေ",
+        "actions": "လုပ်ဆောင်ချက်များ"
+      },
+      "showing": "အော်ဒါ {{total}} ခုအနက် {{shown}} ခု"
+    },
+    "userManagement": {
+      "title": "အသုံးပြုသူ စီမံခန့်ခွဲမှု",
+      "subtitle": "မှတ်ပုံတင်အသုံးပြုသူများကို စီမံခန့်ခွဲပါ",
+      "subtitleCount": "စုစုပေါင်း အသုံးပြုသူ {{count}} ဦး",
+      "loading": "အသုံးပြုသူများကို ဖွင့်နေသည်...",
+      "searchPlaceholder": "အမည်၊ အီးမေးလ် သို့မဟုတ် ဖုန်း…",
+      "selected": "{{count}} ဦး ရွေးထားသည်",
+      "apply": "အသုံးချရန်",
+      "clear": "ရှင်းရန်",
+      "activate": "ဖွင့်ရန်",
+      "deactivate": "ပိတ်ရန်",
+      "changeRole": "အခန်းကဏ္ဍ ပြောင်းရန်",
+      "cancel": "ပယ်ဖျက်ရန်",
+      "previous": "ယခင်",
+      "next": "နောက်",
+      "page": "စာမျက်နှာ {{current}} / {{last}}",
+      "showing": "အသုံးပြုသူ {{total}} ဦးအနက် {{from}}–{{to}}",
+      "empty": "အသုံးပြုသူ မရှိသေးပါ။",
+      "emptyFiltered": "စစ်ထုတ်မှုနှင့် ကိုက်ညီသော အသုံးပြုသူ မရှိပါ။",
+      "filters": {
+        "allRoles": "အခန်းကဏ္ဍ အားလုံး",
+        "allStatus": "အခြေအနေ အားလုံး"
+      },
+      "roles": {
+        "admin": "Admin",
+        "seller": "ရောင်းသူ",
+        "buyer": "ဝယ်သူ"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "bulk": {
+        "activate": "Activate",
+        "deactivate": "Deactivate",
+        "delete": "Delete"
+      },
+      "columns": {
+        "name": "အမည်",
+        "contact": "အီးမေးလ် / ဖုန်း",
+        "role": "အခန်းကဏ္ဍ",
+        "status": "အခြေအနေ",
+        "joined": "မှတ်ပုံတင်သည့်ရက်",
+        "actions": "လုပ်ဆောင်ချက်များ"
+      },
+      "modals": {
+        "deleteTitle": "အသုံးပြုသူ ဖျက်ရန်",
+        "deleteConfirm": "{{name}} ကို ဖျက်မှာ သေချာပါသလား? ပြန်လည်ရယူ၍မရပါ။",
+        "delete": "ဖျက်ရန်",
+        "bulkTitle": "အစုလိုက် လုပ်ဆောင်ချက် အတည်ပြုရန်",
+        "bulkConfirm": "{{count}} ဦးကို {{action}} လုပ်မှာ သေချာပါသလား?",
+        "confirm": "အတည်ပြုရန်"
+      },
+      "messages": {
+        "activated": "အသုံးပြုသူကို ဖွင့်ပြီးပါပြီ။",
+        "deactivated": "အသုံးပြုသူကို ပိတ်ပြီးပါပြီ။",
+        "roleUpdated": "အခန်းကဏ္ဍ ပြောင်းလဲပြီးပါပြီ။",
+        "deleted": "အသုံးပြုသူကို ဖျက်ပြီးပါပြီ။",
+        "bulkApplied": "{{count}} ဦးအတွက် {{action}} လုပ်ဆောင်ပြီးပါပြီ။"
+      },
+      "errors": {
+        "load": "အသုံးပြုသူများကို ဖွင့်၍မရပါ။",
+        "update": "အသုံးပြုသူကို အပ်ဒိတ်လုပ်၍မရပါ။",
+        "role": "အခန်းကဏ္ဍ ပြောင်း၍မရပါ။",
+        "delete": "အသုံးပြုသူကို ဖျက်၍မရပါ။",
+        "bulk": "အစုလိုက်လုပ်ဆောင်မှု မအောင်မြင်ပါ။",
+        "ownRole": "သင့်ကိုယ်တိုင် အခန်းကဏ္ဍကို မပြောင်းနိုင်ပါ။",
+        "ownSkipped": "သင့်အကောင့်ကို လုံခြုံရေးအတွက် ကျော်ခဲ့သည်။",
+        "noAction": "လုပ်ဆောင်ချက်ကို ရွေးချယ်ပါ။"
+      }
+    },
+    "sellerManagement": {
+      "title": "ရောင်းသူ စာရင်း",
+      "subtitle": "စျေးကွက်ရှိ ရောင်းသူများအားလုံးကို စီမံခန့်ခွဲပါ",
+      "subtitleCount": "စုစုပေါင်း ရောင်းသူ {{count}} ဦး",
+      "loading": "ရောင်းသူများကို ဖွင့်နေသည်...",
+      "searchPlaceholder": "ဆိုင်အမည်၊ အီးမေးလ်…",
+      "selected": "{{count}} ဦး ရွေးထားသည်",
+      "apply": "အသုံးချရန်",
+      "clear": "ရှင်းရန်",
+      "cancel": "ပယ်ဖျက်ရန်",
+      "previous": "ယခင်",
+      "next": "နောက်",
+      "page": "စာမျက်နှာ {{current}} / {{last}}",
+      "showing": "ရောင်းသူ {{total}} ဦးအနက် {{from}}–{{to}}",
+      "empty": "ရောင်းသူ မရှိသေးပါ",
+      "emptyDesc": "ရောင်းသူများ မှတ်ပုံတင်ပြီးပါက ဤနေရာတွင် ပေါ်လာပါမည်။",
+      "emptyFiltered": "စစ်ထုတ်မှုနှင့် ကိုက်ညီသော ရောင်းသူ မရှိပါ",
+      "emptyFilteredDesc": "ရှာဖွေမှု သို့မဟုတ် စစ်ထုတ်မှုကို ပြင်ဆင်ကြည့်ပါ",
+      "changeStatus": "အခြေအနေ ပြောင်းရန်",
+      "unknownStore": "မသိသော ဆိုင်",
+      "filters": {
+        "allStatus": "အခြေအနေ အားလုံး"
+      },
+      "status": {
+        "setup_pending": "Setup Pending",
+        "pending": "Pending",
+        "approved": "Approved",
+        "active": "Active",
+        "rejected": "Rejected",
+        "suspended": "Suspended",
+        "closed": "Closed"
+      },
+      "bulk": {
+        "approve": "Approve selected",
+        "reactivate": "Reactivate selected",
+        "suspend": "Suspend selected",
+        "pending": "Move to pending",
+        "setupPending": "Move to setup pending",
+        "close": "Close selected"
+      },
+      "columns": {
+        "storeId": "Store ID",
+        "storeName": "ဆိုင်အမည်",
+        "email": "အီးမေးလ်",
+        "phone": "ဖုန်း",
+        "businessType": "လုပ်ငန်းအမျိုးအစား",
+        "status": "အခြေအနေ",
+        "rating": "Rating",
+        "products": "Products",
+        "created": "ဖန်တီးသည့်ရက်",
+        "actions": "လုပ်ဆောင်ချက်များ"
+      },
+      "modals": {
+        "updateTitle": "ရောင်းသူ အခြေအနေ ပြောင်းရန်",
+        "current": "လက်ရှိ",
+        "reason": "အကြောင်းပြချက်",
+        "reasonRequired": "ဤအခြေအနေ ပြောင်းလဲမှုအတွက် အကြောင်းပြချက် ထည့်ပါ…",
+        "reasonOptional": "အခြေအနေ ပြောင်းရခြင်း အကြောင်းရင်းကို ရွေးချယ်ရေးသားနိုင်သည်…",
+        "updating": "အပ်ဒိတ်လုပ်နေသည်…",
+        "confirm": "အတည်ပြုရန်",
+        "bulkTitle": "အစုလိုက် လုပ်ဆောင်ချက် အတည်ပြုရန်",
+        "bulkConfirm": "{{count}} ဦးကို \"{{action}}\" လုပ်မှာ သေချာပါသလား?"
+      },
+      "messages": {
+        "statusUpdated": "ရောင်းသူ အခြေအနေကို {{status}} သို့ ပြောင်းပြီးပါပြီ။",
+        "bulkApplied": "ရောင်းသူ {{count}} ဦး အပ်ဒိတ်လုပ်ပြီးပါပြီ။"
+      },
+      "errors": {
+        "load": "ရောင်းသူများကို ဖွင့်၍မရပါ။",
+        "update": "ရောင်းသူ အခြေအနေ ပြောင်း၍မရပါ။",
+        "bulk": "အစုလိုက်လုပ်ဆောင်မှု မအောင်မြင်ပါ။"
+      }
+    },
+    "platformLogistics": {
+      "title": "Platform Logistics",
+      "subtitle": "Platform ပို့ဆောင်မှု တာဝန်ခန့်ခွဲမှုနှင့် ခြေရာခံခြင်း",
+      "loading": "ပို့ဆောင်မှုများကို ဖွင့်နေသည်...",
+      "empty": "Platform ပို့ဆောင်မှု မတွေ့ပါ။",
+      "close": "ပိတ်ရန်",
+      "cancel": "ပယ်ဖျက်ရန်",
+      "previous": "ယခင်",
+      "next": "နောက်",
+      "page": "စာမျက်နှာ {{current}} / {{last}}",
+      "notAssigned": "မခန့်အပ်ရသေးပါ",
+      "assignTitle": "ကုန်ပို့သူ ခန့်အပ်ရန်",
+      "assignManual": "ကိုယ်တိုင်ထည့်ရန်",
+      "assignFromUsers": "အသုံးပြုသူများထဲမှ ရွေးရန်",
+      "selectUser": "အသုံးပြုသူ ရွေးချယ်ရန်",
+      "driverName": "ယာဉ်မောင်း အမည် *",
+      "driverPhone": "ယာဉ်မောင်း ဖုန်း",
+      "vehicleType": "ယာဉ်အမျိုးအစား",
+      "vehicleNumber": "ယာဉ်နံပါတ်",
+      "assigning": "ခန့်အပ်နေသည်…",
+      "assign": "ခန့်အပ်ရန်",
+      "assignCourier": "ကုန်ပို့သူ ခန့်အပ်ရန်",
+      "detailTitle": "ပို့ဆောင်မှု — အော်ဒါ #{{number}}",
+      "sections": {
+        "deliveryInfo": "ပို့ဆောင်မှု အချက်အလက်",
+        "orderInfo": "အော်ဒါ အချက်အလက်",
+        "trackingHistory": "ခြေရာခံ မှတ်တမ်း"
+      },
+      "fields": {
+        "status": "အခြေအနေ",
+        "tracking": "Tracking #",
+        "fee": "ပို့ဆောင်ခ",
+        "driver": "ယာဉ်မောင်း",
+        "seller": "ရောင်းသူ",
+        "buyer": "ဝယ်သူ",
+        "address": "လိပ်စာ"
+      },
+      "stats": {
+        "total": "စုစုပေါင်း",
+        "unassigned": "မခန့်အပ်ရသေး",
+        "inProgress": "လုပ်ဆောင်နေသည်",
+        "revenue": "Revenue"
+      },
+      "columns": {
+        "order": "အော်ဒါ #",
+        "seller": "ရောင်းသူ",
+        "status": "အခြေအနေ",
+        "courier": "ကုန်ပို့သူ / ယာဉ်မောင်း",
+        "fee": "ကြေး",
+        "actions": "လုပ်ဆောင်ချက်များ"
+      },
+      "actions": {
+        "pickedUp": "ကောက်ယူပြီး",
+        "inTransit": "ပို့ဆောင်နေသည်",
+        "outForDelivery": "ပို့ဆောင်ရန် ထွက်ခွာပြီး",
+        "delivered": "ပို့ဆောင်ပြီး ✓"
+      },
+      "messages": {
+        "assigned": "ကုန်ပို့သူ ခန့်အပ်ပြီးပါပြီ။",
+        "statusUpdated": "အခြေအနေကို \"{{status}}\" သို့ ပြောင်းပြီးပါပြီ။"
+      },
+      "errors": {
+        "load": "ပို့ဆောင်မှုများကို ဖွင့်၍မရပါ။",
+        "assign": "ကုန်ပို့သူ ခန့်အပ်၍မရပါ။",
+        "status": "အခြေအနေ ပြောင်း၍မရပါ။"
+      }
+    },
+    "deliveryFeeManagement": {
+      "title": "Delivery Fee Collections",
+      "subtitle": "Platform ပို့ဆောင်ခ — ကြေးသတ်မှတ်ခြင်း၊ ကောက်ခံခြင်းနှင့် အတည်ပြုခြင်း",
+      "loading": "ပို့ဆောင်ခများကို ဖွင့်နေသည်...",
+      "empty": "Platform ပို့ဆောင်ခ မတွေ့ပါ။",
+      "cancel": "ပယ်ဖျက်ရန်",
+      "searchPlaceholder": "အော်ဒါနံပါတ် သို့မဟုတ် ရောင်းသူအမည် ရှာဖွေရန်…",
+      "filters": {
+        "all": "အားလုံး",
+        "outstanding": "Outstanding",
+        "collected": "Collected"
+      },
+      "summary": {
+        "outstandingCount": "Outstanding Count",
+        "outstandingCountSub": "Fees not yet collected",
+        "outstandingAmount": "Outstanding Amount",
+        "outstandingAmountSub": "Total owed to platform",
+        "collectedCount": "Collected Count",
+        "collectedCountSub": "Successfully collected",
+        "collectedAmount": "Collected Amount",
+        "collectedAmountSub": "Platform delivery revenue"
+      },
+      "policy": {
+        "title": "How Delivery Fee Collection Works",
+        "body": "When a seller requests platform delivery, the admin manually quotes a fee based on distance, weight, and area. The fee is negotiated and agreed before dispatch — no fixed rate is enforced by the platform. Once the fee is received (via bank transfer or mobile payment), mark it as collected here with the reference number."
+      },
+      "columns": {
+        "order": "Order",
+        "seller": "Seller",
+        "feeQuoted": "Fee Quoted",
+        "deliveryStatus": "Delivery Status",
+        "feeStatus": "Fee Status",
+        "collectedOn": "Collected On",
+        "ref": "Ref",
+        "actions": "Actions"
+      },
+      "feeStatus": {
+        "na": "N/A"
+      },
+      "actions": {
+        "adjustFee": "Adjust fee",
+        "markCollected": "Mark Collected",
+        "done": "Done"
+      },
+      "collectModal": {
+        "title": "Mark Delivery Fee Collected",
+        "order": "Order: {{number}}",
+        "feeAmount": "Fee Amount",
+        "fromSeller": "From seller: {{name}}",
+        "collectionRef": "Collection Reference *",
+        "collectionRefPlaceholder": "e.g. bank transfer ref, receipt ID",
+        "adminNotes": "Admin Notes (optional)",
+        "adminNotesPlaceholder": "Any notes for internal records",
+        "confirm": "Mark as Collected"
+      },
+      "adjustModal": {
+        "title": "Adjust platform delivery fee",
+        "order": "Order: {{number}}",
+        "sellerSubmittedWarning": "The seller already submitted a payment proof for this fee. If you change the amount, confirm the actual transfer matches the new total.",
+        "feeLabel": "Fee (MMK) *",
+        "previousQuote": "Previous quote: {{amount}}",
+        "noteLabel": "Note (optional)",
+        "notePlaceholder": "e.g. actual weight 12 kg, remote area surcharge",
+        "save": "Save fee"
+      },
+      "messages": {
+        "collected": "Delivery fee marked as collected.",
+        "adjusted": "Platform delivery fee updated."
+      },
+      "errors": {
+        "load": "Failed to load delivery fees.",
+        "action": "Action failed.",
+        "adjust": "Could not update fee."
+      }
+    },
+    "codInvoiceManagement": {
+      "title": "COD Commission Invoices",
+      "subtitle": "Track and confirm commission payments from sellers who received cash on delivery.",
+      "loading": "Loading invoices...",
+      "empty": "No invoices found.",
+      "cancel": "Cancel",
+      "searchPlaceholder": "Search invoice, seller, order…",
+      "pendingConfirmation": "Pending Confirmation",
+      "filters": {
+        "all": "All",
+        "outstanding": "Outstanding",
+        "overdue": "Overdue",
+        "paid": "Paid",
+        "waived": "Waived"
+      },
+      "summary": {
+        "outstanding": "Outstanding",
+        "overdue": "Overdue",
+        "overdueSub": "Past due date",
+        "totalOutstanding": "Total Outstanding",
+        "totalOutstandingSub": "To be collected",
+        "collectedThisMonth": "Collected This Month",
+        "collectedThisMonthSub": "COD commissions"
+      },
+      "columns": {
+        "invoice": "Invoice",
+        "seller": "Seller",
+        "order": "Order",
+        "commission": "Commission",
+        "dueDate": "Due Date",
+        "status": "Status",
+        "paymentRef": "Payment Ref",
+        "actions": "Actions"
+      },
+      "status": {
+        "outstanding": "Outstanding",
+        "overdue": "Overdue",
+        "paid": "Paid",
+        "waived": "Waived"
+      },
+      "actions": {
+        "confirm": "Confirm",
+        "waive": "Waive",
+        "confirmedOn": "Confirmed {{date}}"
+      },
+      "modal": {
+        "confirmTitle": "Confirm COD Payment Receipt",
+        "waiveTitle": "Waive Invoice",
+        "seller": "Seller",
+        "order": "Order",
+        "commissionDue": "Commission Due",
+        "paymentRef": "Payment Ref",
+        "method": "Method",
+        "sellerNote": "Seller Note:",
+        "waiveWarning": "Waiving removes the obligation — the seller will not need to pay this commission. Use only for disputes or refunds.",
+        "adminNotes": "Admin Notes",
+        "adminNotesOptional": "Optional notes for records...",
+        "adminNotesRequired": "Reason for waiving (required)",
+        "confirmReceipt": "Confirm Receipt",
+        "waiveInvoice": "Waive Invoice"
+      },
+      "messages": {
+        "confirmed": "Payment confirmed. Seller wallet updated.",
+        "waived": "Invoice waived."
+      },
+      "errors": {
+        "load": "Failed to load invoices.",
+        "action": "Action failed."
+      }
+    },
+    "commissionRules": {
+      "title": "Commission Rules",
+      "subtitle": "Priority: Seller Tier → Business Type → Category → Platform Default",
+      "newRule": "New Rule",
+      "cancel": "Cancel",
+      "ruleCount": "{{count}} rule{{suffix}}",
+      "emptyGroup": "No {{heading}} rules yet.",
+      "reference": {
+        "platformWide": "Platform-wide"
+      },
+      "columns": {
+        "reference": "Reference",
+        "rate": "Rate",
+        "notes": "Notes",
+        "active": "Active"
+      },
+      "priority": {
+        "title": "How priority works:",
+        "body": "For each order, the platform checks rules in order. The first match wins: Tier → Business Type → Category → Default. A Gold seller always pays the Gold rate regardless of what category they sell in. Click any rate to edit it inline. Toggle the switch to activate/deactivate a rule."
+      },
+      "form": {
+        "title": "New Commission Rule",
+        "type": "Type",
+        "reference": "Reference",
+        "rate": "Rate (%)",
+        "notes": "Notes",
+        "notesOptional": "Optional",
+        "selectType": "Select type…",
+        "selectReference": "Select…",
+        "create": "Create Rule",
+        "saving": "Saving…",
+        "types": {
+          "category": "Category",
+          "businessType": "Business Type",
+          "accountLevel": "Seller Tier"
+        }
+      },
+      "messages": {
+        "rateUpdated": "Rate updated.",
+        "activated": "Rule activated.",
+        "deactivated": "Rule deactivated.",
+        "created": "Rule created."
+      },
+      "errors": {
+        "load": "Failed to load commission rules.",
+        "create": "Failed to create rule.",
+        "update": "Failed to update rule.",
+        "invalidRate": "Enter a valid rate.",
+        "selectReference": "Select a reference."
       }
     },
     "reviewManagement": {

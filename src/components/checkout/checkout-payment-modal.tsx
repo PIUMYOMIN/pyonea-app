@@ -1,5 +1,4 @@
 import Feather from "@expo/vector-icons/Feather";
-import { OptimizedImage as Image } from "@/components/ui/optimized-image";
 import { useCallback, useEffect, useRef, useState } from "react";
 import {
   ActivityIndicator,
@@ -12,11 +11,12 @@ import {
   View,
 } from "react-native";
 
+import { PaymentQrBadge, PaymentQrDisplay } from "@/components/checkout/payment-qr-display";
 import { useAppTranslation } from "@/i18n";
 import {
   initiateOrderPayment,
-  updateOrderPaymentStatus,
   verifyOrderPayment,
+  fetchPaymentReceipt,
   type CheckoutOrderResult,
   type PaymentInitiationResult,
 } from "@/utils/native-api";
@@ -72,7 +72,9 @@ export function CheckoutPaymentModal({
   const methodColor = paymentColors[paymentMethod] || "#16a34a";
   const canOpenWallet = Boolean(session?.deepLink);
   const qrSize = Math.min(260, Math.max(190, width - 112));
-  const showQrPanel = Boolean(session?.qrImageUrl || session?.qrString);
+  const showQrPanel =
+    paymentMethod === "mmqr" ||
+    Boolean(session?.qrImageUrl || session?.qrString);
   const showWalletPanel = !showQrPanel && (walletMethods.has(paymentMethod) || canOpenWallet);
 
   const stopPolling = () => {
@@ -98,12 +100,32 @@ export function CheckoutPaymentModal({
   );
 
   const completeSuccess = useCallback(
-    (nextOrder: CheckoutOrderResult) => {
+    async (nextOrder: CheckoutOrderResult) => {
       if (completedRef.current) return;
-      completedRef.current = true;
-      stopPolling();
-      setStage("success");
-      onSuccess({ ...nextOrder, paymentStatus: "paid" });
+
+      try {
+        const receipt = await fetchPaymentReceipt(nextOrder.id);
+        const isPaid = String(receipt.paymentStatus).toLowerCase() === "paid";
+        const isCod = receipt.paymentMethod === "cash_on_delivery";
+
+        if (!isPaid && !isCod) {
+          return;
+        }
+
+        completedRef.current = true;
+        stopPolling();
+        setStage("success");
+        onSuccess({
+          ...nextOrder,
+          paymentStatus: receipt.paymentStatus,
+          paymentMethod: receipt.paymentMethod,
+        });
+      } catch {
+        completedRef.current = true;
+        stopPolling();
+        setStage("success");
+        onSuccess({ ...nextOrder, paymentStatus: "paid" });
+      }
     },
     [onSuccess]
   );
@@ -218,9 +240,6 @@ export function CheckoutPaymentModal({
 
   const cancelPayment = async () => {
     stopPolling();
-    if (order && (stage === "polling" || stage === "failed" || stage === "expired")) {
-      await updateOrderPaymentStatus(order.id, "failed", { reason: "buyer_cancelled" }).catch(() => {});
-    }
     resetModal();
     onCancel();
   };
@@ -302,6 +321,7 @@ export function CheckoutPaymentModal({
               <View className="items-center gap-4">
                 {showQrPanel ? (
                   <>
+                    <PaymentQrBadge paymentMethod={paymentMethod} />
                     <Text className="text-center font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">
                       {paymentMethod === "mmqr"
                         ? t("checkout.mmqr_scan_hint", {
@@ -314,23 +334,14 @@ export function CheckoutPaymentModal({
                           })}
                     </Text>
                     <View className="items-center justify-center rounded-2xl border-4 border-green-500 bg-white p-3">
-                      {session.qrImageUrl ? (
-                        <Image
-                          source={{ uri: session.qrImageUrl }}
-                          style={{ width: qrSize, height: qrSize }}
-                          contentFit="contain"
-                        />
-                      ) : (
-                        <View
-                          className="items-center justify-center rounded-xl bg-gray-100 p-4"
-                          style={{ width: qrSize, height: qrSize }}
-                        >
-                          <Feather name="grid" color="#94a3b8" size={42} />
-                          <Text className="mt-3 text-center font-sans text-xs text-gray-500" numberOfLines={5}>
-                            {session.qrString || t("checkout.qr_generating", { defaultValue: "QR code is being generated." })}
-                          </Text>
-                        </View>
-                      )}
+                      <PaymentQrDisplay
+                        qrImageUrl={session.qrImageUrl}
+                        qrString={session.qrString}
+                        size={qrSize}
+                        loadingLabel={t("checkout.qr_generating", {
+                          defaultValue: "QR code is being generated.",
+                        })}
+                      />
                     </View>
                     {canOpenWallet ? (
                       <Pressable onPress={openWallet} className="w-full rounded-xl bg-purple-600 px-5 py-3">

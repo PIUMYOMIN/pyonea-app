@@ -41,6 +41,8 @@ void i18n.init({
   compatibilityJSON: 'v4',
 });
 
+const translate = i18n.t.bind(i18n);
+
 export function useAppTranslation() {
   const [language, setLanguage] = useState(i18n.resolvedLanguage || i18n.language);
 
@@ -58,7 +60,7 @@ export function useAppTranslation() {
   return {
     i18n,
     language: normalizeLanguage(language),
-    t: i18n.t.bind(i18n),
+    t: translate,
   };
 }
 

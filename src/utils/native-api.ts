@@ -2,6 +2,7 @@ import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
 import { API_BASE_URL, DEFAULT_PRODUCT_IMAGE, IMAGE_BASE_URL } from '@/config/native';
+import { DATA_CACHE_TTL, withDataCache, withInFlightRequest } from '@/utils/data-cache';
 
 type ApiEnvelope<T> = {
   data?: T;
@@ -28,6 +29,7 @@ export type BrowserCategory = HomeCategory & {
 
 export type HomeProduct = {
   id: string | number;
+  productId: string | number;
   slug?: string;
   name: string;
   nameEn: string;
@@ -137,6 +139,8 @@ export type ProductDetail = {
   id: string | number;
   slug: string;
   name: string;
+  nameEn?: string;
+  nameMm?: string;
   description: string;
   sku?: string;
   priceValue: number;
@@ -1278,6 +1282,8 @@ export type ReportComment = {
   id: string | number;
   body: string;
   authorType: string;
+  authorName: string;
+  isInternal: boolean;
   createdAt: string;
 };
 
@@ -1301,6 +1307,59 @@ export type ReportListResult = {
   reports: UserReport[];
   currentPage: number;
   lastPage: number;
+};
+
+export type AdminReportReporter = {
+  name: string;
+  email: string;
+};
+
+export type AdminReportAssignee = {
+  id: string | number;
+  name: string;
+};
+
+export type AdminReport = UserReport & {
+  reporter?: AdminReportReporter;
+  guestName?: string;
+  guestEmail?: string;
+  reporterIp?: string;
+  reporterLocale?: string;
+  firstResponseAt?: string;
+  adminNotes?: string;
+  assignee?: AdminReportAssignee;
+  assignedAt?: string;
+};
+
+export type AdminReportSummary = {
+  open: number;
+  inReview: number;
+  critical: number;
+  slaBreached: number;
+};
+
+export type AdminReportFilters = {
+  page?: number;
+  status?: string;
+  category?: string;
+  priority?: string;
+  search?: string;
+  assigned_to?: string;
+};
+
+export type AdminReportListResult = {
+  reports: AdminReport[];
+  summary: AdminReportSummary;
+  currentPage: number;
+  lastPage: number;
+};
+
+export type AdminReportUpdatePayload = {
+  status?: string;
+  priority?: string;
+  resolution?: string;
+  admin_notes?: string;
+  assigned_to?: string | number;
 };
 
 export type SubmitReportPayload = {
@@ -2929,6 +2988,133 @@ export async function updateSellerProduct(
   return mapSellerProductForm(extractRecordPayload(payload));
 }
 
+export type SellerManagedVariantOptionValue = {
+  valueId: string | number;
+  label: string;
+  optionType?: string;
+  meta?: {
+    hex?: string;
+    imageUrl?: string;
+  };
+};
+
+export type SellerManagedVariant = {
+  id: string | number;
+  label: string;
+  price: number;
+  quantity: number;
+  quantityUnit: string;
+  moq?: number;
+  sku: string;
+  isActive: boolean;
+  optionValues: SellerManagedVariantOptionValue[];
+};
+
+export type SellerVariantGeneratePayload = {
+  price: number;
+  quantity: number;
+  moq?: number | null;
+  quantity_step?: number | null;
+};
+
+export type SellerVariantUpdatePayload = {
+  price: number;
+  quantity: number;
+  quantity_unit?: string | null;
+  moq?: number | null;
+  quantity_step?: number | null;
+  sku?: string | null;
+  is_active: boolean;
+};
+
+const mapSellerManagedVariantOptionValue = (value: UnknownRecord): SellerManagedVariantOptionValue => {
+  const meta = isRecord(value.meta) ? value.meta : undefined;
+
+  return {
+    valueId: getString(value.value_id || value.id),
+    label: getString(value.label),
+    optionType: getString(value.option_type),
+    meta: meta
+      ? {
+          hex: getString(meta.hex),
+          imageUrl: getString(meta.image_url || meta.imageUrl),
+        }
+      : undefined,
+  };
+};
+
+const mapSellerManagedVariant = (variant: UnknownRecord): SellerManagedVariant => ({
+  id: getString(variant.id),
+  label: getString(variant.label),
+  price: getNumber(variant.price),
+  quantity: getNumber(variant.quantity || variant.stock),
+  quantityUnit: getString(variant.quantity_unit),
+  moq: variant.moq == null ? undefined : getNumber(variant.moq),
+  sku: getString(variant.sku),
+  isActive: variant.is_active !== false,
+  optionValues: Array.isArray(variant.option_values)
+    ? variant.option_values.filter(isRecord).map(mapSellerManagedVariantOptionValue)
+    : [],
+});
+
+export async function fetchSellerProductVariants(
+  productId: string | number,
+  signal?: AbortSignal
+): Promise<SellerManagedVariant[]> {
+  const payload = await apiGet(`/seller/products/${encodeURIComponent(String(productId))}/variants`, signal);
+  return getArrayPayload(payload).filter(isRecord).map(mapSellerManagedVariant);
+}
+
+export async function updateSellerProductVariant(
+  productId: string | number,
+  variantId: string | number,
+  body: SellerVariantUpdatePayload,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPut(
+    `/seller/products/${encodeURIComponent(String(productId))}/variants/${encodeURIComponent(String(variantId))}`,
+    body,
+    signal
+  );
+}
+
+export async function toggleSellerProductVariant(
+  productId: string | number,
+  variantId: string | number,
+  signal?: AbortSignal
+): Promise<boolean> {
+  const payload = await apiPatch(
+    `/seller/products/${encodeURIComponent(String(productId))}/variants/${encodeURIComponent(String(variantId))}/toggle`,
+    {},
+    signal
+  );
+  const data = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+  return isRecord(data) ? data.is_active !== false : true;
+}
+
+export async function deleteSellerProductVariant(
+  productId: string | number,
+  variantId: string | number,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiDelete(
+    `/seller/products/${encodeURIComponent(String(productId))}/variants/${encodeURIComponent(String(variantId))}`,
+    signal
+  );
+}
+
+export async function generateSellerProductVariants(
+  productId: string | number,
+  body: SellerVariantGeneratePayload,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPost(
+    `/seller/products/${encodeURIComponent(String(productId))}/variants/generate`,
+    body,
+    signal
+  );
+}
+
 const mapSellerWholesaleTier = (tier: UnknownRecord): SellerWholesaleTier => ({
   id: getString(tier.id || tier._id),
   minQty: getString(tier.min_qty || tier.minimum_quantity || tier.minQty),
@@ -2993,7 +3179,7 @@ export const getNativeImageUrl = (image: unknown): string | undefined => {
 
   if (typeof image === 'string') {
     if (!image || image === DEFAULT_PRODUCT_IMAGE) return undefined;
-    if (image.startsWith('http')) return image;
+    if (image.startsWith('http') || image.startsWith('data:')) return image;
     return toStorageUrl(image);
   }
 
@@ -3261,8 +3447,39 @@ const mapReportComment = (comment: UnknownRecord, index = 0): ReportComment => (
   id: getString(comment.id, `comment-${index}`),
   body: getString(comment.body || comment.comment || comment.message),
   authorType: getString(comment.author_type || comment.authorType, 'reporter'),
+  authorName: getString(comment.author_name || comment.authorName, 'User'),
+  isInternal: comment.is_internal === true || comment.is_internal === 1,
   createdAt: getString(comment.created_at || comment.createdAt),
 });
+
+const mapAdminReport = (report: UnknownRecord, index = 0): AdminReport => {
+  const base = mapUserReport(report, index);
+  const reporter = isRecord(report.reporter) ? report.reporter : undefined;
+  const assignee = isRecord(report.assignee) ? report.assignee : undefined;
+
+  return {
+    ...base,
+    reporter: reporter
+      ? {
+          name: getString(reporter.name),
+          email: getString(reporter.email),
+        }
+      : undefined,
+    guestName: getString(report.guest_name || report.guestName),
+    guestEmail: getString(report.guest_email || report.guestEmail),
+    reporterIp: getString(report.reporter_ip || report.reporterIp),
+    reporterLocale: getString(report.reporter_locale || report.reporterLocale),
+    firstResponseAt: getString(report.first_response_at || report.firstResponseAt),
+    adminNotes: getString(report.admin_notes || report.adminNotes),
+    assignee: assignee
+      ? {
+          id: getString(assignee.id),
+          name: getString(assignee.name),
+        }
+      : undefined,
+    assignedAt: getString(report.assigned_at || report.assignedAt),
+  };
+};
 
 const mapUserReport = (report: UnknownRecord, index = 0): UserReport => {
   const comments = Array.isArray(report.comments) ? report.comments.filter(isRecord) : [];
@@ -3403,11 +3620,16 @@ const mapProductVariant = (variant: UnknownRecord, index: number): ProductVarian
   };
 };
 
+export const getProductApiId = (product: Pick<HomeProduct, 'id' | 'productId'>) =>
+  product.productId ?? product.id;
+
 export const mapHomeProduct = (product: UnknownRecord, index = 0): HomeProduct => {
   const seller = isRecord(product.seller) ? product.seller : undefined;
   const category = isRecord(product.category) ? product.category : undefined;
   const discountPct = getDiscountPct(product);
   const effectivePrice = getEffectiveProductPrice(product, discountPct);
+  const numericId = getString(product.id, `product-${index}`);
+  const routeId = getString(product.slug_en || product.slug || product.id, numericId);
 
   const nameEn = getString(product.name_en || product.name, 'Unnamed product');
   const nameMm = getString(product.name_mm);
@@ -3415,8 +3637,9 @@ export const mapHomeProduct = (product: UnknownRecord, index = 0): HomeProduct =
   const categoryNameMm = getString(category?.name_mm);
 
   return {
-    id: getString(product.slug_en || product.slug || product.id, `product-${index}`),
-    slug: getString(product.slug_en || product.slug || product.id, `product-${index}`),
+    id: routeId,
+    productId: numericId,
+    slug: routeId,
     name: nameEn || nameMm || 'Unnamed product',
     nameEn,
     nameMm,
@@ -3427,11 +3650,11 @@ export const mapHomeProduct = (product: UnknownRecord, index = 0): HomeProduct =
     price: formatMMK(effectivePrice),
     rating: getString(product.average_rating || product.rating, '0'),
     imageUrl: getNativeImageUrl(product.images || product.image),
-    isNew: index < 4,
+    isNew: product.is_new === true || product.is_new === 1,
     originalPrice: discountPct > 0 ? formatMMK(product.price) : undefined,
     discountPct,
     reviewCount: getNumber(product.review_count),
-    moq: getNumber(product.moq || product.minimum_order_quantity, 1),
+    moq: getNumber(product.moq || product.minimum_order_quantity || product.min_order, 1),
     categoryName: categoryNameEn || categoryNameMm,
     categoryNameEn,
     categoryNameMm,
@@ -3553,9 +3776,13 @@ const mapSellerDeliveryArea = (area: UnknownRecord, index = 0): SellerDeliveryAr
 });
 
 export async function fetchHomeCategories(signal?: AbortSignal): Promise<HomeCategory[]> {
+  return withDataCache(
+    'api:home-categories',
+    DATA_CACHE_TTL.categories,
+    async (requestSignal) => {
   const payload = await apiGet(
     '/categories?fields=id,name_en,name_mm,image,products_count,parent_id,children&with_products_only=true',
-    signal
+    requestSignal
   );
 
   return getArrayPayload(payload)
@@ -3578,6 +3805,9 @@ export async function fetchHomeCategories(signal?: AbortSignal): Promise<HomeCat
         discountPct: getDiscountPct(category),
       };
     });
+    },
+    signal,
+  );
 }
 
 export async function fetchCategories(signal?: AbortSignal): Promise<HomeCategory[]> {
@@ -3636,28 +3866,42 @@ const mapBrowserCategory = (category: UnknownRecord, index = 0): BrowserCategory
 };
 
 export async function fetchCategoryBrowser(signal?: AbortSignal): Promise<BrowserCategory[]> {
-  const payload = await apiGet(
-    '/categories?fields=id,name_en,name_mm,image,products_count,parent_id,children&with_products_only=true',
-    signal
-  );
+  return withDataCache(
+    'api:category-browser',
+    DATA_CACHE_TTL.categories,
+    async (requestSignal) => {
+      const payload = await apiGet(
+        '/categories?fields=id,name_en,name_mm,image,products_count,parent_id,children&with_products_only=true',
+        requestSignal
+      );
 
-  return getArrayPayload(payload)
-    .filter(isRecord)
-    .filter((category) => category.parent_id == null)
-    .map(mapBrowserCategory)
-    .filter(hasCategoryProducts);
+      return getArrayPayload(payload)
+        .filter(isRecord)
+        .filter((category) => category.parent_id == null)
+        .map(mapBrowserCategory)
+        .filter(hasCategoryProducts);
+    },
+    signal,
+  );
 }
 
 export async function fetchFeaturedProducts(signal?: AbortSignal): Promise<HomeProduct[]> {
-  const payload = await apiGet(
-    '/products?featured=true&per_page=20&fields=id,name_en,name_mm,slug_en,price,selling_price,effective_discount_pct,discount_percentage,image,images,average_rating,review_count,quantity,is_active,moq,min_order_unit,category_id,seller_id,is_on_sale,is_new,seller,category',
-    signal
-  );
+  return withDataCache(
+    'api:featured-products',
+    DATA_CACHE_TTL.products,
+    async (requestSignal) => {
+      const payload = await apiGet(
+        '/products?featured=true&per_page=20&fields=id,name_en,name_mm,slug_en,price,selling_price,effective_discount_pct,discount_percentage,image,images,average_rating,review_count,quantity,is_active,moq,min_order_unit,category_id,seller_id,is_on_sale,is_new,seller,category',
+        requestSignal
+      );
 
-  return getArrayPayload(payload)
-    .filter(isRecord)
-    .slice(0, 8)
-    .map((product, index) => ({ ...mapHomeProduct(product, index), isNew: index < 3 }));
+      return getArrayPayload(payload)
+        .filter(isRecord)
+        .slice(0, 8)
+        .map((product, index) => ({ ...mapHomeProduct(product, index), isNew: index < 3 }));
+    },
+    signal,
+  );
 }
 
 export async function fetchProducts(signal?: AbortSignal): Promise<HomeProduct[]> {
@@ -3727,19 +3971,38 @@ export async function searchBulkOrderProducts(
 export async function fetchProductFilterCategories(
   signal?: AbortSignal
 ): Promise<BrowserCategory[]> {
-  const payload = await apiGet(
-    '/categories?fields=id,name_en,name_mm,parent_id,children,products_count',
-    signal
-  );
+  return withDataCache(
+    'api:product-filter-categories',
+    DATA_CACHE_TTL.categories,
+    async (requestSignal) => {
+      const payload = await apiGet(
+        '/categories?fields=id,name_en,name_mm,parent_id,children,products_count',
+        requestSignal
+      );
 
-  return getArrayPayload(payload)
-    .filter(isRecord)
-    .filter((category) => category.parent_id == null)
-    .map(mapBrowserCategory)
-    .filter(hasCategoryProducts);
+      return getArrayPayload(payload)
+        .filter(isRecord)
+        .filter((category) => category.parent_id == null)
+        .map(mapBrowserCategory)
+        .filter(hasCategoryProducts);
+    },
+    signal,
+  );
 }
 
 export async function fetchProductDetail(
+  slug: string,
+  signal?: AbortSignal
+): Promise<ProductDetail> {
+  return withDataCache(
+    `api:product-detail:${slug}`,
+    DATA_CACHE_TTL.productDetail,
+    async (requestSignal) => fetchProductDetailUncached(slug, requestSignal),
+    signal,
+  );
+}
+
+async function fetchProductDetailUncached(
   slug: string,
   signal?: AbortSignal
 ): Promise<ProductDetail> {
@@ -3765,10 +4028,15 @@ export async function fetchProductDetail(
   const options = rawOptions.map(mapProductOption);
   const variants = rawVariants.map(mapProductVariant);
 
+  const nameEn = getString(product.name_en || product.name, 'Unnamed product');
+  const nameMm = getString(product.name_mm);
+
   return {
     id: getString(product.id, slug),
     slug: getString(product.slug_en || product.slug || product.id, slug),
-    name: getString(product.name_en || product.name_mm, 'Unnamed product'),
+    name: nameEn || nameMm || 'Unnamed product',
+    nameEn,
+    nameMm,
     description: stripHtml(product.description_en || product.description_mm),
     sku: getString(product.sku),
     priceValue: effectivePrice,
@@ -4105,19 +4373,29 @@ const mapCartSummary = (summary: UnknownRecord, subtotalValue: number): CartSumm
 };
 
 const mapCartResult = (payload: unknown): CartResult => {
-  const data = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+  const root = isRecord(payload) ? payload : {};
+  const data = isRecord(root.data) ? root.data : root;
   const cartData = isRecord(data) ? data : {};
-  const rows = Array.isArray(cartData.cart_items) ? cartData.cart_items.filter(isRecord) : [];
+  const nestedCart = isRecord(cartData.cart) ? cartData.cart : {};
+  const rowsSource = [cartData.cart_items, cartData.items, nestedCart.cart_items, nestedCart.items].find(
+    Array.isArray,
+  );
+  const rows = Array.isArray(rowsSource) ? rowsSource.filter(isRecord) : [];
   const items = rows.map(mapCartItem);
   const subtotalValue = getNumber(
     cartData.subtotal,
     items.reduce((sum, item) => sum + item.subtotalValue, 0)
   );
   const totalItems = getNumber(
-    cartData.total_items,
+    cartData.total_items ?? nestedCart.total_items ?? cartData.totalItems ?? nestedCart.totalItems,
     items.reduce((sum, item) => sum + item.quantity, 0)
   );
-  const summary = mapCartSummary(isRecord(cartData.summary) ? cartData.summary : {}, subtotalValue);
+  const summarySource = isRecord(cartData.summary)
+    ? cartData.summary
+    : isRecord(nestedCart.summary)
+      ? nestedCart.summary
+      : {};
+  const summary = mapCartSummary(summarySource, subtotalValue);
 
   return {
     items,
@@ -4129,8 +4407,10 @@ const mapCartResult = (payload: unknown): CartResult => {
 };
 
 export async function fetchCart(signal?: AbortSignal): Promise<CartResult> {
-  const payload = await apiGet('/buyer/cart', signal);
-  return mapCartResult(payload);
+  return withInFlightRequest('api:buyer-cart', async () => {
+    const payload = await apiGet('/buyer/cart', signal);
+    return mapCartResult(payload);
+  });
 }
 
 export async function addProductToCart(
@@ -4138,7 +4418,7 @@ export async function addProductToCart(
   quantity: number,
   options: { variantId?: string | number | null; selectedOptions?: Record<string, string> | null } = {},
   signal?: AbortSignal
-): Promise<{ message: string; totalItems?: number }> {
+): Promise<{ message: string; totalItems: number; cart: CartResult }> {
   const payload = await apiPost(
     '/buyer/cart',
     {
@@ -4150,30 +4430,15 @@ export async function addProductToCart(
     signal
   );
   const data = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
-  const cartData =
-    isRecord(data) && isRecord(data.cart)
-      ? data.cart
-      : isRecord(payload) && isRecord(payload.cart)
-        ? payload.cart
-        : {};
-  const totalItems = getNumber(
-    isRecord(data)
-      ? (data.total_items ?? data.cart_count ?? data.cart_items_count ?? data.totalItems)
-      : undefined,
-    getNumber(
-      isRecord(payload)
-        ? (payload.total_items ?? payload.cart_count ?? payload.cart_items_count ?? payload.totalItems)
-        : undefined,
-      getNumber(isRecord(cartData) ? (cartData.total_items ?? cartData.totalItems) : undefined, NaN)
-    )
-  );
+  const cart = await fetchCart(signal);
 
   return {
     message: getString(
       isRecord(data) ? data.message : undefined,
       getString(isRecord(payload) ? payload.message : undefined, 'Added to cart')
     ),
-    totalItems: Number.isFinite(totalItems) ? totalItems : undefined,
+    totalItems: cart.totalItems,
+    cart,
   };
 }
 
@@ -4227,38 +4492,52 @@ export async function fetchCheckoutLocations(signal?: AbortSignal): Promise<
     cities: string[];
   }[]
 > {
-  const payload = await apiGet('/checkout-locations', signal);
-  const data = isRecord(payload) && isRecord(payload.data) ? payload.data : {};
-  const states = Array.isArray(data.states) ? data.states.filter(isRecord) : [];
+  return withDataCache(
+    'api:checkout-locations',
+    DATA_CACHE_TTL.checkoutStatic,
+    async (requestSignal) => {
+      const payload = await apiGet('/checkout-locations', requestSignal);
+      const data = isRecord(payload) && isRecord(payload.data) ? payload.data : {};
+      const states = Array.isArray(data.states) ? data.states.filter(isRecord) : [];
 
-  return states
-    .map((state) => ({
-      state: getString(state.state || state.name || state.label),
-      cities: Array.isArray(state.cities)
-        ? state.cities.map((city) => getString(city)).filter(Boolean)
-        : [],
-    }))
-    .filter((state) => state.state);
+      return states
+        .map((state) => ({
+          state: getString(state.state || state.name || state.label),
+          cities: Array.isArray(state.cities)
+            ? state.cities.map((city) => getString(city)).filter(Boolean)
+            : [],
+        }))
+        .filter((state) => state.state);
+    },
+    signal,
+  );
 }
 
 export async function fetchPaymentMethods(signal?: AbortSignal): Promise<string[]> {
   const fallback = ['cash_on_delivery', 'mmqr', 'kbz_pay', 'wave_pay', 'cb_pay', 'aya_pay'];
 
-  try {
-    const payload = await apiGet('/payment-methods', signal);
-    const envelope = isRecord(payload) ? payload : {};
-    const data = envelope.data;
-    const methods = Array.isArray(data)
-      ? data
-      : isRecord(data) && Array.isArray(data.methods)
-        ? data.methods
-        : getArrayPayload(payload);
+  return withDataCache(
+    'api:payment-methods',
+    DATA_CACHE_TTL.checkoutStatic,
+    async (requestSignal) => {
+      try {
+        const payload = await apiGet('/payment-methods', requestSignal);
+        const envelope = isRecord(payload) ? payload : {};
+        const data = envelope.data;
+        const methods = Array.isArray(data)
+          ? data
+          : isRecord(data) && Array.isArray(data.methods)
+            ? data.methods
+            : getArrayPayload(payload);
 
-    const normalized = methods.map((item) => getString(item)).filter(Boolean);
-    return normalized.length ? normalized : fallback;
-  } catch {
-    return fallback;
-  }
+        const normalized = methods.map((item) => getString(item)).filter(Boolean);
+        return normalized.length ? normalized : fallback;
+      } catch {
+        return fallback;
+      }
+    },
+    signal,
+  );
 }
 
 export async function fetchCheckoutProfile(signal?: AbortSignal): Promise<CheckoutProfile> {
@@ -4412,24 +4691,52 @@ export async function createCheckoutOrder(
   return mapCheckoutOrder(order);
 }
 
+const resolvePaymentQrImageUrl = (value: unknown): string | undefined => {
+  const raw = getString(value);
+  if (!raw) return undefined;
+  if (raw.startsWith('http') || raw.startsWith('data:')) return raw;
+  return getNativeImageUrl(raw);
+};
+
+const extractPaymentInitiationFields = (payload: unknown) => {
+  const envelope = isRecord(payload) ? payload : {};
+  const nested = isRecord(envelope.data) ? envelope.data : {};
+  const session = isRecord(nested.session)
+    ? nested.session
+    : isRecord(envelope.session)
+      ? envelope.session
+      : isRecord(nested.payment_session)
+        ? nested.payment_session
+        : {};
+  return { envelope, nested, source: { ...session, ...nested, ...envelope } };
+};
+
 export async function initiateOrderPayment(
   orderId: string | number,
   signal?: AbortSignal
 ): Promise<PaymentInitiationResult> {
   const payload = await apiPost('/payments/initiate', { order_id: orderId }, signal);
-  const envelope = isRecord(payload) ? payload : {};
-  const nested = isRecord(envelope.data) ? envelope.data : {};
-  const source = { ...nested, ...envelope };
+  const { envelope, nested, source } = extractPaymentInitiationFields(payload);
   const success = envelope.success !== false;
 
   return {
     success,
     message: getString(envelope.message || nested.message || source.message),
-    qrImageUrl: getNativeImageUrl(
-      source.qr_image_url || source.qrImageUrl || nested.qr_image_url || nested.qrImageUrl
+    qrImageUrl: resolvePaymentQrImageUrl(
+      source.qr_image_url ||
+        source.qrImageUrl ||
+        source.qr_code_url ||
+        source.qrCodeUrl ||
+        nested.qr_image_url ||
+        nested.qrImageUrl
     ),
     qrString: getString(
-      source.qr_string || source.qrString || nested.qr_string || nested.qrString
+      source.qr_string ||
+        source.qrString ||
+        source.qr_payload ||
+        source.qrPayload ||
+        nested.qr_string ||
+        nested.qrString
     ),
     deepLink: getString(
       source.deep_link || source.deepLink || nested.deep_link || nested.deepLink
@@ -4731,7 +5038,29 @@ export async function subscribeNewsletter(
 
 export async function fetchWishlist(signal?: AbortSignal): Promise<HomeProduct[]> {
   const payload = await apiGet('/wishlist', signal);
-  return getArrayPayload(payload).filter(isRecord).map(mapHomeProduct);
+  return getArrayPayload(payload)
+    .filter(isRecord)
+    .map((product, index) => ({ ...mapHomeProduct(product, index), isNew: false }));
+}
+
+export async function checkWishlistItem(
+  productId: string | number,
+  signal?: AbortSignal
+): Promise<boolean> {
+  const payload = await apiGet(
+    `/wishlist/check/${encodeURIComponent(String(productId))}`,
+    signal
+  );
+  const data = isRecord(payload) ? payload : {};
+  const nested = isRecord(data.data) ? data.data : {};
+  return nested.is_in_wishlist === true || nested.is_in_wishlist === 1;
+}
+
+export async function fetchWishlistCount(signal?: AbortSignal): Promise<number> {
+  const payload = await apiGet('/wishlist/count', signal);
+  const data = isRecord(payload) ? payload : {};
+  const nested = isRecord(data.data) ? data.data : {};
+  return getNumber(nested.count);
 }
 
 export async function addWishlistItem(
@@ -5131,6 +5460,784 @@ export async function fetchSellerOrders(signal?: AbortSignal): Promise<SellerMan
   return getArrayPayload(payload).filter(isRecord).map(mapSellerManagedOrder);
 }
 
+export type AdminManagedOrder = SellerManagedOrder & {
+  buyerName: string;
+  commissionAmountValue: number;
+  commissionAmount: string;
+  sellerPayoutValue: number;
+  sellerPayout: string;
+  escrowStatus: string;
+  transactionId: string;
+  paymentReference: string;
+};
+
+const mapAdminManagedOrder = (order: UnknownRecord): AdminManagedOrder => {
+  const base = mapSellerManagedOrder(order);
+  const buyer = isRecord(order.buyer) ? order.buyer : undefined;
+  const commissionAmountValue = getNumber(order.commission_amount);
+  const sellerPayoutValue = Math.max(0, base.subtotalAmountValue - commissionAmountValue);
+
+  return {
+    ...base,
+    buyerName: getString(buyer?.name || order.buyer_name, base.customerName),
+    commissionAmountValue,
+    commissionAmount: formatMMK(commissionAmountValue),
+    sellerPayoutValue,
+    sellerPayout: formatMMK(sellerPayoutValue),
+    escrowStatus: getString(order.escrow_status, 'not_applicable'),
+    transactionId: getString(order.transaction_id),
+    paymentReference: getString(order.payment_reference),
+  };
+};
+
+const ADMIN_ORDER_STATUS_RANK: Record<string, number> = {
+  pending: 0,
+  confirmed: 1,
+  processing: 2,
+  shipped: 3,
+  delivered: 4,
+  cancelled: -1,
+};
+
+const adminShipPayload = () => ({
+  tracking_number: `ADM-${Date.now()}`,
+  shipping_carrier: 'Admin',
+});
+
+async function advanceAdminOrderStatus(
+  orderId: string | number,
+  fromStatus: string,
+  toStatus: string,
+  signal?: AbortSignal
+): Promise<void> {
+  const id = encodeURIComponent(String(orderId));
+
+  if (fromStatus === toStatus) return;
+
+  if (toStatus === 'cancelled') {
+    await apiPost(`/orders/${id}/cancel`, {}, signal);
+    return;
+  }
+
+  if (fromStatus === 'cancelled') {
+    throw new Error('Cannot change a cancelled order.');
+  }
+
+  const fromRank = ADMIN_ORDER_STATUS_RANK[fromStatus] ?? 0;
+  const toRank = ADMIN_ORDER_STATUS_RANK[toStatus] ?? 0;
+  if (toRank < fromRank) {
+    throw new Error('Moving to an earlier stage is not supported here.');
+  }
+
+  let current = fromStatus;
+  let guard = 0;
+
+  while (current !== toStatus && guard++ < 10) {
+    if (current === 'pending') {
+      await apiPost(`/orders/${id}/confirm`, {}, signal);
+      current = 'confirmed';
+      continue;
+    }
+
+    if (current === 'confirmed') {
+      if (toStatus === 'processing') {
+        await apiPost(`/orders/${id}/process`, {}, signal);
+        current = 'processing';
+        continue;
+      }
+      if (toStatus === 'shipped' || toStatus === 'delivered') {
+        await apiPost(`/orders/${id}/ship`, adminShipPayload(), signal);
+        current = 'shipped';
+        continue;
+      }
+    }
+
+    if (current === 'processing' && (toStatus === 'shipped' || toStatus === 'delivered')) {
+      await apiPost(`/orders/${id}/ship`, adminShipPayload(), signal);
+      current = 'shipped';
+      continue;
+    }
+
+    if (current === 'shipped' && toStatus === 'delivered') {
+      await apiPost(`/orders/${id}/confirm-delivery`, {}, signal);
+      current = 'delivered';
+      continue;
+    }
+
+    throw new Error(`Cannot advance order from "${current}" to "${toStatus}".`);
+  }
+}
+
+export async function fetchAdminOrders(signal?: AbortSignal): Promise<AdminManagedOrder[]> {
+  const payload = await apiGet('/orders', signal);
+  return getArrayPayload(payload).filter(isRecord).map(mapAdminManagedOrder);
+}
+
+export async function fetchAdminOrder(
+  orderId: string | number,
+  signal?: AbortSignal
+): Promise<AdminManagedOrder> {
+  const payload = await apiGet(`/orders/${encodeURIComponent(String(orderId))}`, signal);
+  const data = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+  if (!isRecord(data)) throw new Error('Order not found');
+  return mapAdminManagedOrder(data);
+}
+
+export async function updateAdminOrderStatus(
+  orderId: string | number,
+  fromStatus: string,
+  toStatus: string,
+  signal?: AbortSignal
+): Promise<AdminManagedOrder> {
+  await advanceAdminOrderStatus(orderId, fromStatus, toStatus, signal);
+  return fetchAdminOrder(orderId, signal);
+}
+
+export type AdminManagedProduct = SellerManagedProduct & {
+  approvalStatus: string;
+  sellerName: string;
+  isFeatured: boolean;
+  moq: number;
+  createdAt: string;
+};
+
+export type AdminProductFilters = {
+  search?: string;
+  approvalStatus?: 'all' | 'approved' | 'pending' | 'rejected';
+  activeStatus?: 'all' | 'active' | 'inactive';
+  categoryId?: string | number;
+};
+
+const mapAdminManagedProduct = (product: UnknownRecord): AdminManagedProduct => {
+  const base = mapSellerManagedProduct(product);
+  const seller = isRecord(product.seller) ? product.seller : undefined;
+
+  return {
+    ...base,
+    approvalStatus: getString(product.approval_status || product.status, 'pending'),
+    sellerName: getString(seller?.name || seller?.store_name || product.seller_name),
+    isFeatured: Boolean(product.is_featured),
+    moq: getNumber(product.moq || product.min_order, 1),
+    createdAt: getString(product.created_at || product.createdAt),
+  };
+};
+
+export async function fetchAdminProducts(
+  filters: AdminProductFilters = {},
+  signal?: AbortSignal
+): Promise<AdminManagedProduct[]> {
+  const params = new URLSearchParams();
+  params.set('per_page', '100');
+  params.set('include', 'category,seller');
+  if (filters.search) params.set('search', filters.search);
+  if (filters.approvalStatus && filters.approvalStatus !== 'all') {
+    params.set('status', filters.approvalStatus);
+  }
+  if (filters.activeStatus === 'active') params.set('is_active', '1');
+  if (filters.activeStatus === 'inactive') params.set('is_active', '0');
+  if (filters.categoryId && filters.categoryId !== 'all') {
+    params.set('category_id', String(filters.categoryId));
+  }
+
+  const payload = await apiGet(`/admin/products?${params.toString()}`, signal);
+  return getArrayPayload(payload).filter(isRecord).map(mapAdminManagedProduct);
+}
+
+export async function updateAdminProductActive(
+  productId: string | number,
+  isActive: boolean,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPatch(
+    `/admin/products/${encodeURIComponent(String(productId))}/toggle-status`,
+    { is_active: isActive },
+    signal
+  );
+}
+
+export async function approveAdminProduct(
+  productId: string | number,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPost(`/admin/products/${encodeURIComponent(String(productId))}/approve`, {}, signal);
+}
+
+export async function rejectAdminProduct(
+  productId: string | number,
+  reason = '',
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPost(
+    `/admin/products/${encodeURIComponent(String(productId))}/reject`,
+    reason ? { reason } : {},
+    signal
+  );
+}
+
+export async function deleteAdminProduct(
+  productId: string | number,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiDelete(`/admin/products/${encodeURIComponent(String(productId))}`, signal);
+}
+
+export async function fetchAdminProductForEdit(
+  productId: string | number,
+  signal?: AbortSignal
+): Promise<SellerProductFormResult> {
+  const payload = await apiGet(`/admin/products/${encodeURIComponent(String(productId))}/edit`, signal);
+  return mapSellerProductForm(extractRecordPayload(payload));
+}
+
+export async function updateAdminProduct(
+  productId: string | number,
+  body: unknown,
+  signal?: AbortSignal
+): Promise<SellerProductFormResult> {
+  const payload = await apiPut(`/admin/products/${encodeURIComponent(String(productId))}`, body, signal);
+  return mapSellerProductForm(extractRecordPayload(payload));
+}
+
+export async function uploadAdminProductImage(
+  formData: FormData,
+  productId: string | number,
+  signal?: AbortSignal
+): Promise<SellerProductImage | null> {
+  const payload = await apiPostForm(
+    `/admin/products/${encodeURIComponent(String(productId))}/upload-image`,
+    formData,
+    signal
+  );
+  const data = extractRecordPayload(payload);
+  return isRecord(data) ? mapSellerProductImage(data) : null;
+}
+
+export type AdminManagedUser = {
+  id: string | number;
+  userId: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+  isActive: boolean;
+  profilePhoto?: string;
+  createdAt: string;
+};
+
+export type AdminUserFilters = {
+  search?: string;
+  role?: 'all' | 'admin' | 'seller' | 'buyer';
+  status?: 'all' | 'active' | 'inactive';
+  page?: number;
+  perPage?: number;
+};
+
+export type AdminUsersPagination = {
+  currentPage: number;
+  lastPage: number;
+  total: number;
+  from: number;
+  to: number;
+};
+
+export type AdminUsersResult = {
+  users: AdminManagedUser[];
+  pagination: AdminUsersPagination;
+};
+
+const deriveAdminUserRole = (user: UnknownRecord): string => {
+  const type = getString(user.type);
+  if (type) return type;
+
+  const roles = user.roles;
+  if (Array.isArray(roles) && roles.length > 0) {
+    const first = roles[0];
+    if (typeof first === 'string') return first;
+    if (isRecord(first)) return getString(first.name);
+  }
+
+  return 'buyer';
+};
+
+const resolveUserProfilePhoto = (user: UnknownRecord): string | undefined => {
+  const profile = isRecord(user.profile) ? user.profile : undefined;
+  const candidates = [
+    user.profile_photo,
+    user.profilePhoto,
+    user.profile_photo_url,
+    user.profilePhotoUrl,
+    user.profile_image,
+    user.profileImage,
+    user.avatar,
+    user.avatar_url,
+    user.avatarUrl,
+    user.photo,
+    user.image,
+    profile?.profile_photo,
+    profile?.profilePhoto,
+    profile?.profile_image,
+    profile?.avatar,
+    profile?.photo,
+  ];
+
+  for (const candidate of candidates) {
+    const url = getNativeImageUrl(candidate);
+    if (url) return url;
+  }
+
+  return undefined;
+};
+
+const mapAdminManagedUser = (user: UnknownRecord): AdminManagedUser => ({
+  id: getString(user.id),
+  userId: getString(user.user_id || user.id),
+  name: getString(user.name, 'Unknown user'),
+  email: getString(user.email),
+  phone: getString(user.phone),
+  role: deriveAdminUserRole(user),
+  isActive: user.is_active !== false,
+  profilePhoto: resolveUserProfilePhoto(user),
+  createdAt: getString(user.created_at || user.createdAt),
+});
+
+const extractAdminUsersMeta = (payload: unknown, fallbackPage: number): UnknownRecord => {
+  if (!isRecord(payload)) return {};
+  if (isRecord(payload.meta)) return payload.meta;
+  if (isRecord(payload.data) && isRecord(payload.data.meta)) return payload.data.meta;
+  return {};
+};
+
+export async function fetchAdminUsers(
+  filters: AdminUserFilters = {},
+  signal?: AbortSignal
+): Promise<AdminUsersResult> {
+  const params = new URLSearchParams();
+  params.set('page', String(filters.page ?? 1));
+  params.set('per_page', String(filters.perPage ?? 15));
+  if (filters.search) params.set('search', filters.search);
+  if (filters.role && filters.role !== 'all') params.set('role', filters.role);
+  if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+
+  const payload = await apiGet(`/users?${params.toString()}`, signal);
+  const users = getArrayPayload(payload).filter(isRecord).map(mapAdminManagedUser);
+  const meta = extractAdminUsersMeta(payload, filters.page ?? 1);
+
+  return {
+    users,
+    pagination: {
+      currentPage: getNumber(meta.current_page, filters.page ?? 1),
+      lastPage: getNumber(meta.last_page, 1),
+      total: getNumber(meta.total, users.length),
+      from: getNumber(meta.from, users.length ? 1 : 0),
+      to: getNumber(meta.to, users.length),
+    },
+  };
+}
+
+export async function updateAdminUserActive(
+  userId: string | number,
+  isActive: boolean,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPut(`/users/${encodeURIComponent(String(userId))}`, { is_active: isActive }, signal);
+}
+
+export async function assignAdminUserRole(
+  userId: string | number,
+  role: 'admin' | 'seller' | 'buyer',
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPost(
+    `/users/${encodeURIComponent(String(userId))}/assign-roles`,
+    { roles: [role] },
+    signal
+  );
+}
+
+export async function deleteAdminUser(userId: string | number, signal?: AbortSignal): Promise<void> {
+  await apiDelete(`/users/${encodeURIComponent(String(userId))}`, signal);
+}
+
+export type AdminSellerStatus =
+  | 'setup_pending'
+  | 'pending'
+  | 'approved'
+  | 'active'
+  | 'rejected'
+  | 'suspended'
+  | 'closed';
+
+export type AdminManagedSeller = {
+  id: string;
+  storeId: string;
+  storeName: string;
+  storeSlug: string;
+  contactEmail: string;
+  contactPhone: string;
+  businessType: string;
+  status: AdminSellerStatus | string;
+  rating: number;
+  productsCount: number;
+  createdAt: string;
+};
+
+export type AdminSellerFilters = {
+  search?: string;
+  status?: 'all' | AdminSellerStatus;
+  page?: number;
+  perPage?: number;
+};
+
+export type AdminSellersPagination = {
+  currentPage: number;
+  lastPage: number;
+  total: number;
+  from: number;
+  to: number;
+};
+
+export type AdminSellersResult = {
+  sellers: AdminManagedSeller[];
+  pagination: AdminSellersPagination;
+};
+
+const mapAdminManagedSeller = (seller: UnknownRecord): AdminManagedSeller => ({
+  id: getString(seller.id),
+  storeId: getString(seller.store_id),
+  storeName: getString(seller.store_name),
+  storeSlug: getString(seller.store_slug || seller.slug),
+  contactEmail: getString(seller.contact_email || seller.email),
+  contactPhone: getString(seller.contact_phone || seller.phone),
+  businessType: getString(seller.business_type),
+  status: getString(seller.status, 'pending'),
+  rating: getNumber(seller.reviews_avg_rating, 0),
+  productsCount: getNumber(seller.products_count, 0),
+  createdAt: getString(seller.created_at || seller.createdAt),
+});
+
+const extractAdminSellersMeta = (payload: unknown, fallbackPage: number): UnknownRecord => {
+  if (!isRecord(payload)) return {};
+  if (isRecord(payload.data) && isRecord(payload.data.meta)) return payload.data.meta;
+  if (isRecord(payload.meta)) return payload.meta;
+  if (isRecord(payload.data)) {
+    const data = payload.data;
+    if ('current_page' in data || 'total' in data) return data;
+  }
+  return {};
+};
+
+export async function fetchAdminSellers(
+  filters: AdminSellerFilters = {},
+  signal?: AbortSignal
+): Promise<AdminSellersResult> {
+  const params = new URLSearchParams();
+  params.set('page', String(filters.page ?? 1));
+  params.set('per_page', String(filters.perPage ?? 15));
+  if (filters.search) params.set('search', filters.search);
+  if (filters.status && filters.status !== 'all') params.set('status', filters.status);
+
+  const payload = await apiGet(`/admin/sellers?${params.toString()}`, signal);
+  const nested = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+  const rows = isRecord(nested) && Array.isArray(nested.data) ? nested.data : getArrayPayload(payload);
+  const sellers = rows.filter(isRecord).map(mapAdminManagedSeller);
+  const meta = extractAdminSellersMeta(payload, filters.page ?? 1);
+
+  return {
+    sellers,
+    pagination: {
+      currentPage: getNumber(meta.current_page, filters.page ?? 1),
+      lastPage: getNumber(meta.last_page, 1),
+      total: getNumber(meta.total, sellers.length),
+      from: getNumber(meta.from, sellers.length ? 1 : 0),
+      to: getNumber(meta.to, sellers.length),
+    },
+  };
+}
+
+export async function updateAdminSellerStatus(
+  sellerId: string | number,
+  newStatus: AdminSellerStatus | string,
+  reason = '',
+  signal?: AbortSignal
+): Promise<void> {
+  const payload: UnknownRecord = {};
+  if (reason.trim()) {
+    payload.reason = reason.trim();
+    payload.notes = reason.trim();
+  }
+
+  if (newStatus === 'approved') {
+    await apiPut(`/admin/seller/${encodeURIComponent(String(sellerId))}/approve`, payload, signal);
+    return;
+  }
+  if (newStatus === 'suspended') {
+    await apiPost(`/admin/seller/${encodeURIComponent(String(sellerId))}/suspend`, payload, signal);
+    return;
+  }
+  if (newStatus === 'active') {
+    await apiPost(`/admin/seller/${encodeURIComponent(String(sellerId))}/reactivate`, payload, signal);
+    return;
+  }
+
+  await apiPut(
+    `/admin/seller/${encodeURIComponent(String(sellerId))}/status`,
+    { ...payload, status: newStatus },
+    signal
+  );
+}
+
+export type AdminPlatformDelivery = SellerDelivery & {
+  supplierName: string;
+  platformCourierId: string | number | null;
+  assignedDriverName: string;
+  assignedVehicleType: string;
+  assignedVehicleNumber: string;
+  buyerName: string;
+  buyerPhone: string;
+};
+
+export type AdminCourierCandidate = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  role: string;
+};
+
+export type AdminPlatformDeliveriesResult = {
+  deliveries: AdminPlatformDelivery[];
+  pagination: AdminSellersPagination;
+};
+
+const mapAdminPlatformDelivery = (delivery: UnknownRecord): AdminPlatformDelivery => {
+  const base = mapSellerDelivery(delivery);
+  const supplier = isRecord(delivery.supplier) ? delivery.supplier : undefined;
+  const order = isRecord(delivery.order) ? delivery.order : {};
+  const shipping = normalizeSellerOrderAddress(order.shipping_address || order.shippingAddress);
+  const courierId = delivery.platform_courier_id ?? delivery.platformCourierId;
+
+  return {
+    ...base,
+    supplierName: getString(supplier?.name || supplier?.store_name),
+    platformCourierId:
+      courierId === null || courierId === undefined || courierId === '' ? null : getString(courierId),
+    assignedDriverName: getString(delivery.assigned_driver_name || base.courierName),
+    assignedVehicleType: getString(delivery.assigned_vehicle_type),
+    assignedVehicleNumber: getString(delivery.assigned_vehicle_number),
+    buyerName: getString(shipping.fullName || order.customer_name),
+    buyerPhone: getString(shipping.phone || order.customer_phone),
+  };
+};
+
+const extractDeliveriesMeta = (payload: unknown, fallbackPage: number): UnknownRecord => {
+  if (!isRecord(payload)) return {};
+  if (isRecord(payload.data) && isRecord(payload.data.meta)) return payload.data.meta;
+  if (isRecord(payload.meta)) return payload.meta;
+  if (isRecord(payload.data) && ('current_page' in payload.data || 'total' in payload.data)) {
+    return payload.data;
+  }
+  return {};
+};
+
+export async function fetchAdminPlatformDeliveries(
+  page = 1,
+  perPage = 15,
+  signal?: AbortSignal
+): Promise<AdminPlatformDeliveriesResult> {
+  const params = new URLSearchParams();
+  params.set('delivery_method', 'platform');
+  params.set('per_page', String(perPage));
+  params.set('page', String(page));
+
+  const payload = await apiGet(`/deliveries?${params.toString()}`, signal);
+  const nested = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+  const rows = isRecord(nested) && Array.isArray(nested.data) ? nested.data : getArrayPayload(payload);
+  const deliveries = rows.filter(isRecord).map(mapAdminPlatformDelivery);
+  const meta = extractDeliveriesMeta(payload, page);
+
+  return {
+    deliveries,
+    pagination: {
+      currentPage: getNumber(meta.current_page, page),
+      lastPage: getNumber(meta.last_page, 1),
+      total: getNumber(meta.total, deliveries.length),
+      from: getNumber(meta.from, deliveries.length ? 1 : 0),
+      to: getNumber(meta.to, deliveries.length),
+    },
+  };
+}
+
+export async function fetchAdminCourierCandidates(signal?: AbortSignal): Promise<AdminCourierCandidate[]> {
+  const [sellers, admins] = await Promise.all([
+    fetchAdminUsers({ role: 'seller', perPage: 100 }, signal),
+    fetchAdminUsers({ role: 'admin', perPage: 100 }, signal),
+  ]);
+
+  const seen = new Set<string>();
+  return [...sellers.users, ...admins.users]
+    .filter((user) => {
+      const id = String(user.id);
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    })
+    .map((user) => ({
+      id: String(user.id),
+      name: user.name,
+      email: user.email,
+      phone: user.phone,
+      role: user.role,
+    }));
+}
+
+export async function assignAdminDeliveryCourier(
+  deliveryId: string | number,
+  form: {
+    platform_courier_id?: number;
+    driver_name: string;
+    driver_phone?: string;
+    vehicle_type?: string;
+    vehicle_number?: string;
+  },
+  signal?: AbortSignal
+): Promise<void> {
+  const payload: UnknownRecord = {
+    driver_name: form.driver_name || null,
+    driver_phone: form.driver_phone || null,
+    vehicle_type: form.vehicle_type || null,
+    vehicle_number: form.vehicle_number || null,
+  };
+  if (form.platform_courier_id) payload.platform_courier_id = form.platform_courier_id;
+
+  await apiPost(`/deliveries/${encodeURIComponent(String(deliveryId))}/assign-courier`, payload, signal);
+}
+
+export async function updateAdminDeliveryStatus(
+  deliveryId: string | number,
+  status: string,
+  notes = '',
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPost(`/deliveries/${encodeURIComponent(String(deliveryId))}/status`, { status, notes }, signal);
+}
+
+export type AdminDeliveryFeeSummary = {
+  outstandingCount: number;
+  outstandingAmount: number;
+  collectedCount: number;
+  collectedAmount: number;
+};
+
+export type AdminDeliveryFee = {
+  id: string;
+  orderId: string;
+  orderNumber: string;
+  createdAt: string;
+  supplierName: string;
+  supplierEmail: string;
+  status: string;
+  platformDeliveryFeeValue: number;
+  platformDeliveryFee: string;
+  deliveryFeeStatus: string;
+  deliveryFeeCollectedAt: string;
+  deliveryFeeCollectionRef: string;
+  feeSubmittedAt: string;
+};
+
+export type AdminDeliveryFeesResult = {
+  deliveries: AdminDeliveryFee[];
+  summary: AdminDeliveryFeeSummary;
+};
+
+const mapAdminDeliveryFee = (delivery: UnknownRecord): AdminDeliveryFee => {
+  const base = mapAdminPlatformDelivery(delivery);
+  const supplier = isRecord(delivery.supplier) ? delivery.supplier : undefined;
+
+  return {
+    id: getString(base.id),
+    orderId: getString(base.orderId),
+    orderNumber: base.order.orderNumber,
+    createdAt: base.createdAt,
+    supplierName: base.supplierName,
+    supplierEmail: getString(supplier?.email),
+    status: base.status,
+    platformDeliveryFeeValue: base.platformDeliveryFeeValue,
+    platformDeliveryFee: base.platformDeliveryFee,
+    deliveryFeeStatus: getString(delivery.delivery_fee_status, 'not_applicable'),
+    deliveryFeeCollectedAt: getString(delivery.delivery_fee_collected_at),
+    deliveryFeeCollectionRef: getString(delivery.delivery_fee_collection_ref),
+    feeSubmittedAt: getString(delivery.fee_submitted_at),
+  };
+};
+
+export async function fetchAdminDeliveryFees(
+  feeStatus = '',
+  signal?: AbortSignal
+): Promise<AdminDeliveryFeesResult> {
+  const query = feeStatus ? `?fee_status=${encodeURIComponent(feeStatus)}` : '';
+  const payload = await apiGet(`/admin/delivery-fees${query}`, signal);
+  const data = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+
+  if (!isRecord(data)) {
+    return {
+      deliveries: [],
+      summary: {
+        outstandingCount: 0,
+        outstandingAmount: 0,
+        collectedCount: 0,
+        collectedAmount: 0,
+      },
+    };
+  }
+
+  const deliveriesSource = isRecord(data.deliveries) && Array.isArray(data.deliveries.data)
+    ? data.deliveries.data
+    : Array.isArray(data.deliveries)
+      ? data.deliveries
+      : getArrayPayload(data);
+  const summaryRaw = isRecord(data.summary) ? data.summary : {};
+
+  return {
+    deliveries: deliveriesSource.filter(isRecord).map(mapAdminDeliveryFee),
+    summary: {
+      outstandingCount: getNumber(summaryRaw.outstanding_count),
+      outstandingAmount: getNumber(summaryRaw.outstanding_amount),
+      collectedCount: getNumber(summaryRaw.collected_count),
+      collectedAmount: getNumber(summaryRaw.collected_amount),
+    },
+  };
+}
+
+export async function collectAdminDeliveryFee(
+  deliveryId: string | number,
+  form: { collection_ref: string; admin_notes?: string },
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPost(
+    `/admin/deliveries/${encodeURIComponent(String(deliveryId))}/collect-fee`,
+    {
+      collection_ref: form.collection_ref,
+      admin_notes: form.admin_notes || undefined,
+    },
+    signal
+  );
+}
+
+export async function adjustAdminDeliveryFee(
+  deliveryId: string | number,
+  form: { platform_delivery_fee: number; adjustment_note?: string },
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPatch(
+    `/admin/deliveries/${encodeURIComponent(String(deliveryId))}/platform-fee`,
+    {
+      platform_delivery_fee: form.platform_delivery_fee,
+      adjustment_note: form.adjustment_note || undefined,
+    },
+    signal
+  );
+}
+
 export async function fetchSellerOrder(
   orderId: string | number,
   signal?: AbortSignal
@@ -5236,6 +6343,7 @@ export type SellerRfqBuyer = {
 export type SellerRfqQuote = {
   id: string | number;
   sellerId: string | number;
+  sellerName: string;
   unitPriceValue: number;
   totalPriceValue: number;
   unitPrice: string;
@@ -5299,9 +6407,17 @@ const mapSellerRfqBuyer = (value: unknown): SellerRfqBuyer | undefined => {
 const mapSellerRfqQuote = (quote: UnknownRecord): SellerRfqQuote => {
   const unitPriceValue = getNumber(quote.unit_price || quote.unitPrice);
   const totalPriceValue = getNumber(quote.total_price || quote.totalPrice);
+  const seller = isRecord(quote.seller) ? quote.seller : undefined;
+  const profile = isRecord(seller?.seller_profile)
+    ? seller.seller_profile
+    : isRecord(seller?.sellerProfile)
+      ? seller.sellerProfile
+      : undefined;
+
   return {
     id: getString(quote.id),
     sellerId: getString(quote.seller_id || quote.sellerId),
+    sellerName: getString(profile?.store_name || seller?.store_name || seller?.name, 'Seller'),
     unitPriceValue,
     totalPriceValue,
     unitPrice: formatMMK(unitPriceValue),
@@ -5353,6 +6469,11 @@ export async function fetchSellerReceivedRfqs(signal?: AbortSignal): Promise<Sel
   return getArrayPayload(payload).filter(isRecord).map(mapSellerRfq);
 }
 
+export async function fetchSentRfqs(signal?: AbortSignal): Promise<SellerRfq[]> {
+  const payload = await apiGet('/rfq/sent', signal);
+  return getArrayPayload(payload).filter(isRecord).map(mapSellerRfq);
+}
+
 export async function fetchSellerRfqDetail(
   rfqId: string | number,
   signal?: AbortSignal
@@ -5375,6 +6496,40 @@ export async function submitSellerRfqQuote(
   } catch {
     return null;
   }
+}
+
+export async function cancelRfq(rfqId: string | number, signal?: AbortSignal): Promise<void> {
+  await apiPatch(`/rfq/${encodeURIComponent(String(rfqId))}/cancel`, {}, signal);
+}
+
+export async function closeRfq(rfqId: string | number, signal?: AbortSignal): Promise<void> {
+  await apiPatch(`/rfq/${encodeURIComponent(String(rfqId))}/close`, {}, signal);
+}
+
+export async function acceptRfqQuote(
+  rfqId: string | number,
+  quoteId: string | number,
+  signal?: AbortSignal
+): Promise<SellerRfq> {
+  await apiPatch(
+    `/rfq/${encodeURIComponent(String(rfqId))}/quotes/${encodeURIComponent(String(quoteId))}/accept`,
+    {},
+    signal
+  );
+  return fetchSellerRfqDetail(rfqId, signal);
+}
+
+export async function rejectRfqQuote(
+  rfqId: string | number,
+  quoteId: string | number,
+  signal?: AbortSignal
+): Promise<SellerRfq> {
+  await apiPatch(
+    `/rfq/${encodeURIComponent(String(rfqId))}/quotes/${encodeURIComponent(String(quoteId))}/reject`,
+    {},
+    signal
+  );
+  return fetchSellerRfqDetail(rfqId, signal);
 }
 
 export async function fetchLocalDealsPage(
@@ -5830,6 +6985,603 @@ export async function submitSellerCodInvoicePayment(
   };
 }
 
+export type AdminCodInvoiceSummary = {
+  outstandingCount: number;
+  outstandingAmount: number;
+  overdueCount: number;
+  collectedThisMonth: number;
+};
+
+export type AdminCodInvoice = SellerCodInvoice & {
+  sellerName: string;
+  sellerEmail: string;
+  confirmedAt: string;
+};
+
+export type AdminCodInvoicesResult = {
+  invoices: AdminCodInvoice[];
+  summary: AdminCodInvoiceSummary;
+};
+
+const mapAdminCodInvoice = (invoice: UnknownRecord): AdminCodInvoice => {
+  const base = mapSellerCodInvoice(invoice);
+  const seller = isRecord(invoice.seller) ? invoice.seller : {};
+
+  return {
+    ...base,
+    sellerName: getString(seller.name || seller.store_name),
+    sellerEmail: getString(seller.email),
+    confirmedAt: getString(invoice.confirmed_at),
+  };
+};
+
+export async function fetchAdminCodInvoices(
+  status = '',
+  signal?: AbortSignal
+): Promise<AdminCodInvoicesResult> {
+  const query = status ? `?status=${encodeURIComponent(status)}` : '';
+  const payload = await apiGet(`/admin/cod-invoices${query}`, signal);
+  const data = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+
+  if (!isRecord(data)) {
+    return {
+      invoices: [],
+      summary: {
+        outstandingCount: 0,
+        outstandingAmount: 0,
+        overdueCount: 0,
+        collectedThisMonth: 0,
+      },
+    };
+  }
+
+  const invoicesSource = isRecord(data.invoices) && Array.isArray(data.invoices.data)
+    ? data.invoices.data
+    : Array.isArray(data.invoices)
+      ? data.invoices
+      : getArrayPayload(data);
+  const summaryRaw = isRecord(data.summary) ? data.summary : {};
+
+  return {
+    invoices: invoicesSource.filter(isRecord).map(mapAdminCodInvoice),
+    summary: {
+      outstandingCount: getNumber(summaryRaw.outstanding_count),
+      outstandingAmount: getNumber(summaryRaw.outstanding_amount),
+      overdueCount: getNumber(summaryRaw.overdue_count),
+      collectedThisMonth: getNumber(summaryRaw.collected_this_month),
+    },
+  };
+}
+
+export async function confirmAdminCodInvoicePayment(
+  invoiceId: string | number,
+  body: { admin_notes?: string },
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPost(
+    `/admin/cod-invoices/${encodeURIComponent(String(invoiceId))}/confirm-payment`,
+    { admin_notes: body.admin_notes || undefined },
+    signal
+  );
+}
+
+export async function waiveAdminCodInvoice(
+  invoiceId: string | number,
+  body: { admin_notes: string },
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPost(
+    `/admin/cod-invoices/${encodeURIComponent(String(invoiceId))}/waive`,
+    { admin_notes: body.admin_notes },
+    signal
+  );
+}
+
+export type AdminCommissionRuleType = 'default' | 'account_level' | 'category' | 'business_type';
+
+export type AdminCommissionRule = {
+  id: string;
+  type: AdminCommissionRuleType;
+  referenceId: string | number | null;
+  referenceLabel: string;
+  rate: number;
+  notes: string;
+  isActive: boolean;
+};
+
+export type AdminCommissionCategory = {
+  id: string;
+  name: string;
+};
+
+export type AdminBusinessType = {
+  id: string;
+  name: string;
+};
+
+const mapAdminCommissionRule = (rule: UnknownRecord): AdminCommissionRule => {
+  const referenceId = rule.reference_id ?? rule.referenceId ?? null;
+
+  return {
+    id: getString(rule.id),
+    type: getString(rule.type, 'default') as AdminCommissionRuleType,
+    referenceId:
+      referenceId === null || referenceId === undefined || referenceId === '' ? null : getString(referenceId),
+    referenceLabel: getString(rule.reference_label || rule.referenceLabel),
+    rate: getNumber(rule.rate),
+    notes: getString(rule.notes),
+    isActive: rule.is_active === true || rule.is_active === 1 || rule.is_active === '1',
+  };
+};
+
+const flattenAdminCommissionCategories = (
+  rows: UnknownRecord[],
+  acc: AdminCommissionCategory[] = []
+): AdminCommissionCategory[] => {
+  for (const row of rows) {
+    if (!isRecord(row)) continue;
+    acc.push({
+      id: getString(row.id),
+      name: getString(row.name || row.name_en || row.name_mm, 'Category'),
+    });
+    if (Array.isArray(row.children)) {
+      flattenAdminCommissionCategories(row.children.filter(isRecord), acc);
+    }
+  }
+  return acc;
+};
+
+export async function fetchAdminCommissionRules(signal?: AbortSignal): Promise<AdminCommissionRule[]> {
+  const payload = await apiGet('/admin/commission-rules', signal);
+  const data =
+    isRecord(payload) && Array.isArray(payload.data)
+      ? payload.data
+      : getArrayPayload(payload);
+  return data.filter(isRecord).map(mapAdminCommissionRule);
+}
+
+export async function createAdminCommissionRule(
+  body: {
+    type: AdminCommissionRuleType;
+    reference_id?: string | number | null;
+    rate: string;
+    notes?: string | null;
+    is_active?: boolean;
+  },
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPost('/admin/commission-rules', body, signal);
+}
+
+export async function updateAdminCommissionRule(
+  ruleId: string | number,
+  updates: { rate?: string; is_active?: boolean; notes?: string | null },
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPut(`/admin/commission-rules/${encodeURIComponent(String(ruleId))}`, updates, signal);
+}
+
+export async function fetchAdminCommissionCategories(
+  signal?: AbortSignal
+): Promise<AdminCommissionCategory[]> {
+  const payload = await apiGet('/categories', signal);
+  return flattenAdminCommissionCategories(getArrayPayload(payload).filter(isRecord));
+}
+
+export async function fetchAdminBusinessTypes(signal?: AbortSignal): Promise<AdminBusinessType[]> {
+  const payload = await apiGet('/business-types', signal);
+  return getArrayPayload(payload)
+    .filter(isRecord)
+    .map((item) => ({
+      id: getString(item.id),
+      name: getString(item.name || item.name_en || item.name_mm, 'Business Type'),
+    }));
+}
+
+export type AdminManagedCategory = {
+  id: string;
+  nameEn: string;
+  nameMm: string;
+  slugEn: string;
+  slugMm: string;
+  descriptionEn: string;
+  descriptionMm: string;
+  commissionRate: number;
+  parentId: string | null;
+  isActive: boolean;
+  image: string;
+  imageUrl: string;
+  children: AdminManagedCategory[];
+};
+
+export type AdminCategoryFormPayload = {
+  name_en: string;
+  name_mm?: string;
+  description_en?: string;
+  description_mm?: string;
+  commission_rate: number;
+  parent_id?: string;
+  is_active: boolean;
+  image?: NativeUploadFile | null;
+  removeImage?: boolean;
+};
+
+const mapAdminManagedCategory = (category: UnknownRecord): AdminManagedCategory => {
+  const image = getString(category.image);
+  const children = Array.isArray(category.children)
+    ? category.children.filter(isRecord).map(mapAdminManagedCategory)
+    : [];
+
+  return {
+    id: getString(category.id),
+    nameEn: getString(category.name_en || category.nameEn, 'Category'),
+    nameMm: getString(category.name_mm || category.nameMm),
+    slugEn: getString(category.slug_en || category.slugEn),
+    slugMm: getString(category.slug_mm || category.slugMm),
+    descriptionEn: getString(category.description_en || category.descriptionEn),
+    descriptionMm: getString(category.description_mm || category.descriptionMm),
+    commissionRate: getNumber(category.commission_rate),
+    parentId: category.parent_id ? getString(category.parent_id) : null,
+    isActive: category.is_active !== false && category.is_active !== 0 && category.is_active !== '0',
+    image,
+    imageUrl: getNativeImageUrl(image) || '',
+    children,
+  };
+};
+
+const buildAdminCategoryFormData = (payload: AdminCategoryFormPayload, mode: 'create' | 'edit') => {
+  const form = new FormData();
+  form.append('name_en', payload.name_en);
+  form.append('name_mm', payload.name_mm || '');
+  form.append('description_en', payload.description_en || '');
+  form.append('description_mm', payload.description_mm || '');
+  form.append('commission_rate', String(payload.commission_rate));
+  form.append('parent_id', payload.parent_id || '');
+  form.append('is_active', payload.is_active ? '1' : '0');
+
+  if (payload.image?.uri) {
+    appendNativeFile(form, 'image', payload.image);
+  } else if (mode === 'edit' && payload.removeImage) {
+    form.append('image', '');
+  }
+
+  return form;
+};
+
+export async function fetchAdminManagedCategories(signal?: AbortSignal): Promise<AdminManagedCategory[]> {
+  const payload = await apiGet('/admin/categories', signal);
+  const data =
+    isRecord(payload) && Array.isArray(payload.data)
+      ? payload.data
+      : getArrayPayload(payload);
+
+  return data.filter(isRecord).map(mapAdminManagedCategory);
+}
+
+export async function createAdminCategory(
+  payload: AdminCategoryFormPayload,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPostForm('/admin/categories', buildAdminCategoryFormData(payload, 'create'), signal);
+}
+
+export async function updateAdminCategory(
+  categoryId: string | number,
+  payload: AdminCategoryFormPayload,
+  signal?: AbortSignal
+): Promise<void> {
+  const form = buildAdminCategoryFormData(payload, 'edit');
+  form.append('_method', 'PUT');
+  await apiPostForm(`/admin/categories/${encodeURIComponent(String(categoryId))}`, form, signal);
+}
+
+export async function deleteAdminCategory(
+  categoryId: string | number,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiDelete(`/admin/categories/${encodeURIComponent(String(categoryId))}`, signal);
+}
+
+export async function updateAdminCategoryStatus(
+  categoryId: string | number,
+  isActive: boolean,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPut(`/admin/categories/${encodeURIComponent(String(categoryId))}`, { is_active: isActive }, signal);
+}
+
+export type AdminManagedBusinessType = {
+  id: string;
+  nameEn: string;
+  nameMm: string;
+  slugEn: string;
+  slugMm: string;
+  descriptionEn: string;
+  descriptionMm: string;
+  requiresRegistration: boolean;
+  requiresTaxDocument: boolean;
+  requiresIdentityDocument: boolean;
+  requiresBusinessCertificate: boolean;
+  additionalRequirements: unknown;
+  isActive: boolean;
+  sortOrder: number;
+  icon: string;
+  color: string;
+  sellersCount: number;
+};
+
+export type AdminBusinessTypeFormPayload = {
+  name_en: string;
+  name_mm?: string;
+  slug_en: string;
+  slug_mm?: string;
+  description_en?: string;
+  description_mm?: string;
+  requires_registration: boolean;
+  requires_tax_document: boolean;
+  requires_identity_document: boolean;
+  requires_business_certificate: boolean;
+  additional_requirements: unknown;
+  is_active: boolean;
+  sort_order: number;
+  icon: string;
+  color: string;
+};
+
+const mapAdminManagedBusinessType = (item: UnknownRecord): AdminManagedBusinessType => ({
+  id: getString(item.id),
+  nameEn: getString(item.name_en || item.nameEn, 'Business Type'),
+  nameMm: getString(item.name_mm || item.nameMm),
+  slugEn: getString(item.slug_en || item.slugEn),
+  slugMm: getString(item.slug_mm || item.slugMm),
+  descriptionEn: getString(item.description_en || item.descriptionEn),
+  descriptionMm: getString(item.description_mm || item.descriptionMm),
+  requiresRegistration: item.requires_registration === true || item.requires_registration === 1,
+  requiresTaxDocument: item.requires_tax_document === true || item.requires_tax_document === 1,
+  requiresIdentityDocument: item.requires_identity_document === true || item.requires_identity_document === 1,
+  requiresBusinessCertificate:
+    item.requires_business_certificate === true || item.requires_business_certificate === 1,
+  additionalRequirements: item.additional_requirements ?? [],
+  isActive: item.is_active !== false && item.is_active !== 0 && item.is_active !== '0',
+  sortOrder: getNumber(item.sort_order),
+  icon: getString(item.icon, 'BuildingStorefrontIcon'),
+  color: getString(item.color, '#3b82f6'),
+  sellersCount: getNumber(item.sellers_count),
+});
+
+export async function fetchAdminManagedBusinessTypes(
+  signal?: AbortSignal
+): Promise<AdminManagedBusinessType[]> {
+  const payload = await apiGet('/admin/business-types', signal);
+  const data = isRecord(payload) && Array.isArray(payload.data) ? payload.data : getArrayPayload(payload);
+  return data.filter(isRecord).map(mapAdminManagedBusinessType);
+}
+
+export async function createAdminBusinessType(
+  payload: AdminBusinessTypeFormPayload,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPost('/admin/business-types', payload, signal);
+}
+
+export async function updateAdminBusinessType(
+  businessTypeId: string | number,
+  payload: AdminBusinessTypeFormPayload,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPut(`/admin/business-types/${encodeURIComponent(String(businessTypeId))}`, payload, signal);
+}
+
+export async function toggleAdminBusinessType(
+  businessTypeId: string | number,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPatch(`/admin/business-types/${encodeURIComponent(String(businessTypeId))}/toggle`, {}, signal);
+}
+
+export async function deleteAdminBusinessType(
+  businessTypeId: string | number,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiDelete(`/admin/business-types/${encodeURIComponent(String(businessTypeId))}`, signal);
+}
+
+export type AdminEmailCampaignAudience =
+  | 'newsletter_subscribers'
+  | 'all_buyers'
+  | 'all_sellers'
+  | 'buyers_by_city'
+  | 'sellers_by_tier'
+  | 'custom_ids';
+
+export type AdminEmailCampaign = {
+  id: string;
+  name: string;
+  subject: string;
+  bodyHtml: string;
+  audience: string;
+  audienceFilter: Record<string, unknown>;
+  status: string;
+  recipientsCount: number;
+  deliveredCount: number;
+  openRate: number | null;
+  sentAt: string;
+  createdAt: string;
+};
+
+export type AdminEmailCampaignFormPayload = {
+  name: string;
+  subject: string;
+  body_html: string;
+  audience: string;
+  audience_filter: Record<string, unknown>;
+};
+
+export type AdminNewsletterSubscriber = {
+  id: string;
+  email: string;
+  name: string;
+  source: string;
+  confirmedAt: string;
+};
+
+export type AdminNewsletterSubscriberMeta = {
+  total: number;
+  unconfirmed: number;
+};
+
+const mapAdminEmailCampaign = (row: UnknownRecord): AdminEmailCampaign => ({
+  id: getString(row.id),
+  name: getString(row.name),
+  subject: getString(row.subject),
+  bodyHtml: getString(row.body_html || row.bodyHtml),
+  audience: getString(row.audience, 'newsletter_subscribers'),
+  audienceFilter: isRecord(row.audience_filter) ? row.audience_filter : {},
+  status: getString(row.status, 'draft'),
+  recipientsCount: getNumber(row.recipients_count),
+  deliveredCount: getNumber(row.delivered_count),
+  openRate: row.open_rate == null || row.open_rate === '' ? null : getNumber(row.open_rate),
+  sentAt: getString(row.sent_at),
+  createdAt: getString(row.created_at || row.createdAt),
+});
+
+const mapAdminNewsletterSubscriber = (row: UnknownRecord): AdminNewsletterSubscriber => ({
+  id: getString(row.id),
+  email: getString(row.email),
+  name: getString(row.name),
+  source: getString(row.source),
+  confirmedAt: getString(row.confirmed_at || row.confirmedAt),
+});
+
+const extractNewsletterMeta = (payload: unknown): AdminNewsletterSubscriberMeta => {
+  const root = isRecord(payload) ? payload : {};
+  const meta = isRecord(root.meta) ? root.meta : root;
+  return {
+    total: getNumber(meta.total),
+    unconfirmed: getNumber(meta.unconfirmed),
+  };
+};
+
+export async function fetchAdminEmailCampaigns(signal?: AbortSignal): Promise<AdminEmailCampaign[]> {
+  const payload = await apiGet('/admin/newsletter/campaigns', signal);
+  const data = isRecord(payload) && Array.isArray(payload.data) ? payload.data : getArrayPayload(payload);
+  return data.filter(isRecord).map(mapAdminEmailCampaign);
+}
+
+export async function createAdminEmailCampaign(
+  body: AdminEmailCampaignFormPayload,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPost('/admin/newsletter/campaigns', body, signal);
+}
+
+export async function updateAdminEmailCampaign(
+  campaignId: string | number,
+  body: AdminEmailCampaignFormPayload,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPut(`/admin/newsletter/campaigns/${encodeURIComponent(String(campaignId))}`, body, signal);
+}
+
+export async function previewAdminEmailCampaign(
+  campaignId: string | number,
+  signal?: AbortSignal
+): Promise<number> {
+  const payload = await apiGet(
+    `/admin/newsletter/campaigns/${encodeURIComponent(String(campaignId))}/preview`,
+    signal
+  );
+  const data = isRecord(payload) && isRecord(payload.data) ? payload.data : isRecord(payload) ? payload : {};
+  return getNumber(data.recipient_count ?? data.recipientCount);
+}
+
+export async function sendAdminEmailCampaign(
+  campaignId: string | number,
+  signal?: AbortSignal
+): Promise<{ message: string }> {
+  const payload = await apiPost(
+    `/admin/newsletter/campaigns/${encodeURIComponent(String(campaignId))}/send`,
+    {},
+    signal
+  );
+  const record = isRecord(payload) ? payload : {};
+  return { message: getString(record.message, 'Campaign sent!') };
+}
+
+export async function fetchAdminNewsletterSubscriberStats(
+  signal?: AbortSignal
+): Promise<AdminNewsletterSubscriberMeta> {
+  const payload = await apiGet('/admin/newsletter/subscribers?per_page=1', signal);
+  return extractNewsletterMeta(payload);
+}
+
+export async function fetchAdminNewsletterSubscribers(
+  search = '',
+  perPage = 20,
+  signal?: AbortSignal
+): Promise<{ subscribers: AdminNewsletterSubscriber[]; meta: AdminNewsletterSubscriberMeta }> {
+  const query = new URLSearchParams({ per_page: String(perPage) });
+  if (search.trim()) query.set('search', search.trim());
+  const payload = await apiGet(`/admin/newsletter/subscribers?${query.toString()}`, signal);
+  const data = isRecord(payload) && Array.isArray(payload.data) ? payload.data : getArrayPayload(payload);
+  return {
+    subscribers: data.filter(isRecord).map(mapAdminNewsletterSubscriber),
+    meta: extractNewsletterMeta(payload),
+  };
+}
+
+export type AdminAnalyticsStats = {
+  platformRevenue: number;
+  commissionRevenue: number;
+  deliveryFeeRevenue: number;
+  pendingCommissions: number;
+  totalRevenue: number;
+  totalOrders: number;
+  completedOrders: number;
+  paidCommissions: number;
+};
+
+export type AdminRevenueBreakdownRow = {
+  month: string;
+  commission: number;
+  deliveryFee: number;
+  platform: number;
+  gmv: number;
+};
+
+const mapAdminAnalyticsStats = (stats: UnknownRecord): AdminAnalyticsStats => ({
+  platformRevenue: getNumber(stats.platform_revenue),
+  commissionRevenue: getNumber(stats.commission_revenue),
+  deliveryFeeRevenue: getNumber(stats.delivery_fee_revenue),
+  pendingCommissions: getNumber(stats.pending_commissions),
+  totalRevenue: getNumber(stats.total_revenue),
+  totalOrders: getNumber(stats.total_orders),
+  completedOrders: getNumber(stats.completed_orders),
+  paidCommissions: getNumber(stats.paid_commissions ?? stats.collected_commissions),
+});
+
+const mapAdminRevenueBreakdownRow = (row: UnknownRecord): AdminRevenueBreakdownRow => ({
+  month: getString(row.month),
+  commission: getNumber(row.commission),
+  deliveryFee: getNumber(row.delivery_fee),
+  platform: getNumber(row.platform),
+  gmv: getNumber(row.gmv),
+});
+
+export async function fetchAdminAnalyticsStats(signal?: AbortSignal): Promise<AdminAnalyticsStats> {
+  const payload = await apiGet('/admin/stats', signal);
+  const data = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+  if (!isRecord(data)) throw new Error('Admin statistics not found');
+  return mapAdminAnalyticsStats(data);
+}
+
+export async function fetchAdminRevenueBreakdown(
+  signal?: AbortSignal
+): Promise<AdminRevenueBreakdownRow[]> {
+  const payload = await apiGet('/admin/revenue-breakdown', signal);
+  return getArrayPayload(payload).filter(isRecord).map(mapAdminRevenueBreakdownRow);
+}
+
 export async function fetchSellerSubscriptionOverview(
   signal?: AbortSignal
 ): Promise<SellerSubscriptionOverview> {
@@ -5876,7 +7628,7 @@ export async function createSellerSubscriptionPaymentSession(
     currency: getString(data.currency, 'MMK'),
     reference: getString(data.reference || data.payment_reference),
     paymentMethod: getString(data.payment_method, paymentMethod),
-    qrImageUrl: getNativeImageUrl(data.qr_image_url) || '',
+    qrImageUrl: resolvePaymentQrImageUrl(data.qr_image_url) || '',
     qrString: getString(data.qr_string),
     deeplinkUrl: getString(data.deeplink_url || data.deep_link_url || data.deep_link),
     checkoutUrl: getString(data.checkout_url || data.payment_url),
@@ -5925,6 +7677,72 @@ export async function fetchMyReports(page = 1, signal?: AbortSignal): Promise<Re
     currentPage: isRecord(data) ? getNumber(data.current_page, 1) : 1,
     lastPage: isRecord(data) ? getNumber(data.last_page, 1) : 1,
   };
+}
+
+export async function fetchAdminReports(
+  filters: AdminReportFilters = {},
+  signal?: AbortSignal
+): Promise<AdminReportListResult> {
+  const params = new URLSearchParams();
+  params.set('page', String(filters.page || 1));
+  if (filters.status) params.set('status', filters.status);
+  if (filters.category) params.set('category', filters.category);
+  if (filters.priority) params.set('priority', filters.priority);
+  if (filters.search?.trim()) params.set('search', filters.search.trim());
+  if (filters.assigned_to) params.set('assigned_to', filters.assigned_to);
+
+  const payload = await apiGet(`/admin/reports?${params.toString()}`, signal);
+  const root = isRecord(payload) ? payload : {};
+  const data = isRecord(root.data) ? root.data : root;
+  const summary = isRecord(root.summary) ? root.summary : {};
+  const reportsPayload = isRecord(data) && Array.isArray(data.data) ? data.data : getArrayPayload(payload);
+
+  return {
+    reports: reportsPayload.filter(isRecord).map(mapAdminReport),
+    summary: {
+      open: getNumber(summary.open),
+      inReview: getNumber(summary.in_review ?? summary.inReview),
+      critical: getNumber(summary.critical),
+      slaBreached: getNumber(summary.sla_breached ?? summary.slaBreached),
+    },
+    currentPage: isRecord(data) ? getNumber(data.current_page, filters.page || 1) : filters.page || 1,
+    lastPage: isRecord(data) ? getNumber(data.last_page, 1) : 1,
+  };
+}
+
+export async function fetchAdminReportDetail(
+  ticketId: string,
+  signal?: AbortSignal
+): Promise<AdminReport> {
+  const payload = await apiGet(`/admin/reports/${encodeURIComponent(ticketId)}`, signal);
+  const reportPayload = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+
+  if (!isRecord(reportPayload)) {
+    throw new Error('Report not found');
+  }
+
+  return mapAdminReport(reportPayload);
+}
+
+export async function updateAdminReport(
+  ticketId: string,
+  body: AdminReportUpdatePayload,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPatch(`/admin/reports/${encodeURIComponent(ticketId)}`, body, signal);
+}
+
+export async function addAdminReportComment(
+  ticketId: string,
+  body: string,
+  isInternal = false,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPost(
+    `/admin/reports/${encodeURIComponent(ticketId)}/comments`,
+    { body, is_internal: isInternal },
+    signal
+  );
 }
 
 export async function fetchMyReportDetail(

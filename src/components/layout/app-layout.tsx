@@ -12,6 +12,7 @@ import {
   useCallback,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from "react";
 import {
@@ -30,17 +31,19 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeNotificationBell } from "@/components/notifications/native-notification-bell";
 import { AnnouncementNative } from "@/components/ui/announcement-native";
 import { footerGroups, mainRoutes } from "@/constants/routes";
+import { SITE_CONTAINER_CLASS } from "@/constants/layout";
 import { useCookies } from "@/context/cookies";
 import { useNativeAuth } from "@/context/native-auth";
 import { useTheme } from "@/context/theme";
+import { useCartCount } from "@/context/cart-count-context";
+import { useWishlist } from "@/context/wishlist-context";
 import {
   normalizeLanguage,
   useAppTranslation,
   type SupportedLanguage,
 } from "@/i18n";
 import { getRoleDestination, hasUserRole } from "@/utils/auth-routing";
-import { fetchCart, subscribeNewsletter } from "@/utils/native-api";
-import { subscribeCartCountChanged } from "@/utils/native-cart-events";
+import { subscribeNewsletter } from "@/utils/native-api";
 
 const socialLinks = [
   { key: "facebook", url: "https://facebook.com/PyoneaOfficial" },
@@ -141,12 +144,26 @@ export function Header() {
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(routeSearch);
   const [mobileSearch, setMobileSearch] = useState(false);
-  const [totalItems, setTotalItems] = useState(0);
+  const { totalItems } = useCartCount();
+  const { count: wishlistCount } = useWishlist();
   const user = auth.user;
   const isBuyer = !user || hasUserRole(user, "buyer");
   const dashboardHref = user ? getRoleDestination(user) : "/login";
   const userInitial = user?.name?.charAt(0)?.toUpperCase() || "U";
   const userRole = user?.type || user?.roles?.[0] || "buyer";
+
+  useEffect(() => {
+    setSearchTerm(routeSearch);
+  }, [routeSearch]);
+
+  useEffect(() => {
+    const routeLanguage = typeof params.lang === "string" ? params.lang : null;
+    if (!routeLanguage) return;
+    const normalized = normalizeLanguage(routeLanguage);
+    if (normalizeLanguage(i18n.resolvedLanguage || i18n.language) !== normalized) {
+      void i18n.changeLanguage(normalized);
+    }
+  }, [i18n, params.lang]);
 
   const navItems = useMemo(
     () =>
@@ -161,57 +178,6 @@ export function Header() {
     [pathname, t],
   );
 
-  const refreshCartCount = useCallback(
-    async (signal?: AbortSignal) => {
-      if (!user || !hasUserRole(user, "buyer")) {
-        setTotalItems(0);
-        return;
-      }
-
-      try {
-        const cart = await fetchCart(signal);
-        setTotalItems(cart.totalItems);
-      } catch {
-        if (!signal?.aborted) setTotalItems(0);
-      }
-    },
-    [user],
-  );
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => {
-      void refreshCartCount(controller.signal);
-    }, 0);
-
-    return () => {
-      clearTimeout(timeout);
-      controller.abort();
-    };
-  }, [refreshCartCount]);
-
-  useEffect(
-    () =>
-      subscribeCartCountChanged((event) => {
-        if (typeof event === "number") {
-          setTotalItems(Math.max(0, event));
-          return;
-        }
-        if (typeof event?.count === "number") {
-          setTotalItems(Math.max(0, event.count));
-          return;
-        }
-        if (typeof event?.delta === "number") {
-          const delta = event.delta;
-          setTotalItems((current) => Math.max(0, current + delta));
-          void refreshCartCount();
-          return;
-        }
-        void refreshCartCount();
-      }),
-    [refreshCartCount],
-  );
-
   const submitSearch = () => {
     const term = searchTerm.trim();
     const href = term
@@ -224,6 +190,7 @@ export function Header() {
 
   const handleSearchChange = (value: string) => {
     setSearchTerm(value);
+    if (Platform.OS !== "web") return;
     if (!pathname.startsWith("/products")) return;
 
     const href = value.trim()
@@ -234,7 +201,9 @@ export function Header() {
 
   const changeLanguage = (nextLanguage: SupportedLanguage) => {
     void i18n.changeLanguage(nextLanguage);
-    router.replace(`${pathname}?lang=${nextLanguage}` as Href);
+    if (Platform.OS === "web") {
+      router.replace(`${pathname}?lang=${nextLanguage}` as Href);
+    }
   };
 
   const handleLogout = async () => {
@@ -249,7 +218,7 @@ export function Header() {
       edges={["top"]}
       className="sticky top-0 z-50 border-b border-gray-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
     >
-      <View className="mx-auto w-full max-w-7xl px-4 sm:px-6 lg:px-8">
+      <View className={SITE_CONTAINER_CLASS}>
         <View className="h-16 flex-row items-center justify-between gap-3">
           <Link href="/" asChild>
             <Pressable className="flex-shrink-0 flex-row items-center gap-2">
@@ -347,7 +316,27 @@ export function Header() {
             </View>
 
             {isBuyer ? (
-              <Link href="/cart" asChild>
+              <>
+                <Link href="/wishlist" asChild>
+                  <Pressable
+                    accessibilityLabel={t("buyer_dashboard.wishlist", "Wishlist")}
+                    className="relative h-10 w-10 items-center justify-center rounded-lg"
+                  >
+                    <Feather
+                      name="heart"
+                      color={isDark ? "#cbd5e1" : "#4b5563"}
+                      size={21}
+                    />
+                    {wishlistCount > 0 ? (
+                      <View className="absolute -right-0.5 -top-0.5 h-4 min-w-4 items-center justify-center rounded-full bg-red-500 px-1">
+                        <Text className="font-sans text-[10px] font-bold text-white">
+                          {wishlistCount > 9 ? "9+" : wishlistCount}
+                        </Text>
+                      </View>
+                    ) : null}
+                  </Pressable>
+                </Link>
+                <Link href="/cart" asChild>
                 <Pressable
                   accessibilityLabel="Cart"
                   className="relative h-10 w-10 items-center justify-center rounded-lg"
@@ -365,7 +354,8 @@ export function Header() {
                     </View>
                   ) : null}
                 </Pressable>
-              </Link>
+                </Link>
+              </>
             ) : null}
 
             {user ? <NativeNotificationBell compact /> : null}
@@ -625,8 +615,8 @@ export function Footer() {
   }, [newsletterEmail, t]);
 
   return (
-    <View className="border-t border-white/5 bg-gray-950 px-4 pb-8 pt-12 sm:px-6 lg:px-8">
-      <View className="mx-auto w-full max-w-7xl">
+    <View className="border-t border-white/5 bg-gray-950 pb-8 pt-12">
+      <View className={SITE_CONTAINER_CLASS}>
         <View className="gap-4 border-b border-white/10 pb-10 sm:flex-row sm:items-center sm:justify-between">
           <View className="w-fit flex-row items-center gap-2.5">
             <Image
@@ -764,62 +754,7 @@ export function Footer() {
 }
 
 function useBuyerCartCount() {
-  const auth = useNativeAuth();
-  const [totalItems, setTotalItems] = useState(0);
-  const user = auth.user;
-
-  const refreshCartCount = useCallback(
-    async (signal?: AbortSignal) => {
-      if (!user || !hasUserRole(user, "buyer")) {
-        setTotalItems(0);
-        return;
-      }
-
-      try {
-        const cart = await fetchCart(signal);
-        setTotalItems(cart.totalItems);
-      } catch {
-        if (!signal?.aborted) setTotalItems(0);
-      }
-    },
-    [user],
-  );
-
-  useEffect(() => {
-    const controller = new AbortController();
-    const timeout = setTimeout(() => {
-      void refreshCartCount(controller.signal);
-    }, 0);
-
-    return () => {
-      clearTimeout(timeout);
-      controller.abort();
-    };
-  }, [refreshCartCount]);
-
-  useEffect(
-    () =>
-      subscribeCartCountChanged((event) => {
-        if (typeof event === "number") {
-          setTotalItems(Math.max(0, event));
-          return;
-        }
-        if (typeof event?.count === "number") {
-          setTotalItems(Math.max(0, event.count));
-          return;
-        }
-        if (typeof event?.delta === "number") {
-          const delta = event.delta;
-          setTotalItems((current) => Math.max(0, current + delta));
-          void refreshCartCount();
-          return;
-        }
-        void refreshCartCount();
-      }),
-    [refreshCartCount],
-  );
-
-  return totalItems;
+  return useCartCount().totalItems;
 }
 
 function NativeBottomTabs() {
@@ -878,7 +813,14 @@ function NativeBottomTabs() {
           return (
             <Pressable
               key={tab.key}
-              onPress={() => router.push(tab.href)}
+              onPress={() => {
+                if (tab.active) return;
+                if (Platform.OS === "web") {
+                  router.push(tab.href);
+                  return;
+                }
+                router.replace(tab.href);
+              }}
               className="min-h-14 flex-1 items-center justify-center rounded-xl px-1"
               accessibilityRole="button"
             >
@@ -921,7 +863,7 @@ export function AppLayout({
   onEndReached,
   onEndReachedThreshold = 320,
 }: AppLayoutProps) {
-  const [endReached, setEndReached] = useState(false);
+  const endReachedRef = useRef(false);
   const isNative = Platform.OS !== "web";
 
   const handleScroll = useCallback(
@@ -933,14 +875,14 @@ export function AppLayout({
         contentSize.height - (contentOffset.y + layoutMeasurement.height);
       const isNearEnd = distanceFromEnd <= onEndReachedThreshold;
 
-      if (isNearEnd && !endReached) {
-        setEndReached(true);
+      if (isNearEnd && !endReachedRef.current) {
+        endReachedRef.current = true;
         onEndReached();
-      } else if (!isNearEnd && endReached) {
-        setEndReached(false);
+      } else if (!isNearEnd && endReachedRef.current) {
+        endReachedRef.current = false;
       }
     },
-    [endReached, onEndReached, onEndReachedThreshold],
+    [onEndReached, onEndReachedThreshold],
   );
 
   if (!scrollEnabled) {

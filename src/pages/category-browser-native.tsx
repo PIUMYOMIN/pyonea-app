@@ -9,13 +9,21 @@ import {
 } from '@/components/ui/category-card';
 import { useAppTranslation } from '@/i18n';
 import { fetchCategoryBrowser, type BrowserCategory } from '@/utils/native-api';
+import { getScreenCache, setScreenCache } from '@/utils/screen-cache';
+
+const CATEGORY_BROWSER_CACHE_KEY = 'category-browser';
+const CATEGORY_BROWSER_CACHE_TTL_MS = 5 * 60 * 1000;
 
 const CATEGORIES_PER_BATCH = 24;
 
 export function CategoryBrowserNative() {
   const { t, language } = useAppTranslation();
-  const [categories, setCategories] = useState<BrowserCategory[]>([]);
-  const [loading, setLoading] = useState(true);
+  const cachedCategories = getScreenCache<BrowserCategory[]>(
+    CATEGORY_BROWSER_CACHE_KEY,
+    CATEGORY_BROWSER_CACHE_TTL_MS,
+  );
+  const [categories, setCategories] = useState<BrowserCategory[]>(cachedCategories ?? []);
+  const [loading, setLoading] = useState(!cachedCategories);
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(CATEGORIES_PER_BATCH);
@@ -26,14 +34,20 @@ export function CategoryBrowserNative() {
     const controller = new AbortController();
 
     const loadCategories = async () => {
-      setLoading(true);
+      if (!cachedCategories) {
+        setLoading(true);
+      }
       setError('');
 
       try {
         const nextCategories = await fetchCategoryBrowser(controller.signal);
+        if (controller.signal.aborted) return;
         setCategories(nextCategories);
+        setScreenCache(CATEGORY_BROWSER_CACHE_KEY, nextCategories);
       } catch {
-        if (!controller.signal.aborted) setError(t('categories.fetch_error'));
+        if (!controller.signal.aborted && !cachedCategories) {
+          setError(t('categories.fetch_error'));
+        }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -42,7 +56,7 @@ export function CategoryBrowserNative() {
     void loadCategories();
 
     return () => controller.abort();
-  }, [t]);
+  }, []);
 
   const filteredCategories = useMemo(() => {
     const query = searchQuery.trim().toLowerCase();

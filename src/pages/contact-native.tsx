@@ -4,6 +4,7 @@ import type { ComponentProps, ReactNode } from 'react';
 import { KeyboardAvoidingView, Platform, Pressable, Text, TextInput, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
+import { SITE_CONTAINER_4XL_CLASS } from '@/constants/layout';
 import { useAppTranslation } from '@/i18n';
 
 type FeatherName = ComponentProps<typeof Feather>['name'];
@@ -18,8 +19,8 @@ function PageShell({ children }: { children: ReactNode }) {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 72 : 0}>
-        <View className="bg-gray-50 px-4 py-10 dark:bg-slate-950 sm:px-6 sm:py-12 lg:px-8">
-          <View className="mx-auto w-full max-w-4xl">{children}</View>
+        <View className="bg-gray-50 py-10 dark:bg-slate-950 sm:py-12">
+          <View className={SITE_CONTAINER_4XL_CLASS}>{children}</View>
         </View>
       </KeyboardAvoidingView>
     </AppLayout>

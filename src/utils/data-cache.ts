@@ -1,0 +1,38 @@
+import { getScreenCache, setScreenCache } from '@/utils/screen-cache';
+
+export const DATA_CACHE_TTL = {
+  categories: 5 * 60 * 1000,
+  products: 3 * 60 * 1000,
+  productDetail: 2 * 60 * 1000,
+  checkoutStatic: 10 * 60 * 1000,
+} as const;
+
+const inFlight = new Map<string, Promise<unknown>>();
+
+export async function withDataCache<T>(
+  key: string,
+  ttlMs: number,
+  fetcher: (signal?: AbortSignal) => Promise<T>,
+  signal?: AbortSignal,
+): Promise<T> {
+  const cached = getScreenCache<T>(key, ttlMs);
+  if (cached !== null) return cached;
+
+  const data = await withInFlightRequest(key, () => fetcher(signal));
+  setScreenCache(key, data);
+  return data;
+}
+
+export async function withInFlightRequest<T>(
+  key: string,
+  fetcher: () => Promise<T>,
+): Promise<T> {
+  const existing = inFlight.get(key);
+  if (existing) return existing as Promise<T>;
+
+  const promise = fetcher().finally(() => {
+    inFlight.delete(key);
+  });
+  inFlight.set(key, promise);
+  return promise;
+}

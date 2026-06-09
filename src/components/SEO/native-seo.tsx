@@ -1,7 +1,9 @@
 import Head from 'expo-router/head';
 import { useGlobalSearchParams, usePathname } from 'expo-router';
+import { Platform } from 'react-native';
 
 import { SITE_PUBLIC_URL } from '@/config/native';
+import { BRAND_LOGO_BACKGROUND } from '@/constants/brand';
 import { normalizeLanguage, useAppTranslation, type SupportedLanguage } from '@/i18n';
 
 type SeoSchema = Record<string, unknown>;
@@ -244,6 +246,8 @@ export function NativeSeo({
   const customSchemaItems = schema ? (Array.isArray(schema) ? schema : [schema]) : [];
   const schemaItems = [buildBaseSchema(), ...customSchemaItems];
 
+  if (Platform.OS !== 'web') return null;
+
   return (
     <Head>
       <title>{resolvedTitle}</title>
@@ -275,7 +279,7 @@ export function NativeSeo({
       <meta name="twitter:image" content={absoluteImage} />
       {imageAlt ? <meta name="twitter:image:alt" content={imageAlt} /> : null}
 
-      <meta name="theme-color" content="#16a34a" />
+      <meta name="theme-color" content={BRAND_LOGO_BACKGROUND} />
       <meta name="application-name" content="Pyonea" />
       <meta name="apple-mobile-web-app-title" content="Pyonea" />
       <meta name="format-detection" content="telephone=no" />

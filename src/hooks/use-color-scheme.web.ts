@@ -1,20 +1,22 @@
 import { useSyncExternalStore } from 'react';
-import { useColorScheme as useRNColorScheme } from 'react-native';
+
+import { useTheme as useAppTheme } from '@/context/theme';
 
 /**
- * To support static rendering, this value needs to be re-calculated on the client side for web
+ * Returns the app theme preference (not the OS color scheme).
+ * Keeps a hydration-safe fallback for web static rendering.
  */
 export function useColorScheme() {
   const hasHydrated = useSyncExternalStore(
     () => () => {},
     () => true,
-    () => false
+    () => false,
   );
 
-  const colorScheme = useRNColorScheme();
+  const { theme } = useAppTheme();
 
   if (hasHydrated) {
-    return colorScheme;
+    return theme;
   }
 
   return 'light';

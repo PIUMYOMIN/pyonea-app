@@ -4,6 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   FlatList,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -14,7 +15,12 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppLayout } from '@/components/layout/app-layout';
-import { ProductListCard } from '@/components/marketplace-list-screen';
+import { SITE_CONTAINER_CLASS } from '@/constants/layout';
+import {
+  CardSkeleton,
+  ProductListCard,
+  PRODUCT_CARD_ROW_CLASS,
+} from '@/components/marketplace-list-screen';
 import { useTheme } from '@/context/theme';
 import { useAppTranslation } from '@/i18n';
 import {
@@ -23,6 +29,9 @@ import {
   type BrowserCategory,
   type HomeProduct,
 } from '@/utils/native-api';
+import { getScreenCache, setScreenCache } from '@/utils/screen-cache';
+
+const PRODUCT_LIST_CACHE_TTL_MS = 2 * 60 * 1000;
 
 const priceRanges = [
   { value: '0-10000', minPrice: '', maxPrice: '10000', labelKey: 'filter.under_10000' },
@@ -58,25 +67,6 @@ const sortOptions = [
     labelKey: 'filter.most_reviewed',
   },
 ];
-
-function CardSkeleton({
-  className = 'h-[340px] w-[47%] sm:h-[372px] sm:w-[30.5%] lg:h-[396px] lg:w-[22.5%]',
-}: {
-  className?: string;
-}) {
-  return (
-    <View className={`${className} min-w-0 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800`}>
-      <View className="aspect-square bg-gray-200 dark:bg-gray-700" />
-      <View className="min-h-0 flex-1 gap-1.5 p-3">
-        <View className="h-4 w-3/4 rounded bg-gray-200 dark:bg-gray-700" />
-        <View className="h-3 w-1/2 rounded bg-gray-200 dark:bg-gray-700" />
-        <View className="flex-1" />
-        <View className="h-7 rounded-lg bg-gray-200 dark:bg-gray-700" />
-        <View className="h-8 rounded-lg bg-gray-200 dark:bg-gray-700" />
-      </View>
-    </View>
-  );
-}
 
 function ProductSearchBar({
   initialValue,
@@ -456,9 +446,20 @@ export function ProductListNative() {
 
   useEffect(() => {
     const controller = new AbortController();
+    const cacheKey = `products:${queryKey}`;
+    const cachedProducts = getScreenCache<HomeProduct[]>(cacheKey, PRODUCT_LIST_CACHE_TTL_MS);
+
+    if (cachedProducts) {
+      setProducts(cachedProducts);
+      setPage(1);
+      setHasMore(cachedProducts.length >= 24);
+      setLoading(false);
+    }
 
     const loadProducts = async () => {
-      setLoading(true);
+      if (!cachedProducts) {
+        setLoading(true);
+      }
       setError('');
       setPage(1);
       setHasMore(true);
@@ -476,12 +477,16 @@ export function ProductListNative() {
           },
           controller.signal
         );
+        if (controller.signal.aborted) return;
         setProducts(nextProducts);
         setHasMore(nextProducts.length >= 24);
+        setScreenCache(cacheKey, nextProducts);
       } catch {
         if (!controller.signal.aborted) {
-          setError(t('products.fetch_error'));
-          setProducts([]);
+          if (!cachedProducts) {
+            setError(t('products.fetch_error'));
+            setProducts([]);
+          }
         }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
@@ -491,7 +496,7 @@ export function ProductListNative() {
     void loadProducts();
 
     return () => controller.abort();
-  }, [queryKey, maxPrice, minPrice, searchQuery, selectedCategory, sortBy, sortOrder, t]);
+  }, [maxPrice, minPrice, queryKey, searchQuery, selectedCategory, sortBy, sortOrder, t]);
 
   const loadMore = async () => {
     if (loading || loadingMore || !hasMore) return;
@@ -547,8 +552,8 @@ export function ProductListNative() {
 
   return (
     <AppLayout onEndReached={loadMore}>
-      <View className="bg-gray-50 px-4 py-6 dark:bg-slate-950 sm:px-6 sm:py-8 lg:px-8">
-        <View className="mx-auto w-full max-w-7xl">
+      <View className="bg-gray-50 py-6 dark:bg-slate-950 sm:py-8">
+        <View className={SITE_CONTAINER_CLASS}>
           <View className="mb-6">
             <ProductSearchBar
               key={searchQuery}
@@ -753,19 +758,19 @@ export function ProductListNative() {
                   renderItem={({ item: row, index: rowIndex }) => {
                     const emptySlots = Math.max(0, productColumns - row.length);
                     return (
-                      <View className="mb-3 flex-row gap-3 sm:mb-4 sm:gap-4">
+                      <View className="mb-3 flex-row items-stretch gap-3 sm:mb-4 sm:gap-4">
                         {row.map((product) => (
                           <ProductListCard
                             key={String(product.id)}
                             product={product}
-                            className="h-[340px] min-w-0 flex-1 sm:h-[372px] lg:h-[396px]"
+                            className={PRODUCT_CARD_ROW_CLASS}
                             imagePriority={rowIndex < 2}
                           />
                         ))}
                         {Array.from({ length: emptySlots }).map((_, index) => (
                           <View
                             key={`product-row-filler-${index}`}
-                            className="min-w-0 flex-1 opacity-0"
+                            className={`${PRODUCT_CARD_ROW_CLASS} opacity-0`}
                             pointerEvents="none"
                           />
                         ))}
@@ -774,13 +779,17 @@ export function ProductListNative() {
                   }}
                   scrollEnabled={false}
                   showsVerticalScrollIndicator={false}
+                  initialNumToRender={4}
+                  maxToRenderPerBatch={2}
+                  windowSize={5}
+                  removeClippedSubviews={Platform.OS !== 'web'}
                   ListFooterComponent={
                     loadingMore ? (
-                      <View className="flex-row flex-wrap gap-3 pt-1 sm:gap-4">
+                      <View className="mb-3 flex-row items-stretch gap-3 sm:mb-4 sm:gap-4">
                         {Array.from({ length: productColumns }).map((_, index) => (
                           <CardSkeleton
                             key={`more-product-skeleton-${index}`}
-                            className="h-[340px] min-w-0 flex-1 sm:h-[372px] lg:h-[396px]"
+                            className={PRODUCT_CARD_ROW_CLASS}
                           />
                         ))}
                       </View>

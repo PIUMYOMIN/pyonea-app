@@ -7,7 +7,14 @@ import type { ComponentProps, ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
-import { ProductListCard } from '@/components/marketplace-list-screen';
+import {
+  HOME_CATEGORY_GRID_CLASS,
+  HOME_PRODUCT_GRID_CLASS,
+  HOME_SELLER_GRID_CLASS,
+  HOME_VALUE_GRID_CLASS,
+  SITE_CONTAINER_CLASS,
+} from '@/constants/layout';
+import { ProductListCard, CardSkeleton as ProductCardSkeleton } from '@/components/marketplace-list-screen';
 import {
   CategoryCardFromHome,
   CategoryCardSkeleton,
@@ -23,6 +30,16 @@ import {
   type HomeProduct,
   type HomeSeller,
 } from '@/utils/native-api';
+import { getScreenCache, setScreenCache } from '@/utils/screen-cache';
+
+const HOME_CACHE_KEY = 'home-feed';
+const HOME_CACHE_TTL_MS = 2 * 60 * 1000;
+
+type HomeFeedCache = {
+  categories: HomeCategory[];
+  products: HomeProduct[];
+  sellers: HomeSeller[];
+};
 
 type FeatherIconName = ComponentProps<typeof Feather>['name'];
 
@@ -87,14 +104,14 @@ function SectionShell({
 }) {
   const toneClass =
     tone === 'muted'
-      ? 'bg-gray-50 dark:bg-slate-950'
+      ? 'bg-gray-50 dark:bg-gray-800/50'
       : tone === 'green'
-        ? 'bg-green-50 dark:bg-slate-900'
-        : 'bg-white dark:bg-slate-900';
+        ? 'bg-gradient-to-r from-green-50 to-emerald-100 dark:from-gray-800 dark:to-gray-800'
+        : 'bg-white dark:bg-gray-900';
 
   return (
-    <View className={`${toneClass} px-4 py-10 sm:px-6 sm:py-12 lg:px-8`}>
-      <View className="mx-auto w-full max-w-7xl">{children}</View>
+    <View className={`${toneClass} py-10 sm:py-12`}>
+      <View className={SITE_CONTAINER_CLASS}>{children}</View>
     </View>
   );
 }
@@ -106,7 +123,7 @@ function SellerCard({ seller }: { seller: HomeSeller }) {
   const storeHref = `/sellers/${seller.slug || seller.id}` as Href;
 
   return (
-    <View className="w-[48%] overflow-hidden rounded-lg border border-gray-100 bg-white shadow-md shadow-gray-200/70 dark:border-slate-700 dark:bg-slate-800 dark:shadow-slate-900/50 sm:w-[48%] lg:w-[23%]">
+    <View className="w-full overflow-hidden rounded-lg border border-gray-100 bg-white shadow-md shadow-gray-200/70 dark:border-slate-700 dark:bg-slate-800 dark:shadow-slate-900/50">
       <View className="p-3 sm:p-4">
         <View className="flex-row items-start gap-2 sm:gap-3">
           <View className="relative flex-shrink-0">
@@ -222,7 +239,7 @@ function ValueItem({ value }: { value: (typeof values)[number] }) {
   const { t } = useAppTranslation();
 
   return (
-    <View className="flex-row gap-4 md:w-[48%]">
+    <View className="flex-row gap-4">
       <View className="h-12 w-12 flex-shrink-0 items-center justify-center rounded-md bg-green-500">
         <Feather name={value.icon} color="#ffffff" size={23} />
       </View>
@@ -244,12 +261,9 @@ function EmptyState({ message }: { message: string }) {
   );
 }
 
-function CardSkeleton({ compact = false }: { compact?: boolean }) {
+function SellerCardSkeleton() {
   return (
-    <View
-      className={`overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900 ${
-        compact ? 'w-[48%] sm:w-[48%] lg:w-[23%]' : 'w-[48%] sm:w-[31%] lg:w-[19%]'
-      }`}>
+    <View className="overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
       <View className="aspect-square bg-gray-200 dark:bg-slate-800" />
       <View className="gap-1.5 p-3">
         <View className="h-4 w-3/4 rounded bg-gray-200 dark:bg-slate-800" />
@@ -263,13 +277,14 @@ function CardSkeleton({ compact = false }: { compact?: boolean }) {
 export default function HomeNative() {
   const { t, language } = useAppTranslation();
   const { user, isAuthenticated } = useNativeAuth();
-  const [categories, setCategories] = useState<HomeCategory[]>([]);
-  const [products, setProducts] = useState<HomeProduct[]>([]);
-  const [sellers, setSellers] = useState<HomeSeller[]>([]);
+  const cachedFeed = getScreenCache<HomeFeedCache>(HOME_CACHE_KEY, HOME_CACHE_TTL_MS);
+  const [categories, setCategories] = useState<HomeCategory[]>(cachedFeed?.categories ?? []);
+  const [products, setProducts] = useState<HomeProduct[]>(cachedFeed?.products ?? []);
+  const [sellers, setSellers] = useState<HomeSeller[]>(cachedFeed?.sellers ?? []);
   const [loading, setLoading] = useState<LoadingState>({
-    categories: true,
-    products: true,
-    sellers: true,
+    categories: !cachedFeed,
+    products: !cachedFeed,
+    sellers: !cachedFeed,
   });
   const [errors, setErrors] = useState<HomeErrorState>({});
   const isSeller = hasUserRole(user, 'seller');
@@ -298,76 +313,78 @@ export default function HomeNative() {
 
   useEffect(() => {
     const controller = new AbortController();
+    const hasCachedFeed = Boolean(cachedFeed);
 
-    fetchHomeCategories(controller.signal)
-      .then(setCategories)
-      .catch((error: unknown) => {
-        if (controller.signal.aborted) return;
-        console.error('Failed to fetch categories:', error);
-        setCategories([]);
-        setErrors((current) => ({ ...current, categories: t('home.no_categories_found') }));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading((current) => ({ ...current, categories: false }));
-        }
-      });
+    const loadHomeFeed = async () => {
+      try {
+        const [nextCategories, nextProducts, nextSellers] = await Promise.all([
+          fetchHomeCategories(controller.signal),
+          fetchFeaturedProducts(controller.signal),
+          fetchTopSellers(controller.signal),
+        ]);
 
-    fetchFeaturedProducts(controller.signal)
-      .then(setProducts)
-      .catch((error: unknown) => {
         if (controller.signal.aborted) return;
-        console.error('Failed to fetch featured products:', error);
-        setProducts([]);
-        setErrors((current) => ({ ...current, products: t('home.no_featured_products') }));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading((current) => ({ ...current, products: false }));
-        }
-      });
 
-    fetchTopSellers(controller.signal)
-      .then(setSellers)
-      .catch((error: unknown) => {
+        setCategories(nextCategories);
+        setProducts(nextProducts);
+        setSellers(nextSellers);
+        setErrors({});
+        setScreenCache<HomeFeedCache>(HOME_CACHE_KEY, {
+          categories: nextCategories,
+          products: nextProducts,
+          sellers: nextSellers,
+        });
+        setScreenCache('home-feed:products', nextProducts);
+        setScreenCache('home-feed:categories', nextCategories);
+      } catch (error) {
         if (controller.signal.aborted) return;
-        console.error('Failed to fetch top sellers:', error);
-        setSellers([]);
-        setErrors((current) => ({ ...current, sellers: t('home.no_top_sellers') }));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          setLoading((current) => ({ ...current, sellers: false }));
+        console.error('Failed to fetch home feed:', error);
+        if (!hasCachedFeed) {
+          setCategories([]);
+          setProducts([]);
+          setSellers([]);
+          setErrors({
+            categories: t('home.no_categories_found'),
+            products: t('home.no_featured_products'),
+            sellers: t('home.no_top_sellers'),
+          });
         }
-      });
+      } finally {
+        if (!controller.signal.aborted) {
+          setLoading({ categories: false, products: false, sellers: false });
+        }
+      }
+    };
+
+    void loadHomeFeed();
 
     return () => controller.abort();
-  }, [t]);
+  }, []);
 
   return (
     <AppLayout>
-      <View className="bg-gray-50 dark:bg-slate-950">
-        <View className="relative bg-green-700">
+      <View className="bg-gray-50 dark:bg-gray-900">
+        <View className="relative bg-gradient-to-r from-green-600 to-emerald-700">
           <View className="absolute inset-0 bg-gray-950 opacity-40" />
-          <View className="relative mx-auto w-full max-w-7xl px-4 py-16 sm:px-6 sm:py-24 md:py-32 lg:px-8">
+          <View className={`relative ${SITE_CONTAINER_CLASS} py-16 sm:py-24 md:py-32`}>
             <View className="items-center">
-              <Text className="max-w-5xl text-center font-sans text-3xl font-black leading-tight text-white sm:text-4xl md:text-5xl lg:text-6xl">
+              <Text className="max-w-5xl text-center font-sans text-2xl font-bold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl lg:text-6xl">
                 {t('home.hero_title')}
               </Text>
               <Text className="mt-3 max-w-3xl px-4 text-center font-sans text-sm leading-6 text-green-100 sm:mt-6 sm:text-lg md:text-xl">
                 {t('home.hero_subtitle')}
               </Text>
-              <View className="mt-8 w-full max-w-lg gap-4 sm:mt-10 sm:flex-row sm:justify-center">
+              <View className="mt-8 w-full flex-col gap-4 sm:mt-10 sm:flex-row sm:justify-center">
                 <Link href={ctaHref} asChild>
-                  <Pressable className="items-center justify-center rounded-md bg-white px-6 py-3 shadow-sm sm:px-8 md:py-4">
-                    <Text className="font-sans text-sm font-bold text-green-700 sm:text-base md:text-lg">
+                  <Pressable className="w-full items-center justify-center rounded-md bg-white px-6 py-3 shadow-sm sm:w-auto sm:px-8 md:py-4">
+                    <Text className="font-sans text-sm font-medium text-green-700 sm:text-base md:text-lg">
                       {ctaLabel}
                     </Text>
                   </Pressable>
                 </Link>
                 <Link href="/products" asChild>
-                  <Pressable className="items-center justify-center rounded-md bg-green-950/60 px-6 py-3 shadow-sm sm:px-8 md:py-4">
-                    <Text className="font-sans text-sm font-bold text-white sm:text-base md:text-lg">
+                  <Pressable className="w-full items-center justify-center rounded-md bg-green-900/60 px-6 py-3 shadow-sm sm:w-auto sm:px-8 md:py-4">
+                    <Text className="font-sans text-sm font-medium text-white sm:text-base md:text-lg">
                       {t('home.browse_products')}
                     </Text>
                   </Pressable>
@@ -395,10 +412,10 @@ export default function HomeNative() {
               <ArrowLink href="/categories" label={t('home.browse_all_categories')} />
             </View>
           </View>
-          <View className="mt-8 flex-row flex-wrap gap-3 sm:mt-10">
+          <View className={`mt-8 ${HOME_CATEGORY_GRID_CLASS} sm:mt-10`}>
             {loading.categories ? (
               Array.from({ length: 6 }).map((_, index) => (
-                <CategoryCardSkeleton key={`category-skeleton-${index}`} />
+                <CategoryCardSkeleton key={`category-skeleton-${index}`} className="w-full" />
               ))
             ) : categories.length > 0 ? (
               categories.map((category, index) => (
@@ -407,6 +424,7 @@ export default function HomeNative() {
                   category={category}
                   language={language}
                   priority={index < 2}
+                  className="w-full"
                 />
               ))
             ) : (
@@ -422,10 +440,10 @@ export default function HomeNative() {
             </Text>
             <ArrowLink href="/products" label={t('home.view_all')} />
           </View>
-          <View className="mt-8 flex-row flex-wrap gap-3 sm:mt-10 sm:gap-4">
+          <View className={`mt-8 ${HOME_PRODUCT_GRID_CLASS} sm:mt-10`}>
             {loading.products ? (
               Array.from({ length: 8 }).map((_, index) => (
-                <CardSkeleton key={`product-skeleton-${index}`} />
+                <ProductCardSkeleton key={`product-skeleton-${index}`} className="w-full" />
               ))
             ) : products.length > 0 ? (
               products.map((product, index) => (
@@ -433,7 +451,7 @@ export default function HomeNative() {
                   key={String(product.id)}
                   product={product}
                   imagePriority={index < 4}
-                  className="h-[344px] w-[47%] min-w-0 sm:h-[390px] sm:w-[30.5%] lg:h-[436px] lg:w-[18.5%]"
+                  className="w-full"
                 />
               ))
             ) : (
@@ -449,10 +467,10 @@ export default function HomeNative() {
             </Text>
             <ArrowLink href="/sellers" label={t('home.view_all')} />
           </View>
-          <View className="mt-6 flex-row flex-wrap gap-3 sm:gap-5">
+          <View className={`mt-6 ${HOME_SELLER_GRID_CLASS}`}>
             {loading.sellers ? (
               Array.from({ length: 4 }).map((_, index) => (
-                <CardSkeleton key={`seller-skeleton-${index}`} compact />
+                <SellerCardSkeleton key={`seller-skeleton-${index}`} />
               ))
             ) : sellers.length > 0 ? (
               sellers.map((seller) => <SellerCard key={String(seller.id)} seller={seller} />)
@@ -475,14 +493,14 @@ export default function HomeNative() {
             </Text>
           </View>
 
-          <View className="mt-8 gap-8 sm:mt-10 md:flex-row md:flex-wrap md:gap-x-8 md:gap-y-10">
+          <View className={`mt-8 ${HOME_VALUE_GRID_CLASS} sm:mt-10`}>
             {values.map((value) => (
               <ValueItem key={value.titleKey} value={value} />
             ))}
           </View>
         </SectionShell>
 
-        <SectionShell>
+        <SectionShell tone="white">
           <View className="overflow-hidden rounded-lg bg-green-700 shadow-xl">
             <View className="gap-6 px-4 py-10 sm:px-6 sm:py-12 md:px-12 md:py-16 lg:flex-row lg:items-center">
               <View className="lg:w-0 lg:flex-1">

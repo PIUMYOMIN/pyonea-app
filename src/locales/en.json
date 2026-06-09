@@ -228,7 +228,7 @@
       }
     },
     "mmqr_how_title": "How MMQR works:",
-    "mmqr_how_text": "After confirming your order, you'll see a QR code to scan with any mobile banking app.",
+    "mmqr_how_text": "After placing your order, scan the QR code to pay. Your order confirmation email is sent once payment is confirmed.",
     "cod_title": "Cash on Delivery:",
     "cod_text": "Pay the delivery person when you receive your order.",
     "order_notes_optional": "Order Notes (Optional)",
@@ -284,8 +284,8 @@
     "fill_township": "Please select your township for this city.",
     "empty_cart_title": "Your cart is empty",
     "empty_cart_message": "Add some products before checking out",
-    "otp_title": "Confirm Your Order",
-    "otp_subtitle": "Enter the code sent to your email",
+    "otp_title": "Verify Your Email",
+    "otp_subtitle": "Enter the checkout verification code sent to your email. This is not your order confirmation.",
     "otp_verified": "Verified! Placing your order...",
     "otp_sent_prefix": "We sent a",
     "otp_6_digit_code": "6-digit code",
@@ -297,13 +297,14 @@
     "otp_resend": "Didn't receive it? Resend code",
     "otp_resend_success": "A new code has been sent to your email.",
     "otp_resend_failed": "Failed to resend code. Please try again.",
-    "otp_send_failed": "Failed to send confirmation code. Please try again.",
+    "otp_send_failed": "Failed to send verification code. Please try again.",
     "otp_enter_code": "Please enter the 6-digit code.",
     "otp_incorrect": "Incorrect code. Please try again.",
     "complete_payment": "Complete Your Payment",
     "payment_recorded_load_failed": "Payment recorded but failed to load order details. Check your orders page.",
     "payment_failed": "Payment failed: {{error}}. Please try again.",
     "payment_confirmed_load_failed": "Payment confirmed but failed to load receipt. Check your orders page.",
+    "payment_not_confirmed_yet": "Payment is not confirmed yet. Please complete payment first.",
     "payment_cancelled_saved": "Payment cancelled. Your order has been saved - you can retry from your orders page.",
     "payment_issues": "Having issues?",
     "try_different_payment": "Try a different payment method",
@@ -725,6 +726,8 @@
     "seller_center": "Seller Center",
     "share_product": "Share seller",
     "share_text": "Check out \"{{name}}\" on Pyonea.",
+    "share_description": "Verified seller on Pyonea • {{url}}",
+    "share_on": "Share",
     "view_profile": "View profile",
     "open_sidebar": "Open sidebar",
     "back_to_sellers": "Back to Sellers",
@@ -1457,13 +1460,14 @@
     "step_error": "Quantity must be in steps of {{step}}. Next valid quantity: {{next}}.",
     "stock_limit_error": "Only {{stock}} {{unit}} available in stock.",
     "added_to_wishlist": "Added to wishlist",
-    "removed_from_wishlist": "Removed from wishlist",
+    "removed_from_wishlist": "Removed Wishlist",
     "wishlist_update_failed": "Failed to update wishlist",
     "add_to_wishlist": "Add to wishlist",
-    "remove_from_wishlist": "Remove from wishlist",
+    "remove_from_wishlist": "Remove Wishlist",
     "share_product": "Share product",
     "share_text": "Check out \"{{title}}\" on Pyonea.",
     "share_description": "Wholesale product on Pyonea • {{url}}",
+    "share_on": "Share",
     "share_facebook": "Share to your feed",
     "share_whatsapp": "Send to a chat",
     "share_viber": "Mobile app link",
@@ -2863,6 +2867,8 @@
     "payment_method": "Payment Method",
     "thank_you": "Thank you for your order!",
     "success_message": "Your order has been confirmed and payment has been processed.",
+    "success_message_cod": "Your order has been placed. A confirmation email has been sent to your inbox.",
+    "success_message_paid": "Payment received. Your order confirmation email has been sent.",
     "loading_details": "Loading payment details...",
     "load_error_title": "Error Loading Receipt",
     "load_failed": "Failed to load order details.",
@@ -4012,6 +4018,7 @@
       "buttons": {
         "preview": "Preview Product",
         "edit": "Edit Product",
+        "update": "Update",
         "delete": "Delete Product",
         "approve": "Approve",
         "reject": "Reject"
@@ -4045,6 +4052,7 @@
         "rejectSuccessMsg": "\"{{name}}\" has been rejected. The seller will be notified.",
         "rejectFailMsg": "Could not reject \"{{name}}\": {{reason}}",
         "statusUpdated": "Status updated",
+        "updated": "Product updated successfully.",
         "statusUpdateFailed": "Status update failed",
         "statusActivatedMsg": "\"{{name}}\" is now active and visible to buyers.",
         "statusDeactivatedMsg": "\"{{name}}\" has been deactivated and hidden from buyers.",
@@ -4057,6 +4065,481 @@
         "noProductsSelectedMsg": "Please select at least one product before applying an action.",
         "noActionSelected": "No action selected",
         "noActionSelectedMsg": "Please choose an action from the dropdown before clicking Apply."
+      }
+    },
+    "orderManagement": {
+      "title": "Order Management",
+      "count": "{{count}} orders",
+      "searchPlaceholder": "Search order # or buyer…",
+      "refresh": "Refresh",
+      "retry": "Retry",
+      "view": "View",
+      "cancel": "Cancel",
+      "changeStatus": "Change order status",
+      "statusLabel": "Status",
+      "updating": "Updating...",
+      "date": "Date",
+      "buyer": "Buyer",
+      "payment": "Payment",
+      "paymentMethod": "Payment method",
+      "total": "Total",
+      "subtotal": "Subtotal",
+      "shipping": "Shipping",
+      "tax": "Tax",
+      "coupon": "Coupon",
+      "collected": "Collected",
+      "sellerPayout": "Seller payout",
+      "sellerPayoutShort": "Seller",
+      "commission": "Commission",
+      "escrow": "Escrow",
+      "shipTo": "Ship to",
+      "items": "Items",
+      "orderNumber": "Order #{{number}}",
+      "awaitingSellerMethod": "Awaiting seller method",
+      "empty": "No orders yet.",
+      "emptyFiltered": "No orders match your filters.",
+      "filters": {
+        "all": "All status"
+      },
+      "status": {
+        "pending": "Pending",
+        "confirmed": "Confirmed",
+        "processing": "Processing",
+        "shipped": "Shipped",
+        "delivered": "Delivered",
+        "cancelled": "Cancelled"
+      },
+      "paymentStatus": {
+        "paid": "Paid",
+        "pending": "Pending",
+        "failed": "Failed",
+        "refunded": "Refunded"
+      },
+      "delivery": {
+        "title": "Delivery",
+        "platform": "Platform",
+        "self": "Self"
+      },
+      "messages": {
+        "updated": "Order status updated."
+      },
+      "errors": {
+        "load": "Failed to load orders.",
+        "update": "Failed to update status.",
+        "detail": "Could not load full order details; showing list row only."
+      },
+      "columns": {
+        "order": "Order #",
+        "fund": "Fund",
+        "actions": "Actions"
+      },
+      "showing": "Showing {{shown}} of {{total}} orders"
+    },
+    "userManagement": {
+      "title": "User Management",
+      "subtitle": "Manage registered users",
+      "subtitleCount": "{{count}} total users",
+      "loading": "Loading users...",
+      "searchPlaceholder": "Name, email or phone…",
+      "selected": "{{count}} selected",
+      "apply": "Apply",
+      "clear": "Clear",
+      "activate": "Activate",
+      "deactivate": "Deactivate",
+      "changeRole": "Change role",
+      "cancel": "Cancel",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {{current}} of {{last}}",
+      "showing": "Showing {{from}}–{{to}} of {{total}} users",
+      "empty": "No users yet.",
+      "emptyFiltered": "No users match your filters.",
+      "filters": {
+        "allRoles": "All Roles",
+        "allStatus": "All Status"
+      },
+      "roles": {
+        "admin": "Admin",
+        "seller": "Seller",
+        "buyer": "Buyer"
+      },
+      "status": {
+        "active": "Active",
+        "inactive": "Inactive"
+      },
+      "bulk": {
+        "activate": "Activate",
+        "deactivate": "Deactivate",
+        "delete": "Delete"
+      },
+      "columns": {
+        "name": "Name",
+        "contact": "Email / Phone",
+        "role": "Role",
+        "status": "Status",
+        "joined": "Joined",
+        "actions": "Actions"
+      },
+      "modals": {
+        "deleteTitle": "Delete User",
+        "deleteConfirm": "Are you sure you want to delete {{name}}? This cannot be undone.",
+        "delete": "Delete",
+        "bulkTitle": "Confirm Bulk Action",
+        "bulkConfirm": "Are you sure you want to {{action}} {{count}} user(s)?",
+        "confirm": "Confirm"
+      },
+      "messages": {
+        "activated": "User activated.",
+        "deactivated": "User deactivated.",
+        "roleUpdated": "Role updated.",
+        "deleted": "User deleted.",
+        "bulkApplied": "{{action}} applied to {{count}} user(s)."
+      },
+      "errors": {
+        "load": "Failed to load users.",
+        "update": "Failed to update user.",
+        "role": "Failed to update role.",
+        "delete": "Failed to delete user.",
+        "bulk": "Bulk action failed.",
+        "ownRole": "You cannot change your own role.",
+        "ownSkipped": "Your own account was skipped for safety.",
+        "noAction": "Please select an action."
+      }
+    },
+    "sellerManagement": {
+      "title": "Seller directory",
+      "subtitle": "Manage all sellers in your marketplace",
+      "subtitleCount": "{{count}} total sellers",
+      "loading": "Loading sellers...",
+      "searchPlaceholder": "Store name, email…",
+      "selected": "{{count}} selected",
+      "apply": "Apply",
+      "clear": "Clear",
+      "cancel": "Cancel",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {{current}} of {{last}}",
+      "showing": "Showing {{from}}–{{to}} of {{total}} sellers",
+      "empty": "No sellers yet",
+      "emptyDesc": "Sellers will appear here once they register.",
+      "emptyFiltered": "No sellers found matching your criteria",
+      "emptyFilteredDesc": "Try adjusting your search or filters",
+      "changeStatus": "Change status",
+      "unknownStore": "Unknown Store",
+      "filters": {
+        "allStatus": "All Statuses"
+      },
+      "status": {
+        "setup_pending": "Setup Pending",
+        "pending": "Pending",
+        "approved": "Approved",
+        "active": "Active",
+        "rejected": "Rejected",
+        "suspended": "Suspended",
+        "closed": "Closed"
+      },
+      "bulk": {
+        "approve": "Approve selected",
+        "reactivate": "Reactivate selected",
+        "suspend": "Suspend selected",
+        "pending": "Move to pending",
+        "setupPending": "Move to setup pending",
+        "close": "Close selected"
+      },
+      "columns": {
+        "storeId": "Store ID",
+        "storeName": "Store Name",
+        "email": "Email",
+        "phone": "Phone",
+        "businessType": "Business Type",
+        "status": "Status",
+        "rating": "Rating",
+        "products": "Products",
+        "created": "Created",
+        "actions": "Actions"
+      },
+      "modals": {
+        "updateTitle": "Update Seller Status",
+        "current": "Current",
+        "reason": "Reason",
+        "reasonRequired": "Please provide a reason for this status change…",
+        "reasonOptional": "Optionally describe why you are changing the status…",
+        "updating": "Updating…",
+        "confirm": "Confirm Update",
+        "bulkTitle": "Confirm Bulk Action",
+        "bulkConfirm": "Apply \"{{action}}\" to {{count}} selected seller(s)?"
+      },
+      "messages": {
+        "statusUpdated": "Seller status updated to {{status}}.",
+        "bulkApplied": "{{count}} seller(s) updated."
+      },
+      "errors": {
+        "load": "Failed to load sellers.",
+        "update": "Failed to update seller status.",
+        "bulk": "Bulk action failed."
+      }
+    },
+    "platformLogistics": {
+      "title": "Platform Logistics",
+      "subtitle": "Manage platform delivery assignments and tracking",
+      "loading": "Loading deliveries...",
+      "empty": "No platform deliveries found.",
+      "close": "Close",
+      "cancel": "Cancel",
+      "previous": "Previous",
+      "next": "Next",
+      "page": "Page {{current}} of {{last}}",
+      "notAssigned": "Not assigned",
+      "assignTitle": "Assign Courier",
+      "assignManual": "Enter manually",
+      "assignFromUsers": "Pick from users",
+      "selectUser": "Select User",
+      "driverName": "Driver Name *",
+      "driverPhone": "Driver Phone",
+      "vehicleType": "Vehicle Type",
+      "vehicleNumber": "Vehicle Number",
+      "assigning": "Assigning…",
+      "assign": "Assign",
+      "assignCourier": "Assign Courier",
+      "detailTitle": "Delivery — Order #{{number}}",
+      "sections": {
+        "deliveryInfo": "Delivery Info",
+        "orderInfo": "Order Info",
+        "trackingHistory": "Tracking History"
+      },
+      "fields": {
+        "status": "Status",
+        "tracking": "Tracking #",
+        "fee": "Delivery Fee",
+        "driver": "Driver",
+        "seller": "Seller",
+        "buyer": "Buyer",
+        "address": "Address"
+      },
+      "stats": {
+        "total": "Total",
+        "unassigned": "Unassigned",
+        "inProgress": "In Progress",
+        "revenue": "Revenue"
+      },
+      "columns": {
+        "order": "Order #",
+        "seller": "Seller",
+        "status": "Status",
+        "courier": "Courier / Driver",
+        "fee": "Fee",
+        "actions": "Actions"
+      },
+      "actions": {
+        "pickedUp": "Picked Up",
+        "inTransit": "In Transit",
+        "outForDelivery": "Out for Delivery",
+        "delivered": "Delivered ✓"
+      },
+      "messages": {
+        "assigned": "Courier assigned.",
+        "statusUpdated": "Status updated to \"{{status}}\"."
+      },
+      "errors": {
+        "load": "Failed to load deliveries.",
+        "assign": "Failed to assign courier.",
+        "status": "Failed to update status."
+      }
+    },
+    "deliveryFeeManagement": {
+      "title": "Delivery Fee Collections",
+      "subtitle": "Track platform-managed delivery fees — quote, collect, and confirm manually.",
+      "loading": "Loading delivery fees...",
+      "empty": "No platform delivery fees found.",
+      "cancel": "Cancel",
+      "searchPlaceholder": "Search order number or seller name…",
+      "filters": {
+        "all": "All",
+        "outstanding": "Outstanding",
+        "collected": "Collected"
+      },
+      "summary": {
+        "outstandingCount": "Outstanding Count",
+        "outstandingCountSub": "Fees not yet collected",
+        "outstandingAmount": "Outstanding Amount",
+        "outstandingAmountSub": "Total owed to platform",
+        "collectedCount": "Collected Count",
+        "collectedCountSub": "Successfully collected",
+        "collectedAmount": "Collected Amount",
+        "collectedAmountSub": "Platform delivery revenue"
+      },
+      "policy": {
+        "title": "How Delivery Fee Collection Works",
+        "body": "When a seller requests platform delivery, the admin manually quotes a fee based on distance, weight, and area. The fee is negotiated and agreed before dispatch — no fixed rate is enforced by the platform. Once the fee is received (via bank transfer or mobile payment), mark it as collected here with the reference number."
+      },
+      "columns": {
+        "order": "Order",
+        "seller": "Seller",
+        "feeQuoted": "Fee Quoted",
+        "deliveryStatus": "Delivery Status",
+        "feeStatus": "Fee Status",
+        "collectedOn": "Collected On",
+        "ref": "Ref",
+        "actions": "Actions"
+      },
+      "feeStatus": {
+        "na": "N/A"
+      },
+      "actions": {
+        "adjustFee": "Adjust fee",
+        "markCollected": "Mark Collected",
+        "done": "Done"
+      },
+      "collectModal": {
+        "title": "Mark Delivery Fee Collected",
+        "order": "Order: {{number}}",
+        "feeAmount": "Fee Amount",
+        "fromSeller": "From seller: {{name}}",
+        "collectionRef": "Collection Reference *",
+        "collectionRefPlaceholder": "e.g. bank transfer ref, receipt ID",
+        "adminNotes": "Admin Notes (optional)",
+        "adminNotesPlaceholder": "Any notes for internal records",
+        "confirm": "Mark as Collected"
+      },
+      "adjustModal": {
+        "title": "Adjust platform delivery fee",
+        "order": "Order: {{number}}",
+        "sellerSubmittedWarning": "The seller already submitted a payment proof for this fee. If you change the amount, confirm the actual transfer matches the new total.",
+        "feeLabel": "Fee (MMK) *",
+        "previousQuote": "Previous quote: {{amount}}",
+        "noteLabel": "Note (optional)",
+        "notePlaceholder": "e.g. actual weight 12 kg, remote area surcharge",
+        "save": "Save fee"
+      },
+      "messages": {
+        "collected": "Delivery fee marked as collected.",
+        "adjusted": "Platform delivery fee updated."
+      },
+      "errors": {
+        "load": "Failed to load delivery fees.",
+        "action": "Action failed.",
+        "adjust": "Could not update fee."
+      }
+    },
+    "codInvoiceManagement": {
+      "title": "COD Commission Invoices",
+      "subtitle": "Track and confirm commission payments from sellers who received cash on delivery.",
+      "loading": "Loading invoices...",
+      "empty": "No invoices found.",
+      "cancel": "Cancel",
+      "searchPlaceholder": "Search invoice, seller, order…",
+      "pendingConfirmation": "Pending Confirmation",
+      "filters": {
+        "all": "All",
+        "outstanding": "Outstanding",
+        "overdue": "Overdue",
+        "paid": "Paid",
+        "waived": "Waived"
+      },
+      "summary": {
+        "outstanding": "Outstanding",
+        "overdue": "Overdue",
+        "overdueSub": "Past due date",
+        "totalOutstanding": "Total Outstanding",
+        "totalOutstandingSub": "To be collected",
+        "collectedThisMonth": "Collected This Month",
+        "collectedThisMonthSub": "COD commissions"
+      },
+      "columns": {
+        "invoice": "Invoice",
+        "seller": "Seller",
+        "order": "Order",
+        "commission": "Commission",
+        "dueDate": "Due Date",
+        "status": "Status",
+        "paymentRef": "Payment Ref",
+        "actions": "Actions"
+      },
+      "status": {
+        "outstanding": "Outstanding",
+        "overdue": "Overdue",
+        "paid": "Paid",
+        "waived": "Waived"
+      },
+      "actions": {
+        "confirm": "Confirm",
+        "waive": "Waive",
+        "confirmedOn": "Confirmed {{date}}"
+      },
+      "modal": {
+        "confirmTitle": "Confirm COD Payment Receipt",
+        "waiveTitle": "Waive Invoice",
+        "seller": "Seller",
+        "order": "Order",
+        "commissionDue": "Commission Due",
+        "paymentRef": "Payment Ref",
+        "method": "Method",
+        "sellerNote": "Seller Note:",
+        "waiveWarning": "Waiving removes the obligation — the seller will not need to pay this commission. Use only for disputes or refunds.",
+        "adminNotes": "Admin Notes",
+        "adminNotesOptional": "Optional notes for records...",
+        "adminNotesRequired": "Reason for waiving (required)",
+        "confirmReceipt": "Confirm Receipt",
+        "waiveInvoice": "Waive Invoice"
+      },
+      "messages": {
+        "confirmed": "Payment confirmed. Seller wallet updated.",
+        "waived": "Invoice waived."
+      },
+      "errors": {
+        "load": "Failed to load invoices.",
+        "action": "Action failed."
+      }
+    },
+    "commissionRules": {
+      "title": "Commission Rules",
+      "subtitle": "Priority: Seller Tier → Business Type → Category → Platform Default",
+      "newRule": "New Rule",
+      "cancel": "Cancel",
+      "ruleCount": "{{count}} rule{{suffix}}",
+      "emptyGroup": "No {{heading}} rules yet.",
+      "reference": {
+        "platformWide": "Platform-wide"
+      },
+      "columns": {
+        "reference": "Reference",
+        "rate": "Rate",
+        "notes": "Notes",
+        "active": "Active"
+      },
+      "priority": {
+        "title": "How priority works:",
+        "body": "For each order, the platform checks rules in order. The first match wins: Tier → Business Type → Category → Default. A Gold seller always pays the Gold rate regardless of what category they sell in. Click any rate to edit it inline. Toggle the switch to activate/deactivate a rule."
+      },
+      "form": {
+        "title": "New Commission Rule",
+        "type": "Type",
+        "reference": "Reference",
+        "rate": "Rate (%)",
+        "notes": "Notes",
+        "notesOptional": "Optional",
+        "selectType": "Select type…",
+        "selectReference": "Select…",
+        "create": "Create Rule",
+        "saving": "Saving…",
+        "types": {
+          "category": "Category",
+          "businessType": "Business Type",
+          "accountLevel": "Seller Tier"
+        }
+      },
+      "messages": {
+        "rateUpdated": "Rate updated.",
+        "activated": "Rule activated.",
+        "deactivated": "Rule deactivated.",
+        "created": "Rule created."
+      },
+      "errors": {
+        "load": "Failed to load commission rules.",
+        "create": "Failed to create rule.",
+        "update": "Failed to update rule.",
+        "invalidRate": "Enter a valid rate.",
+        "selectReference": "Select a reference."
       }
     },
     "reviewManagement": {

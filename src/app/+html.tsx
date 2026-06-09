@@ -1,12 +1,22 @@
 import { ScrollViewStyleReset, useServerDocumentContext } from 'expo-router/html';
 import type { PropsWithChildren } from 'react';
 
+import { BRAND_LOGO_BACKGROUND } from '@/constants/brand';
+
 const loaderStyles = `
+:root {
+  --app-bg: #f9fafb;
+}
+
+html.dark {
+  --app-bg: #020617;
+}
+
 html,
 body {
   min-height: 100%;
   margin: 0;
-  background: #f9fafb;
+  background: var(--app-bg);
 }
 
 #pyonea-web-loader {
@@ -16,7 +26,7 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: #f9fafb;
+  background: ${BRAND_LOGO_BACKGROUND};
   font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
   transition: opacity 220ms ease, visibility 220ms ease;
 }
@@ -28,51 +38,36 @@ body {
 }
 
 .pyonea-loader-card {
-  width: min(86vw, 360px);
-  padding: 32px 28px;
-  border: 1px solid #f3f4f6;
-  border-radius: 16px;
-  background: #ffffff;
-  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.06), 0 20px 45px rgba(15, 23, 42, 0.08);
-  text-align: center;
-}
-
-.pyonea-loader-mark {
   display: flex;
-  width: 56px;
-  height: 56px;
-  margin: 0 auto 16px;
+  flex-direction: column;
   align-items: center;
   justify-content: center;
-  border-radius: 999px;
-  background: #f0fdf4;
+  text-align: center;
+  padding: 24px;
+}
+
+.pyonea-loader-logo {
+  width: 120px;
+  height: 120px;
+  object-fit: contain;
 }
 
 .pyonea-loader-spinner {
-  width: 30px;
-  height: 30px;
-  border: 3px solid #bbf7d0;
-  border-top-color: #16a34a;
+  width: 28px;
+  height: 28px;
+  margin-top: 20px;
+  border: 3px solid rgba(255, 255, 255, 0.35);
+  border-top-color: #ffffff;
   border-radius: 999px;
   animation: pyonea-spin 800ms linear infinite;
 }
 
-.pyonea-loader-brand {
-  color: #16a34a;
-  font-size: 24px;
-  font-weight: 800;
-  line-height: 1.2;
-}
-
-.pyonea-loader-brand span {
-  color: #9ca3af;
-}
-
 .pyonea-loader-text {
-  margin-top: 8px;
-  color: #6b7280;
+  margin-top: 14px;
+  color: rgba(255, 255, 255, 0.92);
   font-size: 14px;
   line-height: 1.5;
+  font-weight: 600;
 }
 
 @keyframes pyonea-spin {
@@ -132,6 +127,30 @@ const loaderScript = `
 })();
 `;
 
+const themeBootstrapScript = `
+(function () {
+  try {
+    var storageKey = 'pyonea-theme';
+    var theme = localStorage.getItem(storageKey);
+    if (theme !== 'dark' && theme !== 'light') {
+      theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+    }
+    var isDark = theme === 'dark';
+    var root = document.documentElement;
+    if (isDark) {
+      root.classList.add('dark');
+    } else {
+      root.classList.remove('dark');
+    }
+    root.style.colorScheme = theme;
+    root.style.backgroundColor = isDark ? '#020617' : '#f9fafb';
+    if (document.body) {
+      document.body.style.backgroundColor = isDark ? '#020617' : '#f9fafb';
+    }
+  } catch (e) {}
+})();
+`;
+
 export default function RootHtml({ children }: PropsWithChildren) {
   const { htmlAttributes, bodyAttributes, headNodes, bodyNodes } = useServerDocumentContext();
 
@@ -140,17 +159,14 @@ export default function RootHtml({ children }: PropsWithChildren) {
       <head>
         <ScrollViewStyleReset />
         {headNodes}
+        <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
         <style dangerouslySetInnerHTML={{ __html: loaderStyles }} />
       </head>
       <body {...bodyAttributes}>
         <div id="pyonea-web-loader" role="status" aria-live="polite" aria-label="Loading Pyonea marketplace">
           <div className="pyonea-loader-card">
-            <div className="pyonea-loader-mark">
-              <div className="pyonea-loader-spinner" />
-            </div>
-            <div className="pyonea-loader-brand">
-              Pyonea<span>.com</span>
-            </div>
+            <img src="/logo.png" alt="Pyonea" className="pyonea-loader-logo" width="120" height="120" />
+            <div className="pyonea-loader-spinner" />
             <div className="pyonea-loader-text">Preparing marketplace...</div>
           </div>
         </div>

@@ -1,6 +1,7 @@
 import { Text, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
+import { SITE_CONTAINER_4XL_CLASS } from '@/constants/layout';
 import { useAppTranslation } from '@/i18n';
 
 const sectionKeys = ['terms', 'privacy', 'refund', 'seller', 'dispute'] as const;
@@ -24,8 +25,8 @@ export function LegalNative() {
 
   return (
     <AppLayout>
-      <View className="bg-gray-50 px-4 py-12 dark:bg-slate-950 sm:px-6 lg:px-8">
-        <View className="mx-auto w-full max-w-4xl">
+      <View className="bg-gray-50 py-12 dark:bg-slate-950">
+        <View className={SITE_CONTAINER_4XL_CLASS}>
           <Text className="mb-8 text-center font-sans text-2xl font-bold text-gray-950 dark:text-slate-100 sm:text-4xl">
             {t('legal.title')}
           </Text>

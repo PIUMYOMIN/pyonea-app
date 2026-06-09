@@ -3,14 +3,17 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { Link, useRouter, type Href } from 'expo-router';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Modal, Pressable, ScrollView, Share, Text, View } from 'react-native';
+import { Animated, Easing, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
+import { SITE_CONTAINER_CLASS } from '@/constants/layout';
 import { ProductVariantPicker } from '@/components/product/product-variant-picker';
+import { SocialSharePanel } from '@/components/ui/social-share-panel';
 import { SITE_PUBLIC_URL } from '@/config/native';
 import { useNativeAuth } from '@/context/native-auth';
 import { useTheme } from '@/context/theme';
-import { useAppTranslation } from '@/i18n';
+import { useWishlist } from '@/context/wishlist-context';
+import { localizeBilingualName, useAppTranslation } from '@/i18n';
 import { hasUserRole } from '@/utils/auth-routing';
 import { emitCartCountChanged } from '@/utils/native-cart-events';
 import {
@@ -21,13 +24,10 @@ import {
 } from '@/utils/compare-native';
 import {
   addProductToCart,
-  addWishlistItem,
   fetchMoreProductsFromSeller,
   fetchProductDetail,
   fetchProductReviews,
   fetchSellerDeliveryAreas,
-  fetchWishlist,
-  removeWishlistItem,
   submitProductReview,
   type HomeProduct,
   type ProductDetail,
@@ -35,6 +35,7 @@ import {
   type ProductReview,
   type SellerDeliveryArea,
 } from '@/utils/native-api';
+import { buildSocialSharePayload } from '@/utils/social-share';
 
 const ProductDetailSecondarySections = lazy(() =>
   import('@/components/product/product-detail-secondary-sections').then((module) => ({
@@ -87,8 +88,8 @@ function Stars({ rating, count }: { rating: number; count?: number }) {
 function DetailSkeleton() {
   return (
     <AppLayout>
-      <View className="bg-gray-50 px-4 py-8 dark:bg-slate-950 sm:px-6 lg:px-8">
-        <View className="mx-auto w-full max-w-7xl gap-8 lg:flex-row">
+      <View className="bg-gray-50 py-8 dark:bg-slate-950">
+        <View className={`${SITE_CONTAINER_CLASS} gap-8 lg:flex-row`}>
           <View className="min-w-0 flex-1 gap-4">
             <View className="aspect-square rounded-2xl bg-gray-200 dark:bg-slate-800" />
             <View className="flex-row gap-3">
@@ -322,9 +323,10 @@ export function ProductDetailNative({
   slug: string;
   initialProduct?: ProductDetail | null;
 }) {
-  const { t } = useAppTranslation();
+  const { t, language } = useAppTranslation();
   const router = useRouter();
   const { user, isAuthenticated } = useNativeAuth();
+  const { isInWishlist, toggleWishlist } = useWishlist();
   const [product, setProduct] = useState<ProductDetail | null>(initialProduct || null);
   const [reviews, setReviews] = useState<ProductReview[]>(initialProduct?.reviews || []);
   const [moreProducts, setMoreProducts] = useState<HomeProduct[]>([]);
@@ -343,11 +345,10 @@ export function ProductDetailNative({
   } | null>(null);
   const [addingToCart, setAddingToCart] = useState(false);
   const [wishlistLoading, setWishlistLoading] = useState(false);
-  const [isInWishlist, setIsInWishlist] = useState(false);
   const [compared, setCompared] = useState(
     initialProduct ? isProductCompared(initialProduct.id) : false
   );
-  const [copied, setCopied] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const [submittingReview, setSubmittingReview] = useState(false);
   const [reviewMessage, setReviewMessage] = useState<{
     type: 'success' | 'error' | 'info';
@@ -356,6 +357,7 @@ export function ProductDetailNative({
   const messageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasInitialProduct = Boolean(initialProduct);
   const isBuyer = hasUserRole(user, 'buyer');
+  const savedToWishlist = product ? isInWishlist(product.id) : false;
 
   const showMessage = (type: 'success' | 'error' | 'info', text: string) => {
     if (messageTimerRef.current) clearTimeout(messageTimerRef.current);
@@ -408,17 +410,19 @@ export function ProductDetailNative({
         setReviews(reviewList);
 
         if (nextProduct.seller?.id) {
-          const sellerProducts = await fetchMoreProductsFromSeller(
-            nextProduct.seller.id,
-            nextProduct.id,
-            controller.signal
-          ).catch(() => []);
-          setMoreProducts(sellerProducts);
-
           if (!controller.signal.aborted) setDeliveryLoading(true);
           const sellerKey = nextProduct.seller.slug || String(nextProduct.seller.id);
-          const areas = await fetchSellerDeliveryAreas(sellerKey, controller.signal).catch(() => []);
+          const [sellerProducts, areas] = await Promise.all([
+            fetchMoreProductsFromSeller(
+              nextProduct.seller.id,
+              nextProduct.id,
+              controller.signal
+            ).catch(() => []),
+            fetchSellerDeliveryAreas(sellerKey, controller.signal).catch(() => []),
+          ]);
+
           if (!controller.signal.aborted) {
+            setMoreProducts(sellerProducts);
             setDeliveryAreas(areas);
             setDeliveryLoading(false);
           }
@@ -455,7 +459,33 @@ export function ProductDetailNative({
     () => buildDeliveryLabels(deliveryAreas, t('productDetail.delivery_whole_myanmar')),
     [deliveryAreas, t]
   );
-  const productUrl = product ? `${SITE_PUBLIC_URL}/products/${product.slug}` : SITE_PUBLIC_URL;
+  const productUrl = product
+    ? `${SITE_PUBLIC_URL}/products/${product.slug}?lang=${language}`
+    : SITE_PUBLIC_URL;
+  const sharePayload = useMemo(() => {
+    if (!product) return null;
+
+    const localizedName = localizeBilingualName(
+      language,
+      product.nameEn || product.name,
+      product.nameMm,
+      product.name
+    );
+    const shareText = t('productDetail.share_text', { title: localizedName });
+    const payload = buildSocialSharePayload({
+      path: `/products/${product.slug}`,
+      title: localizedName,
+      text: shareText,
+      description: '',
+      language,
+      imageUrl: product.images[0],
+    });
+
+    return {
+      ...payload,
+      description: t('productDetail.share_description', { url: payload.url }),
+    };
+  }, [language, product, t]);
   const hasVariants = Boolean(product?.hasVariants && product.options.length > 0);
   const variantReady = !hasVariants || selectedVariant !== null;
   const availableStock = selectedVariant ? selectedVariant.quantity : (product?.stock ?? 0);
@@ -494,23 +524,6 @@ export function ProductDetailNative({
 
     return () => clearInterval(interval);
   }, [images.length]);
-
-  useEffect(() => {
-    if (!product || !isAuthenticated || !isBuyer) return;
-
-    const controller = new AbortController();
-    const loadWishlistStatus = async () => {
-      try {
-        const wishlist = await fetchWishlist(controller.signal);
-        setIsInWishlist(wishlist.some((item) => String(item.id) === String(product.id)));
-      } catch {
-        setIsInWishlist(false);
-      }
-    };
-
-    void loadWishlistStatus();
-    return () => controller.abort();
-  }, [isAuthenticated, isBuyer, product]);
 
   const decrementQuantity = () => {
     setQuantity((current) => Math.max(effectiveMoq, current - effectiveStep));
@@ -578,11 +591,7 @@ export function ProductDetailNative({
         variantId: selectedVariant?.id ?? null,
         selectedOptions: Object.keys(selectedOptions).length ? selectedOptions : null,
       });
-      if (typeof result.totalItems === 'number') {
-        emitCartCountChanged(result.totalItems);
-      } else {
-        emitCartCountChanged({ delta: quantity });
-      }
+      emitCartCountChanged({ cart: result.cart });
       showMessage('success', result.message || t('productDetail.added_to_cart'));
       return true;
     } catch (err) {
@@ -606,15 +615,11 @@ export function ProductDetailNative({
 
     setWishlistLoading(true);
     try {
-      if (isInWishlist) {
-        await removeWishlistItem(product.id);
-        setIsInWishlist(false);
-        showMessage('success', t('productDetail.removed_from_wishlist'));
-      } else {
-        await addWishlistItem(product.id);
-        setIsInWishlist(true);
-        showMessage('success', t('productDetail.added_to_wishlist'));
-      }
+      const { added } = await toggleWishlist(product.id);
+      showMessage(
+        'success',
+        t(added ? 'productDetail.added_to_wishlist' : 'productDetail.removed_from_wishlist')
+      );
     } catch (err) {
       showMessage(
         'error',
@@ -699,26 +704,8 @@ export function ProductDetailNative({
     }
   };
 
-  const handleShare = async () => {
-    if (!product) return;
-
-    const shareText = t('productDetail.share_text', { title: product.name });
-    try {
-      await Share.share({
-        title: product.name,
-        message: `${shareText}\n${productUrl}`,
-        url: productUrl,
-      });
-    } catch {
-      try {
-        await globalThis.navigator?.clipboard?.writeText(productUrl);
-        setCopied(true);
-        showMessage('success', t('productDetail.copied'));
-        setTimeout(() => setCopied(false), 2500);
-      } catch {
-        showMessage('info', productUrl);
-      }
-    }
+  const handleShare = () => {
+    setShareOpen((current) => !current);
   };
 
   if (loading) return <DetailSkeleton />;
@@ -751,8 +738,8 @@ export function ProductDetailNative({
   return (
     <AppLayout>
       <ActionMessage message={actionMessage} />
-      <View className="bg-gray-50 px-4 py-8 dark:bg-slate-950 sm:px-6 lg:px-8">
-        <View className="mx-auto w-full max-w-7xl">
+      <View className="bg-gray-50 py-8 dark:bg-slate-950">
+        <View className={SITE_CONTAINER_CLASS}>
           <Pressable onPress={() => router.push('/products')} className="mb-5 flex-row items-center gap-2">
             <Feather name="arrow-left" color="#16a34a" size={18} />
             <Text className="font-sans text-sm font-semibold text-green-600 dark:text-green-400">
@@ -1068,25 +1055,34 @@ export function ProductDetailNative({
                     onPress={handleToggleWishlist}
                     disabled={wishlistLoading}
                     className={`min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-md border px-3 ${
-                      isInWishlist
+                      savedToWishlist
                         ? 'border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
                         : 'border-gray-300 dark:border-slate-600'
                     }`}>
-                    <Feather name="heart" color={isInWishlist ? '#ef4444' : '#64748b'} size={16} />
+                    <Feather name="heart" color={savedToWishlist ? '#ef4444' : '#64748b'} size={16} />
                     <Text className="font-sans text-xs font-semibold text-gray-600 dark:text-slate-400">
                       {wishlistLoading
                         ? t('productDetail.adding')
-                        : isInWishlist
+                        : savedToWishlist
                           ? t('productDetail.remove_from_wishlist')
                           : t('productDetail.add_to_wishlist')}
                     </Text>
                   </Pressable>
                   <Pressable
                     onPress={handleShare}
-                    className="min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-md border border-gray-300 px-3 dark:border-slate-600">
-                    <Feather name={copied ? 'check' : 'share-2'} color="#64748b" size={16} />
-                    <Text className="font-sans text-xs font-semibold text-gray-600 dark:text-slate-400">
-                      {copied ? t('productDetail.copied') : t('productDetail.share_product')}
+                    className={`min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-md border px-3 ${
+                      shareOpen
+                        ? 'border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
+                        : 'border-gray-300 dark:border-slate-600'
+                    }`}>
+                    <Feather name="share-2" color={shareOpen ? '#16a34a' : '#64748b'} size={16} />
+                    <Text
+                      className={`font-sans text-xs font-semibold ${
+                        shareOpen
+                          ? 'text-green-700 dark:text-green-300'
+                          : 'text-gray-600 dark:text-slate-400'
+                      }`}>
+                      {t('productDetail.share_product')}
                     </Text>
                   </Pressable>
                   <Pressable
@@ -1101,6 +1097,24 @@ export function ProductDetailNative({
                     </Text>
                   </Pressable>
                 </View>
+
+                {shareOpen && sharePayload ? (
+                  <SocialSharePanel
+                    payload={sharePayload}
+                    heading={t('productDetail.share_product')}
+                    shareOnLabel={t('productDetail.share_on')}
+                    copyLinkLabel={t('productDetail.copy_link')}
+                    copiedLabel={t('productDetail.copied')}
+                    platformLabels={{
+                      facebook: t('productDetail.share_facebook'),
+                      whatsapp: t('productDetail.share_whatsapp'),
+                      viber: t('productDetail.share_viber'),
+                      telegram: t('productDetail.share_telegram'),
+                      x: t('productDetail.share_x'),
+                    }}
+                    className="mt-4"
+                  />
+                ) : null}
               </View>
 
               {product.seller ? (
@@ -1157,8 +1171,8 @@ export function ProductDetailNative({
         </View>
       </View>
 
-      <View className="sticky bottom-0 z-40 border-t border-gray-200 bg-white/95 px-4 py-3 dark:border-slate-800 dark:bg-slate-900/95 sm:hidden">
-        <View className="mx-auto w-full max-w-7xl flex-row items-center gap-3">
+      <View className="sticky bottom-0 z-40 border-t border-gray-200 bg-white/95 py-3 dark:border-slate-800 dark:bg-slate-900/95 sm:hidden">
+        <View className={`${SITE_CONTAINER_CLASS} flex-row items-center gap-3`}>
           <View className="min-w-0 flex-1">
             <Text className="font-sans text-xs text-gray-500 dark:text-slate-500" numberOfLines={1}>
               {t('productDetail.price')}

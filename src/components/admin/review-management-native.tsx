@@ -19,6 +19,16 @@ import {
 
 type ReviewTab = 'seller' | 'product';
 
+const TABLE_COLUMNS = [
+  { key: 'reviewer', width: 'w-[140px]' },
+  { key: 'target', width: 'w-[160px]' },
+  { key: 'rating', width: 'w-[110px]' },
+  { key: 'comment', width: 'w-[200px]' },
+  { key: 'status', width: 'w-[110px]' },
+  { key: 'date', width: 'w-[110px]' },
+  { key: 'actions', width: 'w-[160px]' },
+] as const;
+
 function StarRow({ rating }: { rating: number }) {
   return (
     <View className="flex-row">
@@ -26,7 +36,7 @@ function StarRow({ rating }: { rating: number }) {
         <Feather
           key={star}
           name="star"
-          color={star <= Math.round(rating) ? '#facc15' : '#d1d5db'}
+          color={star <= Math.round(rating) ? '#fbbf24' : '#d1d5db'}
           size={14}
         />
       ))}
@@ -39,80 +49,124 @@ function StatusBadge({ status }: { status: string }) {
   const normalized = status || 'pending';
   const className =
     normalized === 'approved'
-      ? 'bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300'
+      ? 'bg-green-100 dark:bg-green-900/30'
       : normalized === 'rejected'
-        ? 'bg-red-100 text-red-800 dark:bg-red-900/30 dark:text-red-300'
-        : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300';
+        ? 'bg-red-100 dark:bg-red-900/30'
+        : 'bg-yellow-100 dark:bg-yellow-900/30';
+  const textClass =
+    normalized === 'approved'
+      ? 'text-green-800 dark:text-green-300'
+      : normalized === 'rejected'
+        ? 'text-red-800 dark:text-red-300'
+        : 'text-yellow-800 dark:text-yellow-300';
 
   return (
-    <Text className={`rounded-full px-2 py-0.5 font-sans text-xs font-semibold capitalize ${className}`}>
-      {t(`admin.reviewManagement.status.${normalized}`, normalized)}
-    </Text>
+    <View className={`self-start rounded-full px-2 py-0.5 ${className}`}>
+      <Text className={`font-sans text-xs font-semibold capitalize ${textClass}`}>
+        {t(`admin.reviewManagement.status.${normalized}`, normalized)}
+      </Text>
+    </View>
   );
 }
 
-function ReviewCard({
-  review,
+function ReviewTable({
+  reviews,
   actionLoading,
   onAction,
 }: {
-  review: AdminReview;
+  reviews: AdminReview[];
   actionLoading: string | number | null;
   onAction: (reviewId: string | number, status: 'approved' | 'rejected') => void;
 }) {
   const { t } = useAppTranslation();
-  const createdLabel = review.createdAt
-    ? new Date(review.createdAt).toLocaleDateString()
-    : '—';
+
+  if (reviews.length === 0) {
+    return (
+      <View className="items-center py-14">
+        <Text className="font-sans text-sm text-gray-400 dark:text-slate-500">
+          {t('admin.reviewManagement.noReviews', 'No reviews found.')}
+        </Text>
+      </View>
+    );
+  }
 
   return (
-    <View className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900">
-      <View className="flex-row flex-wrap items-start justify-between gap-3">
-        <View className="min-w-0 flex-1">
-          <Text className="font-sans text-sm font-semibold text-gray-950 dark:text-slate-100">
-            {review.reviewerName}
-          </Text>
-          <Text className="mt-1 font-sans text-xs text-gray-500 dark:text-slate-400">
-            {review.targetName}
-          </Text>
+    <ScrollView horizontal showsHorizontalScrollIndicator contentContainerClassName="min-w-full">
+      <View className="w-full min-w-[990px]">
+        <View className="flex-row bg-gray-50 px-4 py-3 dark:bg-slate-900/50">
+          {TABLE_COLUMNS.map((column) => (
+            <View key={column.key} className={`${column.width} px-2`}>
+              <Text className="font-sans text-[11px] font-semibold uppercase tracking-wide text-gray-500 dark:text-slate-400">
+                {t(`admin.reviewManagement.table.${column.key}`, column.key)}
+              </Text>
+            </View>
+          ))}
         </View>
-        <StatusBadge status={review.status} />
-      </View>
 
-      <View className="mt-3 flex-row items-center gap-3">
-        <StarRow rating={review.rating} />
-        <Text className="font-sans text-xs text-gray-400 dark:text-slate-500">{createdLabel}</Text>
-      </View>
+        {reviews.map((review) => {
+          const createdLabel = review.createdAt
+            ? new Date(review.createdAt).toLocaleDateString()
+            : '—';
 
-      <Text className="mt-3 font-sans text-sm leading-6 text-gray-600 dark:text-slate-300">
-        {review.comment || '—'}
-      </Text>
-
-      <View className="mt-4 flex-row flex-wrap gap-3">
-        {review.status !== 'approved' ? (
-          <Pressable
-            onPress={() => onAction(review.id, 'approved')}
-            disabled={actionLoading === review.id}
-            className="flex-row items-center gap-1 disabled:opacity-50">
-            <Feather name="check" color="#15803d" size={14} />
-            <Text className="font-sans text-xs font-semibold text-green-700 dark:text-green-300">
-              {t('admin.reviewManagement.actions.approve', 'Approve')}
-            </Text>
-          </Pressable>
-        ) : null}
-        {review.status !== 'rejected' ? (
-          <Pressable
-            onPress={() => onAction(review.id, 'rejected')}
-            disabled={actionLoading === review.id}
-            className="flex-row items-center gap-1 disabled:opacity-50">
-            <Feather name="x" color="#dc2626" size={14} />
-            <Text className="font-sans text-xs font-semibold text-red-600 dark:text-red-400">
-              {t('admin.reviewManagement.actions.reject', 'Reject')}
-            </Text>
-          </Pressable>
-        ) : null}
+          return (
+            <View key={String(review.id)} className="flex-row border-t border-gray-100 px-4 py-3 dark:border-slate-700/50">
+              <View className="w-[140px] justify-center px-2">
+                <Text className="font-sans text-sm font-medium text-gray-900 dark:text-slate-100" numberOfLines={1}>
+                  {review.reviewerName}
+                </Text>
+              </View>
+              <View className="w-[160px] justify-center px-2">
+                <Text className="font-sans text-sm text-gray-600 dark:text-slate-400" numberOfLines={2}>
+                  {review.targetName}
+                </Text>
+              </View>
+              <View className="w-[110px] justify-center px-2">
+                <StarRow rating={review.rating} />
+              </View>
+              <View className="w-[200px] justify-center px-2">
+                <Text className="font-sans text-sm text-gray-600 dark:text-slate-400" numberOfLines={2}>
+                  {review.comment || '—'}
+                </Text>
+              </View>
+              <View className="w-[110px] justify-center px-2">
+                <StatusBadge status={review.status} />
+              </View>
+              <View className="w-[110px] justify-center px-2">
+                <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">{createdLabel}</Text>
+              </View>
+              <View className="w-[160px] flex-row flex-wrap items-center gap-2 px-2">
+                {review.status !== 'approved' ? (
+                  <Pressable
+                    onPress={() => onAction(review.id, 'approved')}
+                    disabled={actionLoading === review.id}
+                    className="flex-row items-center gap-1 disabled:opacity-50">
+                    {actionLoading === review.id ? (
+                      <ActivityIndicator color="#15803d" size="small" />
+                    ) : (
+                      <Feather name="check" color="#15803d" size={14} />
+                    )}
+                    <Text className="font-sans text-xs font-medium text-green-700 dark:text-green-400">
+                      {t('admin.reviewManagement.actions.approve', 'Approve')}
+                    </Text>
+                  </Pressable>
+                ) : null}
+                {review.status !== 'rejected' ? (
+                  <Pressable
+                    onPress={() => onAction(review.id, 'rejected')}
+                    disabled={actionLoading === review.id}
+                    className="flex-row items-center gap-1 disabled:opacity-50">
+                    <Feather name="x" color="#dc2626" size={14} />
+                    <Text className="font-sans text-xs font-medium text-red-600 dark:text-red-400">
+                      {t('admin.reviewManagement.actions.reject', 'Reject')}
+                    </Text>
+                  </Pressable>
+                ) : null}
+              </View>
+            </View>
+          );
+        })}
       </View>
-    </View>
+    </ScrollView>
   );
 }
 
@@ -200,13 +254,18 @@ export function ReviewManagementNative() {
     <View className="gap-4">
       {toast ? (
         <View
-          className={`rounded-xl border px-4 py-3 ${
+          className={`flex-row items-center gap-2 rounded-xl border px-4 py-3 ${
             toast.type === 'success'
               ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
               : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
           }`}>
+          <Feather
+            name={toast.type === 'success' ? 'check-circle' : 'alert-circle'}
+            size={16}
+            color={toast.type === 'success' ? '#15803d' : '#dc2626'}
+          />
           <Text
-            className={`font-sans text-sm font-medium ${
+            className={`flex-1 font-sans text-sm font-medium ${
               toast.type === 'success'
                 ? 'text-green-800 dark:text-green-300'
                 : 'text-red-700 dark:text-red-300'
@@ -218,16 +277,19 @@ export function ReviewManagementNative() {
 
       <View className="flex-row flex-wrap items-center justify-between gap-3">
         <View>
-          <Text className="font-sans text-lg font-bold text-gray-900 dark:text-slate-100">
-            {t('admin.reviewManagement.title', 'Review Management')}
-          </Text>
-          <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">
+          <View className="flex-row items-center gap-2">
+            <Feather name="message-square" size={20} color="#16a34a" />
+            <Text className="font-sans text-lg font-bold text-gray-900 dark:text-slate-100">
+              {t('admin.reviewManagement.title', 'Review Management')}
+            </Text>
+          </View>
+          <Text className="mt-0.5 font-sans text-sm text-gray-500 dark:text-slate-400">
             {t('admin.reviewManagement.count', '{{count}} reviews', { count: filtered.length })}
           </Text>
         </View>
         <Pressable
           onPress={() => void fetchAll()}
-          className="rounded-lg bg-gray-100 p-2 dark:bg-slate-700">
+          className="rounded-lg p-2 hover:bg-gray-100 dark:hover:bg-slate-700">
           <Feather name="refresh-cw" color="#64748b" size={16} />
         </Pressable>
       </View>
@@ -245,7 +307,7 @@ export function ReviewManagementNative() {
                 setTab(key);
                 setSearch('');
               }}
-              className={`rounded-lg px-4 py-2 ${active ? 'bg-white shadow-sm dark:bg-slate-600' : ''}`}>
+              className={`rounded-lg px-4 py-1.5 ${active ? 'bg-white shadow-sm dark:bg-slate-600' : ''}`}>
               <Text
                 className={`font-sans text-sm font-medium ${
                   active
@@ -259,19 +321,19 @@ export function ReviewManagementNative() {
         })}
       </View>
 
-      <View className="relative max-w-md">
+      <View className="relative max-w-sm">
         <Feather
           name="search"
           color="#94a3b8"
           size={16}
-          style={{ position: 'absolute', left: 12, top: 14, zIndex: 1 }}
+          style={{ position: 'absolute', left: 12, top: 12, zIndex: 1 }}
         />
         <TextInput
           value={search}
           onChangeText={setSearch}
           placeholder={t('admin.reviewManagement.searchPlaceholder', 'Search reviews...')}
           placeholderTextColor="#94a3b8"
-          className="rounded-xl border border-gray-300 bg-white py-3 pl-10 pr-3 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+          className="rounded-xl border border-gray-300 bg-white py-2 pl-9 pr-3 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
         />
       </View>
 
@@ -284,28 +346,17 @@ export function ReviewManagementNative() {
           <View className="items-center px-4 py-8">
             <Text className="text-center font-sans text-sm text-red-600 dark:text-red-400">{error}</Text>
             <Pressable onPress={() => void fetchAll()} className="mt-3">
-              <Text className="font-sans text-sm font-semibold text-green-700 dark:text-green-300">
+              <Text className="font-sans text-sm font-semibold text-green-700 underline dark:text-green-300">
                 {t('admin.reviewManagement.retry', 'Retry')}
               </Text>
             </Pressable>
           </View>
-        ) : filtered.length === 0 ? (
-          <View className="items-center px-4 py-14">
-            <Text className="font-sans text-sm text-gray-400 dark:text-slate-500">
-              {t('admin.reviewManagement.noReviews', 'No reviews found.')}
-            </Text>
-          </View>
         ) : (
-          <ScrollView contentContainerClassName="gap-4 p-4">
-            {filtered.map((review) => (
-              <ReviewCard
-                key={String(review.id)}
-                review={review}
-                actionLoading={actionLoading}
-                onAction={(reviewId, status) => void handleAction(reviewId, status)}
-              />
-            ))}
-          </ScrollView>
+          <ReviewTable
+            reviews={filtered}
+            actionLoading={actionLoading}
+            onAction={(reviewId, status) => void handleAction(reviewId, status)}
+          />
         )}
       </View>
     </View>

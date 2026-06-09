@@ -1,36 +1,43 @@
 import Feather from "@expo/vector-icons/Feather";
 import { OptimizedImage as Image } from "@/components/ui/optimized-image";
-import { Link, useLocalSearchParams, useRouter, type Href } from "expo-router";
+import { Link, useRouter, type Href } from "expo-router";
 import {
   lazy,
   Suspense,
   useCallback,
   useEffect,
   useMemo,
-  useRef,
   useState,
   type ReactNode,
 } from "react";
 import {
   ActivityIndicator,
   Linking,
-  Modal,
   Pressable,
   ScrollView,
   Text,
   View,
 } from "react-native";
-import { SafeAreaView } from "react-native-safe-area-context";
 
-import { NativeNotificationBell } from "@/components/notifications/native-notification-bell";
-import { useNativeAuth } from "@/context/native-auth";
-import { useTheme } from "@/context/theme";
-import { supportedLanguages, useAppTranslation, type SupportedLanguage } from "@/i18n";
 import {
-  getRoleDestination,
-  hasUserRole,
-  needsEmailVerification,
-} from "@/utils/auth-routing";
+  featureLabels,
+  formatSellerTabParam,
+  normalizeSellerTab,
+  protectedSellerTabs,
+  SELLER_DASHBOARD_PATH,
+  sellerTabs,
+  type SellerFeatureFlag,
+  type SellerNavItem,
+  type SellerTab,
+} from "@/dashboards/seller/config";
+import {
+  DashboardLoading,
+  DashboardShell,
+  useDashboardGuard,
+  useDashboardTabs,
+} from "@/dashboards/shared";
+import { useAppTranslation } from "@/i18n";
+import { useTheme } from "@/context/theme";
 import { getSellerTierConfig } from "@/utils/seller-tier";
 import {
   ApiError,
@@ -141,93 +148,6 @@ const DiscountsNative = lazy(() =>
   })),
 );
 
-type SellerTab =
-  | "dashboard"
-  | "notifications"
-  | "my_store"
-  | "orders"
-  | "products"
-  | "discounts"
-  | "coupons"
-  | "delivery_zones"
-  | "rfq"
-  | "sales"
-  | "reviews"
-  | "customers"
-  | "delivery"
-  | "subscription"
-  | "bulk_import"
-  | "financial_reports"
-  | "wallet"
-  | "settings";
-
-type SellerNavItem = {
-  id: SellerTab;
-  label: string;
-  icon: keyof typeof Feather.glyphMap;
-};
-
-type SellerFeatureFlag =
-  | "analytics_enabled"
-  | "bulk_import_enabled"
-  | "priority_support"
-  | "custom_storefront";
-
-const sellerTabs: SellerNavItem[] = [
-  { id: "dashboard", label: "Dashboard", icon: "bar-chart-2" },
-  { id: "notifications", label: "Notifications", icon: "bell" },
-  { id: "my_store", label: "My Store", icon: "home" },
-  { id: "orders", label: "Orders", icon: "shopping-bag" },
-  { id: "products", label: "Products", icon: "box" },
-  { id: "discounts", label: "Discounts", icon: "tag" },
-  { id: "coupons", label: "Coupons", icon: "percent" },
-  { id: "delivery_zones", label: "Delivery Zones", icon: "map-pin" },
-  { id: "rfq", label: "RFQ", icon: "clipboard" },
-  { id: "sales", label: "Sales Reports", icon: "trending-up" },
-  { id: "reviews", label: "Reviews", icon: "star" },
-  { id: "customers", label: "Customers", icon: "users" },
-  { id: "delivery", label: "Delivery", icon: "truck" },
-  { id: "subscription", label: "Subscription", icon: "zap" },
-  { id: "bulk_import", label: "Bulk Import", icon: "upload" },
-  { id: "financial_reports", label: "Financial Reports", icon: "file-text" },
-  { id: "wallet", label: "Wallet", icon: "credit-card" },
-  { id: "settings", label: "Settings", icon: "settings" },
-];
-
-const featureLabels: Record<SellerFeatureFlag, string> = {
-  analytics_enabled: "Analytics Dashboard",
-  bulk_import_enabled: "Bulk Import / Export",
-  priority_support: "Priority Support",
-  custom_storefront: "Custom Storefront",
-};
-
-const protectedSellerTabs: Partial<Record<SellerTab, SellerFeatureFlag>> = {
-  sales: "analytics_enabled",
-  financial_reports: "analytics_enabled",
-  bulk_import: "bulk_import_enabled",
-};
-
-const getParam = (value: string | string[] | undefined) =>
-  Array.isArray(value) ? value[0] : value;
-
-const SELLER_HEADER_CONTROL_CLASS = "h-10 w-10";
-const SELLER_HEADER_ICON_SIZE = 20;
-const SELLER_HEADER_CONTROL_PX = 40;
-
-const normalizeSellerTab = (value?: string): SellerTab => {
-  const normalized = value?.toLowerCase().replaceAll("-", "_");
-  if (normalized === "store_profile" || normalized === "edit_store")
-    return "my_store";
-  if (normalized === "profile") return "settings";
-  if (normalized === "coupon" || normalized === "coupon_codes")
-    return "coupons";
-  if (normalized === "discount" || normalized === "discount_rules")
-    return "discounts";
-  return sellerTabs.some((tab) => tab.id === normalized)
-    ? (normalized as SellerTab)
-    : "dashboard";
-};
-
 function StoreAvatar({ store }: { store: SellerStoreSummary | null }) {
   if (store?.logoUrl) {
     return (
@@ -244,247 +164,6 @@ function StoreAvatar({ store }: { store: SellerStoreSummary | null }) {
     <View className="h-12 w-12 items-center justify-center rounded-2xl bg-green-600">
       <Feather name="home" color="#ffffff" size={22} />
     </View>
-  );
-}
-
-function SellerSidebar({
-  activeTab,
-  onTab,
-  store,
-  userName,
-  userEmail,
-  stats,
-  subscription,
-}: {
-  activeTab: SellerTab;
-  onTab: (tab: SellerTab) => void;
-  store: SellerStoreSummary | null;
-  userName: string;
-  userEmail: string;
-  stats: SellerDashboardStats;
-  subscription: SellerSubscription | null;
-}) {
-  const { isDark } = useTheme();
-
-  return (
-    <View className="relative z-20 hidden w-80 border-r border-gray-200/60 bg-white/80 shadow-xl dark:border-slate-700/60 dark:bg-slate-800/80 md:flex">
-      <ScrollView
-        className="flex-1 px-4 pb-4 pt-8"
-        showsVerticalScrollIndicator={false}
-      >
-        <Pressable
-          onPress={() => onTab("dashboard")}
-          className="mb-8 flex-row items-center gap-4 px-2"
-        >
-            <View className="relative">
-              <StoreAvatar store={store} />
-              <View className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white bg-green-400 dark:border-slate-800" />
-            </View>
-            <View className="min-w-0 flex-1">
-              <Text
-                className="font-sans text-lg font-bold text-gray-900 dark:text-slate-100"
-                numberOfLines={1}
-              >
-                {store?.name || "Seller Center"}
-              </Text>
-              <Text
-                className="font-sans text-sm font-medium text-green-600 dark:text-green-400"
-                numberOfLines={1}
-              >
-                Seller Account
-              </Text>
-            </View>
-        </Pressable>
-
-        {sellerTabs.map((item) => {
-          const active = activeTab === item.id;
-          const feature = protectedSellerTabs[item.id];
-          const locked = feature
-            ? !sellerPlanHasFeature(subscription, feature)
-            : false;
-          return (
-            <Pressable
-              key={item.id}
-              onPress={() => onTab(item.id)}
-              className={`mb-1 flex-row items-center gap-3 rounded-2xl px-4 py-3 ${
-                active
-                  ? "bg-green-500 dark:bg-emerald-500"
-                  : "bg-transparent"
-              }`}
-            >
-              <Feather
-                name={item.icon}
-                color={active ? "#ffffff" : isDark ? "#cbd5e1" : "#64748b"}
-                size={18}
-              />
-              <Text
-                className={`min-w-0 flex-1 font-sans text-sm font-semibold ${
-                  active ? "text-white" : "text-gray-600 dark:text-slate-300"
-                }`}
-                numberOfLines={1}
-              >
-                {item.label}
-              </Text>
-              {locked ? (
-                <Feather
-                  name="lock"
-                  color={active ? "#ffffff" : isDark ? "#94a3b8" : "#9ca3af"}
-                  size={13}
-                />
-              ) : null}
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
-      <View className="border-t border-gray-200/60 bg-white/50 p-6 dark:border-slate-700/60 dark:bg-slate-800/50">
-        <View className="flex-row items-center gap-3">
-          <View className="h-10 w-10 items-center justify-center rounded-xl bg-gray-500 dark:bg-slate-700">
-            <Text className="font-sans text-sm font-medium text-white">
-              {userName.charAt(0).toUpperCase()}
-            </Text>
-          </View>
-          <View className="min-w-0 flex-1">
-            <Text
-              className="font-sans text-sm font-bold text-gray-950 dark:text-slate-100"
-              numberOfLines={1}
-            >
-              {userName}
-            </Text>
-            <Text
-              className="font-sans text-xs text-gray-500 dark:text-slate-500"
-              numberOfLines={1}
-            >
-              {userEmail}
-            </Text>
-          </View>
-        </View>
-        <View className="mt-4 flex-row gap-3">
-          <View className="flex-1 items-center rounded-lg bg-green-50 p-2 dark:bg-green-900/20">
-            <Text className="font-sans text-sm font-bold text-green-700 dark:text-green-400">
-              {stats.totalProducts}
-            </Text>
-            <Text className="font-sans text-xs text-gray-600 dark:text-slate-400">
-              Products
-            </Text>
-          </View>
-          <View className="flex-1 items-center rounded-lg bg-blue-50 p-2 dark:bg-blue-900/20">
-            <Text className="font-sans text-sm font-bold text-blue-700 dark:text-blue-400">
-              {stats.totalOrders}
-            </Text>
-            <Text className="font-sans text-xs text-gray-600 dark:text-slate-400">
-              Orders
-            </Text>
-          </View>
-        </View>
-      </View>
-    </View>
-  );
-}
-
-function SellerMobileDrawer({
-  visible,
-  activeTab,
-  onClose,
-  onTab,
-  store,
-  subscription,
-}: {
-  visible: boolean;
-  activeTab: SellerTab;
-  onClose: () => void;
-  onTab: (tab: SellerTab) => void;
-  store: SellerStoreSummary | null;
-  subscription: SellerSubscription | null;
-}) {
-  const { isDark } = useTheme();
-
-  return (
-    <Modal
-      visible={visible}
-      transparent
-      animationType="fade"
-      onRequestClose={onClose}
-    >
-      <Pressable className="flex-1 bg-black/45" onPress={onClose}>
-        <Pressable
-          onPress={(event) => event.stopPropagation()}
-          className="h-full w-80 max-w-[86%] bg-white shadow-2xl dark:bg-slate-900"
-        >
-          <View className="border-b border-gray-100 px-5 py-5 dark:border-slate-800">
-            <View className="flex-row items-center justify-between gap-3">
-              <View className="min-w-0 flex-1 flex-row items-center gap-3">
-                <StoreAvatar store={store} />
-                <View className="min-w-0 flex-1">
-                  <Text
-                    className="font-sans text-base font-black text-gray-950 dark:text-slate-100"
-                    numberOfLines={1}
-                  >
-                    {store?.name || "Seller Dashboard"}
-                  </Text>
-                  <Text
-                    className="font-sans text-xs text-gray-500 dark:text-slate-400"
-                    numberOfLines={1}
-                  >
-                    Seller workspace
-                  </Text>
-                </View>
-              </View>
-              <Pressable
-                onPress={onClose}
-                className="h-10 w-10 items-center justify-center rounded-xl bg-gray-100 dark:bg-slate-800"
-              >
-                <Feather
-                  name="x"
-                  color={isDark ? "#cbd5e1" : "#64748b"}
-                  size={18}
-                />
-              </Pressable>
-            </View>
-          </View>
-          <ScrollView className="flex-1 px-3 py-4">
-            {sellerTabs.map((item) => {
-              const active = activeTab === item.id;
-              const feature = protectedSellerTabs[item.id];
-              const locked = feature
-                ? !sellerPlanHasFeature(subscription, feature)
-                : false;
-              return (
-                <Pressable
-                  key={item.id}
-                  onPress={() => onTab(item.id)}
-                  className={`mb-1 flex-row items-center gap-3 rounded-2xl px-4 py-3 ${
-                    active ? "bg-green-600" : ""
-                  }`}
-                >
-                  <Feather
-                    name={item.icon}
-                    color={active ? "#ffffff" : isDark ? "#cbd5e1" : "#64748b"}
-                    size={18}
-                  />
-                  <Text
-                    className={`font-sans text-sm font-semibold ${
-                      active
-                        ? "text-white"
-                        : "text-gray-600 dark:text-slate-300"
-                    }`}
-                  >
-                    {item.label}
-                  </Text>
-                  {locked ? (
-                    <Feather
-                      name="lock"
-                      color={active ? "#ffffff" : isDark ? "#94a3b8" : "#9ca3af"}
-                      size={13}
-                    />
-                  ) : null}
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </Pressable>
-      </Pressable>
-    </Modal>
   );
 }
 
@@ -873,234 +552,6 @@ function SectionTitle({ children }: { children: string }) {
     <Text className="mb-2 font-sans text-xs font-semibold uppercase tracking-wide text-gray-400 dark:text-slate-500">
       {children}
     </Text>
-  );
-}
-
-function DashboardLanguageSwitch() {
-  const { i18n, language } = useAppTranslation();
-
-  return (
-    <View className="h-10 flex-row items-center rounded-xl border border-gray-200 bg-gray-50 p-1 dark:border-slate-700 dark:bg-slate-900">
-      {supportedLanguages.map((code) => {
-        const active = language === code;
-        const label = code === "my" ? "MY" : "EN";
-        return (
-          <Pressable
-            key={code}
-            onPress={() => void i18n.changeLanguage(code as SupportedLanguage)}
-            className={`h-8 w-10 items-center justify-center rounded-lg px-2 ${
-              active ? "bg-green-600" : ""
-            }`}
-          >
-            <Text
-              className={`font-sans text-xs font-black ${
-                active
-                  ? "text-white"
-                  : "text-gray-500 dark:text-slate-300"
-              }`}
-            >
-              {label}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
-  );
-}
-
-function SellerTopHeader({
-  onMenu,
-  onNotifications,
-  onTab,
-  onLogout,
-  store,
-  userName,
-  userEmail,
-}: {
-  onMenu: () => void;
-  onNotifications: () => void;
-  onTab: (tab: SellerTab) => void;
-  onLogout: () => void;
-  store: SellerStoreSummary | null;
-  userName: string;
-  userEmail: string;
-}) {
-  const [profileOpen, setProfileOpen] = useState(false);
-  const initial = (userName || store?.name || "S").charAt(0).toUpperCase();
-  const profileItems: {
-    label: string;
-    icon: keyof typeof Feather.glyphMap;
-    action: () => void;
-    danger?: boolean;
-  }[] = [
-    {
-      label: "Profile & settings",
-      icon: "user",
-      action: () => onTab("settings"),
-    },
-    {
-      label: "My Store",
-      icon: "home",
-      action: () => onTab("my_store"),
-    },
-    {
-      label: "Products",
-      icon: "box",
-      action: () => onTab("products"),
-    },
-    {
-      label: "Orders",
-      icon: "shopping-bag",
-      action: () => onTab("orders"),
-    },
-    {
-      label: "Logout",
-      icon: "log-out",
-      action: onLogout,
-      danger: true,
-    },
-  ];
-
-  const runProfileAction = (action: () => void) => {
-    setProfileOpen(false);
-    action();
-  };
-
-  return (
-    <View className="relative z-30 flex-shrink-0 border-b border-gray-200/60 bg-white/90 px-4 py-4 dark:border-slate-700/60 dark:bg-slate-800/90 sm:px-6">
-      <View className="flex-row items-center justify-between gap-3">
-        <Pressable
-          onPress={onMenu}
-          className={`${SELLER_HEADER_CONTROL_CLASS} flex-shrink-0 items-center justify-center rounded-lg bg-white dark:bg-slate-800 md:hidden`}
-        >
-          <Feather name="menu" color="#64748b" size={SELLER_HEADER_ICON_SIZE} />
-        </Pressable>
-        <View className="hidden flex-1 md:flex" />
-        <View className="flex-row flex-shrink-0 items-center gap-2 sm:gap-3">
-          <Link href="/" asChild>
-            <Pressable className="hidden h-10 flex-row items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-3 dark:border-green-800 dark:bg-green-900/20 sm:flex">
-              <Feather name="external-link" color="#16a34a" size={SELLER_HEADER_ICON_SIZE} />
-              <Text className="font-sans text-sm font-bold text-green-700 dark:text-green-300">
-                Main site
-              </Text>
-            </Pressable>
-          </Link>
-          <Link href="/" asChild>
-            <Pressable
-              className={`${SELLER_HEADER_CONTROL_CLASS} items-center justify-center rounded-xl border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20 sm:hidden`}
-            >
-              <Feather name="external-link" color="#16a34a" size={SELLER_HEADER_ICON_SIZE} />
-            </Pressable>
-          </Link>
-          <DashboardLanguageSwitch />
-          <NativeNotificationBell compact iconSize={SELLER_HEADER_ICON_SIZE} />
-          <View className="hidden flex-row items-center gap-2 md:flex">
-            <View className="h-2 w-2 rounded-full bg-green-400" />
-            <Text className="font-sans text-sm text-gray-600 dark:text-slate-400">
-              Store Active
-            </Text>
-          </View>
-          <View className="relative flex-shrink-0">
-            <Pressable
-              onPress={() => setProfileOpen((open) => !open)}
-              className={`h-10 flex-row items-center gap-1 rounded-xl border pl-0 pr-2 ${
-                profileOpen
-                  ? "border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/30"
-                  : "border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900"
-              }`}
-            >
-              {store?.logoUrl ? (
-                <View
-                  className={`${SELLER_HEADER_CONTROL_CLASS} overflow-hidden rounded-lg`}
-                >
-                  <Image
-                    source={{ uri: store.logoUrl }}
-                    style={{
-                      width: SELLER_HEADER_CONTROL_PX,
-                      height: SELLER_HEADER_CONTROL_PX,
-                    }}
-                    contentFit="cover"
-                  />
-                </View>
-              ) : (
-                <View
-                  className={`${SELLER_HEADER_CONTROL_CLASS} items-center justify-center rounded-lg bg-green-600`}
-                >
-                  <Text className="font-sans text-sm font-extrabold text-white">
-                    {initial}
-                  </Text>
-                </View>
-              )}
-              <Feather
-                name={profileOpen ? "chevron-up" : "chevron-down"}
-                color="#64748b"
-                size={SELLER_HEADER_ICON_SIZE}
-              />
-            </Pressable>
-
-            {profileOpen ? (
-              <>
-                <Pressable
-                  onPress={() => setProfileOpen(false)}
-                  className="absolute inset-0 z-40 bg-transparent"
-                />
-                <View className="absolute right-0 top-14 z-50 w-72 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900">
-                  <View className="border-b border-gray-100 p-4 dark:border-slate-700">
-                    <Text
-                      className="font-sans text-base font-bold text-gray-900 dark:text-slate-100"
-                      numberOfLines={1}
-                    >
-                      {store?.name || userName}
-                    </Text>
-                    <Text
-                      className="mt-1 font-sans text-sm text-gray-500 dark:text-slate-400"
-                      numberOfLines={1}
-                    >
-                      {userEmail}
-                    </Text>
-                  </View>
-
-                  <Link href="/" asChild>
-                    <Pressable
-                      onPress={() => setProfileOpen(false)}
-                      className="flex-row items-center gap-3 px-4 py-3"
-                    >
-                      <Feather name="external-link" color="#16a34a" size={17} />
-                      <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-200">
-                        Main site
-                      </Text>
-                    </Pressable>
-                  </Link>
-
-                  {profileItems.map((item) => (
-                    <Pressable
-                      key={item.label}
-                      onPress={() => runProfileAction(item.action)}
-                      className="flex-row items-center gap-3 px-4 py-3"
-                    >
-                      <Feather
-                        name={item.icon}
-                        color={item.danger ? "#dc2626" : "#64748b"}
-                        size={17}
-                      />
-                      <Text
-                        className={`font-sans text-sm font-semibold ${
-                          item.danger
-                            ? "text-red-600 dark:text-red-400"
-                            : "text-gray-700 dark:text-slate-200"
-                        }`}
-                      >
-                        {item.label}
-                      </Text>
-                    </Pressable>
-                  ))}
-                </View>
-              </>
-            ) : null}
-          </View>
-        </View>
-      </View>
-    </View>
   );
 }
 
@@ -2041,29 +1492,23 @@ function DashboardContentLoader({ label = "Loading section..." }: { label?: stri
 
 export function SellerDashboardNative() {
   const router = useRouter();
-  const params = useLocalSearchParams<{ tab?: string }>();
-  const {
-    user,
-    isLoading: authLoading,
-    isAuthenticated,
-    logout,
-  } = useNativeAuth();
-  const tabParam = getParam(params.tab);
-  const initialTab = normalizeSellerTab(tabParam);
-  const lastSyncedTabParam = useRef(tabParam);
-  const [activeTab, setActiveTab] = useState<SellerTab>(initialTab);
-  const [overview, setOverview] = useState<SellerDashboardOverview | null>(
-    null,
-  );
+  const { user, isReady, handleUnauthorized, logout } = useDashboardGuard({
+    role: "seller",
+    returnTo: SELLER_DASHBOARD_PATH,
+  });
+  const { activeTab, selectTab } = useDashboardTabs<SellerTab>({
+    basePath: SELLER_DASHBOARD_PATH,
+    defaultTab: "dashboard",
+    normalizeTab: normalizeSellerTab,
+    formatTabParam: formatSellerTabParam,
+  });
+  const [overview, setOverview] = useState<SellerDashboardOverview | null>(null);
   const [wallet, setWallet] = useState<SellerWalletSummary | null>(null);
-  const [subscription, setSubscription] = useState<SellerSubscription | null>(
-    null,
-  );
+  const [subscription, setSubscription] = useState<SellerSubscription | null>(null);
   const [subscriptionLoading, setSubscriptionLoading] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
   const [sidebarOpen, setSidebarOpen] = useState(false);
-  const isSeller = hasUserRole(user, "seller");
   const dashboardStats = overview?.stats || {
     totalProducts: 0,
     totalOrders: 0,
@@ -2075,33 +1520,24 @@ export function SellerDashboardNative() {
     () => sellerTabs.find((item) => item.id === activeTab) || sellerTabs[0],
     [activeTab],
   );
-
-  useEffect(() => {
-    if (tabParam === lastSyncedTabParam.current) return;
-    lastSyncedTabParam.current = tabParam;
-    const nextTab = normalizeSellerTab(tabParam);
-    const timeout = setTimeout(() => {
-      setActiveTab((current) => (current === nextTab ? current : nextTab));
-    }, 0);
-    return () => clearTimeout(timeout);
-  }, [tabParam]);
-
-  useEffect(() => {
-    if (authLoading) return;
-    if (!isAuthenticated) {
-      router.replace("/login?returnTo=/seller/dashboard" as Href);
-      return;
-    }
-    if (user && needsEmailVerification(user)) {
-      router.replace("/verify-email?returnTo=/seller/dashboard" as Href);
-      return;
-    }
-    if (user && !isSeller) router.replace(getRoleDestination(user));
-  }, [authLoading, isAuthenticated, isSeller, router, user]);
+  const navItems = useMemo(
+    () =>
+      sellerTabs.map((item) => {
+        const feature = protectedSellerTabs[item.id];
+        return {
+          ...item,
+          locked: feature ? !sellerPlanHasFeature(subscription, feature) : false,
+        };
+      }),
+    [subscription],
+  );
+  const userName = user?.name || "Seller User";
+  const userEmail = user?.email || "Seller";
+  const store = overview?.store || null;
 
   const loadDashboard = useCallback(
     async (silent = false) => {
-      if (!isSeller) return;
+      if (!isReady) return;
       if (!silent) setLoading(true);
       setSubscriptionLoading(true);
       setError("");
@@ -2131,112 +1567,154 @@ export function SellerDashboardNative() {
         }
       } catch (err) {
         if (err instanceof ApiError && err.status === 401) {
-          await logout();
-          router.replace("/login?returnTo=/seller/dashboard" as Href);
+          await handleUnauthorized();
           return;
         }
         setError(
-          err instanceof Error
-            ? err.message
-            : "Error loading seller dashboard.",
+          err instanceof Error ? err.message : "Error loading seller dashboard.",
         );
       } finally {
         if (!silent) setLoading(false);
         setSubscriptionLoading(false);
       }
     },
-    [isSeller, logout, router],
+    [handleUnauthorized, isReady],
   );
 
   useEffect(() => {
-    if (!isSeller) return;
+    if (!isReady) return;
     const timeout = setTimeout(() => void loadDashboard(), 0);
     return () => clearTimeout(timeout);
-  }, [isSeller, loadDashboard]);
+  }, [isReady, loadDashboard]);
 
   useEffect(() => {
-    if (!isSeller) return;
+    if (!isReady) return;
     const id = setInterval(() => void loadDashboard(true), 60_000);
     return () => clearInterval(id);
-  }, [isSeller, loadDashboard]);
+  }, [isReady, loadDashboard]);
 
-  const selectTab = (tab: SellerTab) => {
-    const nextTabParam = tab === "dashboard" ? undefined : tab.replaceAll("_", "-");
-
-    setActiveTab(tab);
-    setSidebarOpen(false);
-    lastSyncedTabParam.current = nextTabParam;
-
-    if (typeof router.setParams === "function") {
-      router.setParams({ tab: nextTabParam });
-      return;
-    }
-
-    if (
-      typeof window !== "undefined" &&
-      typeof window.history?.replaceState === "function"
-    ) {
-      const nextPath =
-        tab === "dashboard"
-          ? "/seller/dashboard"
-          : `/seller/dashboard?tab=${nextTabParam}`;
-      window.history.replaceState(null, "", nextPath);
-    }
-  };
+  const handleSelectTab = useCallback(
+    (tab: string) => {
+      selectTab(tab as SellerTab);
+      setSidebarOpen(false);
+    },
+    [selectTab],
+  );
 
   const handleLogout = async () => {
     await logout();
     router.replace("/login" as Href);
   };
 
-  if (authLoading || !isAuthenticated || !isSeller) {
+  if (!isReady) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-green-50 dark:bg-slate-950">
-        <ActivityIndicator color="#16a34a" size="large" />
-        <Text className="mt-4 font-sans text-sm text-gray-500 dark:text-slate-400">
-          Loading your seller dashboard...
-        </Text>
-      </SafeAreaView>
+      <DashboardLoading
+        message="Loading your seller dashboard..."
+        className="flex-1 items-center justify-center bg-green-50 dark:bg-slate-950"
+      />
     );
   }
 
   return (
-    <SafeAreaView className="flex-1 bg-green-50 dark:bg-slate-950">
-      <View className="relative flex-1 overflow-hidden md:flex-row">
-        <SellerSidebar
-          activeTab={activeTab}
-          onTab={selectTab}
-          store={overview?.store || null}
-          userName={user?.name || "Seller User"}
-          userEmail={user?.email || "Seller"}
-          stats={dashboardStats}
-          subscription={subscription}
-        />
-        <SellerMobileDrawer
-          visible={sidebarOpen}
-          activeTab={activeTab}
-          onClose={() => setSidebarOpen(false)}
-          onTab={selectTab}
-          store={overview?.store || null}
-          subscription={subscription}
-        />
-
-        <View className="relative z-0 min-w-0 flex-1 overflow-hidden">
-          <SellerTopHeader
-            onMenu={() => setSidebarOpen(true)}
-            onNotifications={() => selectTab("notifications")}
-            onTab={selectTab}
-            onLogout={handleLogout}
-            store={overview?.store || null}
-            userName={user?.name || "Seller User"}
-            userEmail={user?.email || "Seller"}
-          />
-
-          <ScrollView
-            className="flex-1"
-            contentContainerClassName="p-4 pb-10 sm:p-6"
-            showsVerticalScrollIndicator={false}
-          >
+    <DashboardShell
+      navItems={navItems}
+      navVariant="seller"
+      activeTab={activeTab}
+      onTab={handleSelectTab}
+      title={activeItem.label}
+      subtitle={store?.name || "Seller Account"}
+      dashboardHref={SELLER_DASHBOARD_PATH as Href}
+      sidebarOpen={sidebarOpen}
+      onSidebarOpen={setSidebarOpen}
+      onRefresh={() => void loadDashboard(true)}
+      brandSubtitle="Seller Center"
+      sidebarHeader={
+        <Pressable
+          onPress={() => handleSelectTab("dashboard")}
+          className="mb-2 flex-row items-center gap-4 px-2">
+          <View className="relative">
+            <StoreAvatar store={store} />
+            <View className="absolute -bottom-1 -right-1 h-4 w-4 rounded-full border-2 border-white bg-green-400 dark:border-slate-800" />
+          </View>
+          <View className="min-w-0 flex-1">
+            <Text
+              className="font-sans text-lg font-bold text-gray-900 dark:text-slate-100"
+              numberOfLines={1}>
+              {store?.name || "Seller Center"}
+            </Text>
+            <Text
+              className="font-sans text-sm font-medium text-green-600 dark:text-green-400"
+              numberOfLines={1}>
+              Seller Account
+            </Text>
+          </View>
+        </Pressable>
+      }
+      sidebarFooter={
+        <View>
+          <View className="flex-row items-center gap-3">
+            <View className="h-10 w-10 items-center justify-center rounded-xl bg-gray-500 dark:bg-slate-700">
+              <Text className="font-sans text-sm font-medium text-white">
+                {userName.charAt(0).toUpperCase()}
+              </Text>
+            </View>
+            <View className="min-w-0 flex-1">
+              <Text
+                className="font-sans text-sm font-bold text-gray-950 dark:text-slate-100"
+                numberOfLines={1}>
+                {userName}
+              </Text>
+              <Text
+                className="font-sans text-xs text-gray-500 dark:text-slate-500"
+                numberOfLines={1}>
+                {userEmail}
+              </Text>
+            </View>
+          </View>
+          <View className="mt-4 flex-row gap-3">
+            <View className="flex-1 items-center rounded-lg bg-green-50 p-2 dark:bg-green-900/20">
+              <Text className="font-sans text-sm font-bold text-green-700 dark:text-green-400">
+                {dashboardStats.totalProducts}
+              </Text>
+              <Text className="font-sans text-xs text-gray-600 dark:text-slate-400">Products</Text>
+            </View>
+            <View className="flex-1 items-center rounded-lg bg-blue-50 p-2 dark:bg-blue-900/20">
+              <Text className="font-sans text-sm font-bold text-blue-700 dark:text-blue-400">
+                {dashboardStats.totalOrders}
+              </Text>
+              <Text className="font-sans text-xs text-gray-600 dark:text-slate-400">Orders</Text>
+            </View>
+          </View>
+        </View>
+      }
+      drawerHeader={
+        <View className="flex-row items-center justify-between gap-3">
+          <View className="min-w-0 flex-1 flex-row items-center gap-3">
+            <StoreAvatar store={store} />
+            <View className="min-w-0 flex-1">
+              <Text
+                className="font-sans text-base font-black text-gray-950 dark:text-slate-100"
+                numberOfLines={1}>
+                {store?.name || "Seller Dashboard"}
+              </Text>
+              <Text
+                className="font-sans text-xs text-gray-500 dark:text-slate-400"
+                numberOfLines={1}>
+                Seller workspace
+              </Text>
+            </View>
+          </View>
+          <Pressable
+            onPress={() => setSidebarOpen(false)}
+            className="h-10 w-10 items-center justify-center rounded-xl bg-gray-100 dark:bg-slate-800">
+            <Feather name="x" color="#64748b" size={18} />
+          </Pressable>
+        </View>
+      }>
+      <ScrollView
+        className="flex-1"
+        contentContainerClassName="p-4 pb-10 sm:p-6"
+        showsVerticalScrollIndicator={false}>
             <SellerMobileTabBar
               activeTab={activeTab}
               onTab={selectTab}
@@ -2361,9 +1839,7 @@ export function SellerDashboardNative() {
             ) : (
               <SellerComingSoonPanel item={activeItem} />
             )}
-          </ScrollView>
-        </View>
-      </View>
-    </SafeAreaView>
+      </ScrollView>
+    </DashboardShell>
   );
 }

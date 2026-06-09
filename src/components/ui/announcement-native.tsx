@@ -4,8 +4,24 @@ import { useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Linking, Modal, Pressable, Text, View } from 'react-native';
 
+import { SITE_CONTAINER_CLASS } from '@/constants/layout';
 import { useNativeAuth } from '@/context/native-auth';
 import { fetchAnnouncements, type Announcement } from '@/utils/native-api';
+
+const ANNOUNCEMENT_CACHE_TTL_MS = 5 * 60 * 1000;
+let cachedAnnouncements: Announcement[] | null = null;
+let announcementCacheAt = 0;
+
+async function loadAnnouncements(signal?: AbortSignal) {
+  if (cachedAnnouncements && Date.now() - announcementCacheAt < ANNOUNCEMENT_CACHE_TTL_MS) {
+    return cachedAnnouncements;
+  }
+
+  const nextItems = await fetchAnnouncements(signal);
+  cachedAnnouncements = nextItems;
+  announcementCacheAt = Date.now();
+  return nextItems;
+}
 
 const badgeColors: Record<string, string> = {
   green: 'bg-green-500',
@@ -101,7 +117,7 @@ function PageBanner({
 
   return (
     <View className="border-b border-gray-100 bg-white dark:border-slate-800 dark:bg-slate-950">
-      <View className="mx-auto w-full max-w-7xl px-4 py-3 sm:px-6 lg:px-8">
+      <View className={`${SITE_CONTAINER_CLASS} py-3`}>
         <Pressable
           onPress={() => openLink(announcement.bannerLinkUrl)}
           className="relative overflow-hidden rounded-xl bg-gray-100 dark:bg-slate-800"
@@ -218,7 +234,7 @@ export function AnnouncementNative() {
 
     const load = async () => {
       try {
-        const nextItems = await fetchAnnouncements(controller.signal);
+        const nextItems = await loadAnnouncements(controller.signal);
         if (!controller.signal.aborted) setItems(nextItems);
       } catch {
         // Announcements should never block page rendering.

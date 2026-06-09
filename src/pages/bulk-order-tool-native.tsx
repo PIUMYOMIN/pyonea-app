@@ -14,6 +14,7 @@ import {
 } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
+import { SITE_CONTAINER_CLASS } from '@/constants/layout';
 import { NativeDateField } from '@/components/ui/native-date-field';
 import { useNativeAuth } from '@/context/native-auth';
 import { useAppTranslation } from '@/i18n';
@@ -25,6 +26,7 @@ import {
   formatMMK,
   searchBulkOrderProducts,
   type BulkOrderProduct,
+  type CartResult,
   type ProductVariant,
 } from '@/utils/native-api';
 import { emitCartCountChanged } from '@/utils/native-cart-events';
@@ -576,19 +578,17 @@ export function BulkOrderToolNative() {
     setCartSubmitting(true);
     setMessage(null);
     let added = 0;
-    let lastTotalItems: number | undefined;
+    let lastCart: CartResult | undefined;
     try {
       for (const line of validatedLines) {
         const result = await addProductToCart(line.id, line.quantityNum, {
           variantId: line.selectedVariantId,
         });
         added += 1;
-        if (typeof result.totalItems === 'number') lastTotalItems = result.totalItems;
+        lastCart = result.cart;
       }
-      if (typeof lastTotalItems === 'number') {
-        emitCartCountChanged(lastTotalItems);
-      } else {
-        emitCartCountChanged({ delta: validatedLines.reduce((sum, line) => sum + line.quantityNum, 0) });
+      if (lastCart) {
+        emitCartCountChanged({ cart: lastCart });
       }
       setMessage({ type: 'success', text: t('bulk_order.cart_added', { count: added }) });
     } catch (err) {
@@ -740,9 +740,9 @@ export function BulkOrderToolNative() {
       <KeyboardAvoidingView
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 72 : 0}>
-      <View className="relative min-h-screen bg-gray-50 px-4 py-8 dark:bg-slate-900 sm:px-6 sm:py-12">
+      <View className="relative min-h-screen bg-gray-50 py-8 dark:bg-slate-900 sm:py-12">
         <BulkOrderToast message={message} onClose={() => setMessage(null)} />
-        <View className="mx-auto w-full max-w-7xl">
+        <View className={SITE_CONTAINER_CLASS}>
           <View className="mb-8">
             <Text className="font-sans text-2xl font-bold tracking-tight text-gray-900 dark:text-white sm:text-4xl">
               {t('bulk_order.title')}

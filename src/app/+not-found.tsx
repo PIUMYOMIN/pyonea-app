@@ -1,10 +1,5 @@
-import { PlaceholderPage } from '@/components/placeholder-page';
+import { Redirect } from 'expo-router';
 
 export default function NotFoundRoute() {
-  return (
-    <PlaceholderPage
-      title="Page not found"
-      description="The page you are looking for is not available in the Pyonea app yet."
-    />
-  );
+  return <Redirect href="/" />;
 }

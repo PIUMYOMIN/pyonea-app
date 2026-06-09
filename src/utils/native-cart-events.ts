@@ -1,4 +1,13 @@
-type CartCountEvent = number | { count?: number; delta?: number };
+import type { CartResult } from '@/utils/native-api';
+
+export type CartCountEvent =
+  | number
+  | {
+      count?: number;
+      delta?: number;
+      cart?: CartResult;
+    };
+
 type CartCountListener = (event?: CartCountEvent) => void;
 
 const listeners = new Set<CartCountListener>();

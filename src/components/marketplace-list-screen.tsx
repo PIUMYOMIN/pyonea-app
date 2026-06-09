@@ -2,26 +2,42 @@ import { OptimizedImage as Image } from "@/components/ui/optimized-image";
 import Feather from "@expo/vector-icons/Feather";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { Link, useRouter, type Href } from "expo-router";
-import { useEffect, useState } from "react";
+import { memo, useEffect, useRef, useState } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 
 import { AppLayout } from "@/components/layout/app-layout";
+import { SiteSection } from '@/components/layout/site-container';
 import { CategoryCardFromHome } from "@/components/ui/category-card";
+import { useNativeAuth } from "@/context/native-auth";
+import { useWishlistProductState } from "@/context/wishlist-context";
 import { localizeBilingualName, useAppTranslation } from "@/i18n";
+import { hasUserRole } from "@/utils/auth-routing";
 import {
   isProductCompared,
   toggleCompareProduct,
 } from "@/utils/compare-native";
-import type {
-  BlogPost,
-  HomeCategory,
-  HomeProduct,
-  HomeSeller,
-  LocalDeal,
-  SubscriptionPlan,
+import {
+  addProductToCart,
+  getProductApiId,
+  type BlogPost,
+  type HomeCategory,
+  type HomeProduct,
+  type HomeSeller,
+  type LocalDeal,
+  type SubscriptionPlan,
 } from "@/utils/native-api";
+import { emitCartCountChanged } from "@/utils/native-cart-events";
 
 const placeholderProduct = require("@/assets/images/placeholder-product.png");
+
+/** Shared product card layout classes — width only; height grows with content. */
+export const PRODUCT_CARD_GRID_CLASS =
+  "w-[47%] min-w-0 sm:w-[30.5%] lg:w-[22.5%]";
+
+export const PRODUCT_CARD_ROW_CLASS = "min-w-0 flex-1 self-stretch";
+
+export const PRODUCT_CARD_CAROUSEL_CLASS =
+  "w-44 flex-shrink-0 sm:w-48 lg:w-52";
 
 function Stars({ rating, count }: { rating: string; count?: number }) {
   const numericRating = Number(rating) || 0;
@@ -69,11 +85,17 @@ export function MarketplaceListScreen<T>({
   const [items, setItems] = useState<T[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const fetchItemsRef = useRef(fetchItems);
+
+  useEffect(() => {
+    fetchItemsRef.current = fetchItems;
+  }, [fetchItems]);
 
   useEffect(() => {
     const controller = new AbortController();
 
-    fetchItems(controller.signal)
+    fetchItemsRef
+      .current(controller.signal)
       .then((nextItems) => {
         setItems(nextItems);
         setError("");
@@ -91,12 +113,11 @@ export function MarketplaceListScreen<T>({
       });
 
     return () => controller.abort();
-  }, [emptyMessage, fetchItems, title]);
+  }, [emptyMessage, title]);
 
   return (
     <AppLayout>
-      <View className="bg-gray-50 px-4 py-10 dark:bg-slate-950 sm:px-6 lg:px-8">
-        <View className="mx-auto w-full max-w-7xl">
+      <SiteSection className="bg-gray-50 py-10 dark:bg-slate-950">
           <View className="mb-8">
             <Text className="font-sans text-3xl font-black text-gray-950 dark:text-slate-100 sm:text-4xl">
               {title}
@@ -121,14 +142,13 @@ export function MarketplaceListScreen<T>({
               </View>
             )}
           </View>
-        </View>
-      </View>
+      </SiteSection>
     </AppLayout>
   );
 }
 
 export function CardSkeleton({
-  className = "h-[344px] w-[47%] sm:h-[390px] sm:w-[30.5%] lg:h-[448px] lg:w-[22.5%]",
+  className = PRODUCT_CARD_GRID_CLASS,
 }: {
   className?: string;
 }) {
@@ -136,21 +156,26 @@ export function CardSkeleton({
     <View
       className={`${className} min-w-0 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm dark:border-gray-700 dark:bg-gray-800`}
     >
-      <View className="aspect-square bg-gray-200 dark:bg-slate-800" />
-      <View className="min-h-0 flex-1 gap-1.5 p-3">
+      <View className="aspect-square w-full bg-gray-200 dark:bg-slate-800" />
+      <View className="gap-1.5 px-2.5 py-2.5 sm:px-3">
         <View className="h-4 w-3/4 rounded bg-gray-200 dark:bg-slate-800" />
         <View className="h-3 w-1/2 rounded bg-gray-200 dark:bg-slate-800" />
-        <View className="flex-1" />
-        <View className="h-7 rounded-lg bg-gray-200 dark:bg-slate-800" />
-        <View className="h-8 rounded-lg bg-gray-200 dark:bg-slate-800" />
+        <View className="mt-1 h-3 w-2/3 rounded bg-gray-200 dark:bg-slate-800" />
+        <View className="mt-2 border-t border-gray-100 pt-2 dark:border-gray-700">
+          <View className="h-4 w-1/2 rounded bg-gray-200 dark:bg-slate-800" />
+        </View>
+        <View className="mt-2 flex-row gap-1.5">
+          <View className="h-8 flex-1 rounded-lg bg-gray-200 dark:bg-slate-800" />
+          <View className="h-8 flex-1 rounded-lg bg-gray-200 dark:bg-slate-800" />
+        </View>
       </View>
     </View>
   );
 }
 
-export function ProductListCard({
+function ProductListCardComponent({
   product,
-  className = "h-[344px] w-[47%] sm:h-[390px] sm:w-[30.5%] lg:h-[448px] lg:w-[22.5%]",
+  className = PRODUCT_CARD_GRID_CLASS,
   imagePriority = false,
 }: {
   product: HomeProduct;
@@ -159,7 +184,11 @@ export function ProductListCard({
 }) {
   const { t, language } = useAppTranslation();
   const router = useRouter();
-  const productHref = `/products/${product.id}` as Href;
+  const { user, isAuthenticated } = useNativeAuth();
+  const { saved, toggleWishlist } = useWishlistProductState(product);
+  const [wishlistBusy, setWishlistBusy] = useState(false);
+  const [cartBusy, setCartBusy] = useState(false);
+  const productHref = `/products/${product.slug || product.id}` as Href;
   const [compared, setCompared] = useState(() => isProductCompared(product.id));
   const productName = localizeBilingualName(
     language,
@@ -176,9 +205,58 @@ export function ProductListCard({
 
   const nameLineHeight = Platform.OS === "android" ? 20 : 18;
 
+  const handleWishlistPress = async () => {
+    if (wishlistBusy) return;
+
+    if (!isAuthenticated) {
+      router.push(
+        `/login?returnTo=${encodeURIComponent(String(productHref))}` as Href,
+      );
+      return;
+    }
+
+    if (!hasUserRole(user, "buyer")) return;
+
+    setWishlistBusy(true);
+    try {
+      await toggleWishlist();
+    } catch {
+      // Wishlist errors are surfaced on detail pages; cards stay silent.
+    } finally {
+      setWishlistBusy(false);
+    }
+  };
+
+  const handleAddToCart = async () => {
+    if (product.hasVariants) {
+      router.push(productHref);
+      return;
+    }
+
+    if (!isAuthenticated) {
+      router.push(
+        `/login?returnTo=${encodeURIComponent(String(productHref))}` as Href,
+      );
+      return;
+    }
+
+    if (!hasUserRole(user, "buyer") || cartBusy) return;
+
+    setCartBusy(true);
+    try {
+      const quantity = Math.max(product.moq ?? 1, 1);
+      const result = await addProductToCart(getProductApiId(product), quantity);
+      emitCartCountChanged({ cart: result.cart });
+    } catch {
+      // Keep cards quiet; users can retry from product detail.
+    } finally {
+      setCartBusy(false);
+    }
+  };
+
   return (
     <View
-      className={`${className} min-w-0 flex-col overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm shadow-gray-200/70 dark:border-gray-700 dark:bg-gray-800 dark:shadow-slate-950/40`}
+      className={`${className} flex-col overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm shadow-gray-200/70 dark:border-gray-700 dark:bg-gray-800 dark:shadow-slate-950/40`}
     >
       <View className="relative w-full flex-shrink-0">
         <Link href={productHref} asChild>
@@ -191,6 +269,7 @@ export function ProductListCard({
               contentFit="cover"
               loading={imagePriority ? "eager" : "lazy"}
               priority={imagePriority ? "high" : "normal"}
+              recyclingKey={String(product.productId ?? product.id)}
             />
             <View className="absolute left-2 top-2 z-10 gap-1">
               {product.discountPct && product.discountPct > 0 ? (
@@ -220,15 +299,24 @@ export function ProductListCard({
             ) : null}
           </Pressable>
         </Link>
-        <Pressable className="absolute right-2 top-2 z-20 h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow-sm dark:bg-gray-900/85">
-          <Feather name="heart" color="#9ca3af" size={16} />
+        <Pressable
+          onPress={() => void handleWishlistPress()}
+          disabled={wishlistBusy}
+          accessibilityLabel={
+            saved
+              ? t("productDetail.remove_from_wishlist")
+              : t("productDetail.add_to_wishlist")
+          }
+          className="absolute right-2 top-2 z-20 h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow-sm dark:bg-gray-900/85"
+        >
+          <Feather name="heart" color={saved ? "#ef4444" : "#9ca3af"} size={16} />
         </Pressable>
       </View>
-      <View className="mt-1.5 flex-1 flex-col px-2.5 pb-2.5 pt-2 sm:px-3">
+      <View className="mt-1.5 flex-1 flex-col px-2.5 pb-2.5 pt-1.5 sm:px-3">
         <Link href={productHref} asChild>
           <Pressable className="shrink-0">
             <Text
-              className="mb-0.5 shrink-0 font-sans text-[12px] font-semibold text-gray-900 dark:text-gray-100 sm:text-[13px]"
+              className="font-sans text-[12px] font-semibold text-gray-900 dark:text-gray-100 sm:text-[13px]"
               numberOfLines={2}
               style={{
                 lineHeight: nameLineHeight,
@@ -242,7 +330,7 @@ export function ProductListCard({
             </Text>
           </Pressable>
         </Link>
-        <View className="h-3.5 justify-center overflow-hidden">
+        <View className="mt-0.5 h-3.5 justify-center">
           <Stars rating={product.rating} count={product.reviewCount} />
         </View>
         {product.seller ? (
@@ -254,12 +342,14 @@ export function ProductListCard({
               {t("productCard.by_seller", { name: product.seller })}
             </Text>
           </View>
-        ) : null}
+        ) : (
+          <View className="min-h-[14px]" />
+        )}
         <View className="mt-auto border-t border-gray-100 pt-1.5 dark:border-gray-700">
-          <View className="min-h-8 flex-row items-center justify-between gap-2 overflow-hidden px-0.5">
-            <View className="min-w-0 flex-1 flex-row flex-wrap items-center gap-x-2 gap-y-0.5">
+          <View className="flex-row items-center justify-between gap-1.5">
+            <View className="min-w-0 flex-1 flex-row flex-wrap items-center gap-x-1.5 gap-y-0.5">
               <Text
-                className={`font-sans text-[12px] font-bold leading-none sm:text-[13px] ${
+                className={`font-sans text-[12px] font-bold leading-tight sm:text-[13px] ${
                   product.discountPct && product.discountPct > 0
                     ? "text-red-600 dark:text-red-400"
                     : "text-green-700 dark:text-green-400"
@@ -270,7 +360,7 @@ export function ProductListCard({
               </Text>
               {product.originalPrice ? (
                 <Text
-                  className="font-sans text-[10px] leading-none text-gray-400 line-through dark:text-slate-500 sm:text-[11px]"
+                  className="font-sans text-[10px] leading-tight text-gray-400 line-through dark:text-slate-500 sm:text-[11px]"
                   numberOfLines={1}
                 >
                   {product.originalPrice}
@@ -278,7 +368,7 @@ export function ProductListCard({
               ) : null}
             </View>
             {product.moq && product.moq > 1 ? (
-              <View className="max-w-[46%] flex-shrink-0 rounded-md border border-gray-200 bg-gray-100 px-1.5 py-0.5 dark:border-gray-600 dark:bg-gray-700">
+              <View className="max-w-[44%] flex-shrink-0 rounded-md border border-gray-200 bg-gray-100 px-1.5 py-0.5 dark:border-gray-600 dark:bg-gray-700">
                 <Text
                   className="font-sans text-[10px] font-medium text-gray-600 dark:text-slate-300"
                   numberOfLines={1}
@@ -288,58 +378,73 @@ export function ProductListCard({
               </View>
             ) : null}
           </View>
+          <View className="mt-1.5 flex-row gap-1.5">
+            <Pressable
+              onPress={() => setCompared(toggleCompareProduct(product).compared)}
+              className={`h-8 min-w-0 flex-1 items-center justify-center rounded-lg border px-1 ${
+                compared
+                  ? "border-indigo-500 bg-indigo-50 dark:border-indigo-700 dark:bg-indigo-900/30"
+                  : "border-gray-200 dark:border-gray-700"
+              }`}
+            >
+              <Text
+                numberOfLines={1}
+                className={`text-center font-sans text-[10px] font-semibold sm:text-[11px] ${
+                  compared
+                    ? "text-indigo-700 dark:text-indigo-300"
+                    : "text-gray-700 dark:text-slate-300"
+                }`}
+              >
+                {compared
+                  ? t("productCard.added_to_compare")
+                  : t("productCard.add_to_compare")}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={() => void handleAddToCart()}
+              disabled={cartBusy}
+              className={`h-8 min-w-0 flex-1 flex-row items-center justify-center gap-1 rounded-lg px-1.5 ${
+                product.hasVariants
+                  ? "border border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/30"
+                  : "bg-green-600"
+              } ${cartBusy ? "opacity-70" : ""}`}
+            >
+              <Feather
+                name={product.hasVariants ? "sliders" : "shopping-cart"}
+                color={product.hasVariants ? "#2563eb" : "#ffffff"}
+                size={12}
+              />
+              <Text
+                className={`min-w-0 flex-1 text-center font-sans text-[10px] font-semibold sm:text-[11px] ${
+                  product.hasVariants
+                    ? "text-blue-700 dark:text-blue-300"
+                    : "text-white"
+                }`}
+                numberOfLines={1}
+              >
+                {cartBusy
+                  ? t("productCard.adding_to_cart", { defaultValue: "Adding..." })
+                  : product.hasVariants
+                    ? t("productCard.select_options")
+                    : t("productCard.add_to_cart")}
+              </Text>
+            </Pressable>
+          </View>
         </View>
-        <Pressable
-          onPress={() => setCompared(toggleCompareProduct(product).compared)}
-          className={`mt-1.5 h-8 justify-center rounded-lg border px-1.5 sm:px-2 ${
-            compared
-              ? "border-indigo-500 bg-indigo-50 dark:border-indigo-700 dark:bg-indigo-900/30"
-              : "border-gray-200 dark:border-gray-700"
-          }`}
-        >
-          <Text
-            numberOfLines={1}
-            className={`text-center font-sans text-[11px] font-semibold sm:text-xs ${
-              compared
-                ? "text-indigo-700 dark:text-indigo-300"
-                : "text-gray-700 dark:text-slate-300"
-            }`}
-          >
-            {compared
-              ? t("productCard.added_to_compare")
-              : t("productCard.add_to_compare")}
-          </Text>
-        </Pressable>
-        <Pressable
-          onPress={() => router.push(productHref)}
-          className={`mt-1.5 h-8 flex-row items-center justify-center gap-1 rounded-lg px-2 sm:gap-1.5 sm:px-3 ${
-            product.hasVariants
-              ? "border border-blue-200 bg-blue-50 dark:border-blue-700 dark:bg-blue-900/30"
-              : "bg-green-600"
-          }`}
-        >
-          <Feather
-            name={product.hasVariants ? "sliders" : "shopping-cart"}
-            color={product.hasVariants ? "#2563eb" : "#ffffff"}
-            size={12}
-          />
-          <Text
-            className={`text-center font-sans text-[11px] font-semibold sm:text-xs ${
-              product.hasVariants
-                ? "text-blue-700 dark:text-blue-300"
-                : "text-white"
-            }`}
-            numberOfLines={1}
-          >
-            {product.hasVariants
-              ? t("productCard.select_options")
-              : t("productCard.add_to_cart")}
-          </Text>
-        </Pressable>
       </View>
     </View>
   );
 }
+
+export const ProductListCard = memo(
+  ProductListCardComponent,
+  (previous, next) =>
+    previous.product.id === next.product.id &&
+    previous.product.price === next.product.price &&
+    previous.product.imageUrl === next.product.imageUrl &&
+    previous.className === next.className &&
+    previous.imagePriority === next.imagePriority,
+);
 
 export function CategoryListCard({ category }: { category: HomeCategory }) {
   const { language } = useAppTranslation();

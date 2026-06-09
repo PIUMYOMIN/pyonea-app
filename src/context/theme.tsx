@@ -1,9 +1,23 @@
 import { useColorScheme as useNativeWindColorScheme } from 'nativewind';
-import { createContext, PropsWithChildren, useContext, useEffect, useMemo, useState } from 'react';
-import { Appearance, Platform } from 'react-native';
+import {
+  createContext,
+  PropsWithChildren,
+  useContext,
+  useEffect,
+  useLayoutEffect,
+  useMemo,
+  useState,
+} from 'react';
+import { Appearance, Platform, View } from 'react-native';
 import * as SystemUI from 'expo-system-ui';
 
-type Theme = 'light' | 'dark';
+import {
+  applyWebThemeClass,
+  getInitialTheme,
+  persistTheme,
+  readStoredThemeAsync,
+  type Theme,
+} from '@/utils/theme-storage';
 
 type ThemeContextValue = {
   theme: Theme;
@@ -13,59 +27,46 @@ type ThemeContextValue = {
   setDark: () => void;
 };
 
-const storageKey = 'pyonea-theme';
 const ThemeContext = createContext<ThemeContextValue | null>(null);
 
-function getStoredTheme(): Theme | null {
-  try {
-    const saved = globalThis.localStorage?.getItem(storageKey);
-    return saved === 'dark' || saved === 'light' ? saved : null;
-  } catch {
-    return null;
-  }
+function applyNativeAppearance(theme: Theme) {
+  if (Platform.OS === 'web') return;
+  Appearance.setColorScheme(theme);
 }
 
-function saveTheme(theme: Theme) {
-  try {
-    globalThis.localStorage?.setItem(storageKey, theme);
-  } catch {
-    // Native platforms can run without localStorage; the active session still updates immediately.
-  }
-}
+function applyThemeEverywhere(theme: Theme, setColorScheme: (scheme: Theme) => void) {
+  const isDark = theme === 'dark';
 
-function getInitialTheme(): Theme {
-  const saved = getStoredTheme();
-  if (saved) return saved;
-
-  if (Platform.OS === 'web' && typeof window !== 'undefined' && 'matchMedia' in window) {
-    return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
-  }
-
-  return Appearance.getColorScheme() === 'dark' ? 'dark' : 'light';
-}
-
-function applyWebThemeClass(isDark: boolean) {
-  if (Platform.OS !== 'web' || typeof document === 'undefined') return;
-
-  const root = document.documentElement;
-  if (isDark) {
-    root.classList.add('dark');
-  } else {
-    root.classList.remove('dark');
-  }
+  setColorScheme(theme);
+  applyWebThemeClass(isDark);
+  applyNativeAppearance(theme);
+  void SystemUI.setBackgroundColorAsync(isDark ? '#020617' : '#f9fafb');
+  void persistTheme(theme);
 }
 
 export function AppThemeProvider({ children }: PropsWithChildren) {
-  const nativeWind = useNativeWindColorScheme();
+  const { setColorScheme } = useNativeWindColorScheme();
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
   const isDark = theme === 'dark';
 
+  useLayoutEffect(() => {
+    applyThemeEverywhere(theme, setColorScheme);
+  }, [setColorScheme, theme]);
+
   useEffect(() => {
-    nativeWind.setColorScheme(theme);
-    applyWebThemeClass(isDark);
-    saveTheme(theme);
-    void SystemUI.setBackgroundColorAsync(isDark ? '#020617' : '#f9fafb');
-  }, [isDark, nativeWind, theme]);
+    if (Platform.OS === 'web') return;
+
+    let active = true;
+
+    void readStoredThemeAsync().then((saved) => {
+      if (!active || !saved) return;
+      setTheme((current) => (current === saved ? current : saved));
+    });
+
+    return () => {
+      active = false;
+    };
+  }, []);
 
   const value = useMemo(
     () => ({
@@ -75,10 +76,14 @@ export function AppThemeProvider({ children }: PropsWithChildren) {
       setLight: () => setTheme('light'),
       setDark: () => setTheme('dark'),
     }),
-    [isDark, theme]
+    [isDark, theme],
   );
 
-  return <ThemeContext.Provider value={value}>{children}</ThemeContext.Provider>;
+  return (
+    <ThemeContext.Provider value={value}>
+      <View className={`flex-1 ${isDark ? 'dark' : ''}`}>{children}</View>
+    </ThemeContext.Provider>
+  );
 }
 
 export function useTheme() {

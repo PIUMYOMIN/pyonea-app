@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
-import { Link, useGlobalSearchParams, useRouter, type Href } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { Link, useRouter, type Href } from 'expo-router';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -13,11 +13,21 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import { DashboardTopNav } from '@/components/dashboard/dashboard-top-nav';
-import { useNativeAuth } from '@/context/native-auth';
+import {
+  BUYER_DASHBOARD_PATH,
+  buyerTabDefinitions,
+  normalizeBuyerTab,
+  type BuyerTab,
+} from '@/dashboards/buyer/config';
+import {
+  DashboardLoading,
+  DashboardShell,
+  useDashboardGuard,
+  useDashboardTabs,
+} from '@/dashboards/shared';
 import { useTheme } from '@/context/theme';
+import { useWishlist } from '@/context/wishlist-context';
 import { useAppTranslation } from '@/i18n';
-import { getRoleDestination, hasUserRole } from '@/utils/auth-routing';
 import {
   cancelBuyerOrder,
   clearCartItems,
@@ -25,8 +35,8 @@ import {
   fetchBuyerOrders,
   fetchBuyerProfile,
   fetchCart,
-  fetchWishlist,
   formatMMK,
+  getProductApiId,
   removeCartItem,
   removeWishlistItem,
   resendBuyerVerificationEmail,
@@ -44,20 +54,7 @@ import {
 
 const placeholderProduct = require('@/assets/images/placeholder-product.png');
 
-type DashboardTab = 'dashboard' | 'orders' | 'history' | 'cart' | 'wishlist' | 'settings';
-
-const tabs: { id: DashboardTab; icon: keyof typeof Feather.glyphMap; labelKey: string }[] = [
-  { id: 'dashboard', icon: 'home', labelKey: 'sidebar.dashboard' },
-  { id: 'orders', icon: 'shopping-bag', labelKey: 'buyer_dashboard.my_orders' },
-  { id: 'history', icon: 'file-text', labelKey: 'buyer_dashboard.purchase_history' },
-  { id: 'cart', icon: 'shopping-cart', labelKey: 'buyer_dashboard.my_cart' },
-  { id: 'wishlist', icon: 'heart', labelKey: 'buyer_dashboard.wishlist' },
-  { id: 'settings', icon: 'settings', labelKey: 'buyer_dashboard.settings' },
-];
-
 const orderStatuses = ['all', 'pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
-
-const getParam = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
 const titleCase = (value: string) =>
   value
@@ -111,101 +108,6 @@ const statusTone = (status: string) => {
       };
   }
 };
-
-function DashboardShell({
-  activeTab,
-  setActiveTab,
-  user,
-  children,
-}: {
-  activeTab: DashboardTab;
-  setActiveTab: (tab: DashboardTab) => void;
-  user: BuyerProfile | null;
-  children: React.ReactNode;
-}) {
-  const { t } = useAppTranslation();
-  const initial = user?.name?.charAt(0)?.toUpperCase() || 'B';
-  const activeTabConfig = tabs.find((tab) => tab.id === activeTab) || tabs[0];
-
-  return (
-    <SafeAreaView className="flex-1 bg-green-50 dark:bg-slate-950">
-      <View className="flex-1 md:flex-row">
-        <View className="hidden w-72 border-r border-gray-200 bg-white/90 p-5 dark:border-slate-800 dark:bg-slate-900 md:flex">
-          <View className="mb-8 flex-row items-center gap-3">
-            <View className="h-12 w-12 items-center justify-center rounded-2xl bg-green-600">
-              <Text className="font-sans text-lg font-bold text-white">{initial}</Text>
-            </View>
-            <View className="min-w-0 flex-1">
-              <Text className="font-sans text-base font-bold text-gray-950 dark:text-slate-100" numberOfLines={1}>
-                {user?.name || t('buyer_dashboard.buyer')}
-              </Text>
-              <Text className="font-sans text-sm font-semibold text-green-700 dark:text-green-300">
-                {t('buyer_dashboard.buyer_account')}
-              </Text>
-            </View>
-          </View>
-
-          <View className="gap-1">
-            {tabs.map((tab) => {
-              const active = activeTab === tab.id;
-              return (
-                <Pressable
-                  key={tab.id}
-                  onPress={() => setActiveTab(tab.id)}
-                  className={`flex-row items-center gap-3 rounded-2xl px-4 py-3 ${
-                    active ? 'bg-green-600' : 'hover:bg-gray-50 dark:hover:bg-slate-800'
-                  }`}>
-                  <Feather name={tab.icon} color={active ? '#ffffff' : '#64748b'} size={19} />
-                  <Text
-                    className={`font-sans text-sm font-semibold ${
-                      active ? 'text-white' : 'text-gray-600 dark:text-slate-300'
-                    }`}>
-                    {t(tab.labelKey)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </View>
-
-        <View className="min-w-0 flex-1">
-          <DashboardTopNav
-            title={t(activeTabConfig.labelKey)}
-            subtitle={t('buyer_dashboard.buyer_account')}
-            dashboardHref="/buyer/dashboard"
-          />
-
-          <View className="border-b border-gray-200 bg-white px-4 py-3 dark:border-slate-800 dark:bg-slate-900 md:hidden">
-            <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-              <View className="flex-row gap-2">
-                {tabs.map((tab) => {
-                  const active = activeTab === tab.id;
-                  return (
-                    <Pressable
-                      key={tab.id}
-                      onPress={() => setActiveTab(tab.id)}
-                      className={`flex-row items-center gap-2 rounded-full px-3 py-2 ${
-                        active ? 'bg-green-600' : 'bg-gray-100 dark:bg-slate-800'
-                      }`}>
-                      <Feather name={tab.icon} color={active ? '#ffffff' : '#64748b'} size={15} />
-                      <Text
-                        className={`font-sans text-xs font-semibold ${
-                          active ? 'text-white' : 'text-gray-600 dark:text-slate-300'
-                        }`}>
-                        {t(tab.labelKey)}
-                      </Text>
-                    </Pressable>
-                  );
-                })}
-              </View>
-            </ScrollView>
-          </View>
-          {children}
-        </View>
-      </View>
-    </SafeAreaView>
-  );
-}
 
 function StatusBadge({ status }: { status: string }) {
   const { t } = useAppTranslation();
@@ -356,7 +258,7 @@ function DashboardOverview({
 }: {
   user: BuyerProfile | null;
   orders: TrackedOrder[];
-  onTab: (tab: DashboardTab) => void;
+  onTab: (tab: BuyerTab) => void;
   onOrderDetails: (order: TrackedOrder) => void;
   onCancel: (order: TrackedOrder) => void;
   onConfirmDelivery: (order: TrackedOrder) => void;
@@ -914,35 +816,17 @@ function SummaryLine({ label, value, strong }: { label: string; value: string; s
 
 function WishlistPanel() {
   const { t } = useAppTranslation();
-  const [items, setItems] = useState<HomeProduct[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { items, loading, refreshWishlist } = useWishlist();
   const [busyId, setBusyId] = useState<string | number | null>(null);
   const [message, setMessage] = useState('');
 
-  useEffect(() => {
-    const controller = new AbortController();
-    const load = async () => {
-      setLoading(true);
-      try {
-        const result = await fetchWishlist(controller.signal);
-        if (!controller.signal.aborted) setItems(result);
-      } catch {
-        if (!controller.signal.aborted) setMessage(t('buyer_dashboard.failed_load_wishlist'));
-      } finally {
-        if (!controller.signal.aborted) setLoading(false);
-      }
-    };
-
-    void load();
-    return () => controller.abort();
-  }, [t]);
-
   const handleRemove = async (product: HomeProduct) => {
-    setBusyId(product.id);
+    const productId = getProductApiId(product);
+    setBusyId(productId);
     setMessage('');
     try {
-      await removeWishlistItem(product.id);
-      setItems((current) => current.filter((item) => String(item.id) !== String(product.id)));
+      await removeWishlistItem(productId);
+      await refreshWishlist();
     } catch {
       setMessage(t('buyer_dashboard.failed_remove_item'));
     } finally {
@@ -995,10 +879,10 @@ function WishlistPanel() {
                         </Link>
                         <Pressable
                           onPress={() => handleRemove(product)}
-                          disabled={String(busyId) === String(product.id)}
+                          disabled={String(busyId) === String(getProductApiId(product))}
                           className="rounded-lg bg-red-50 px-3 py-1.5 dark:bg-red-900/30">
                           <Text className="font-sans text-xs font-semibold text-red-700 dark:text-red-300">
-                            {String(busyId) === String(product.id)
+                            {String(busyId) === String(getProductApiId(product))
                               ? t('buyer_dashboard.removing')
                               : t('buyer_dashboard.remove')}
                           </Text>
@@ -1424,17 +1308,18 @@ function CancelOrderModal({
 
 export function BuyerDashboardNative() {
   const { t } = useAppTranslation();
-  const {
-    user: authUser,
-    isLoading: authLoading,
-    isAuthenticated,
-    logout,
-  } = useNativeAuth();
-  const params = useGlobalSearchParams<{ tab?: string }>();
-  const initialTab = (getParam(params.tab) || 'dashboard') as DashboardTab;
-  const [activeTab, setActiveTab] = useState<DashboardTab>(
-    tabs.some((tab) => tab.id === initialTab) ? initialTab : 'dashboard'
-  );
+  const router = useRouter();
+  const { user: authUser, isReady, handleUnauthorized } = useDashboardGuard({
+    role: 'buyer',
+    returnTo: BUYER_DASHBOARD_PATH,
+    requireEmailVerification: false,
+  });
+  const { activeTab, selectTab } = useDashboardTabs<BuyerTab>({
+    basePath: BUYER_DASHBOARD_PATH,
+    defaultTab: 'dashboard',
+    normalizeTab: normalizeBuyerTab,
+  });
+  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [user, setUser] = useState<BuyerProfile | null>(null);
   const [orders, setOrders] = useState<TrackedOrder[]>([]);
   const [loading, setLoading] = useState(true);
@@ -1446,9 +1331,18 @@ export function BuyerDashboardNative() {
   const [confirmingId, setConfirmingId] = useState<string | number | null>(null);
   const [resendingEmail, setResendingEmail] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState('');
-  const router = useRouter();
-  const canLoadDashboard =
-    !authLoading && isAuthenticated && hasUserRole(authUser, 'buyer');
+
+  const navItems = useMemo(
+    () =>
+      buyerTabDefinitions.map((tab) => ({
+        id: tab.id,
+        icon: tab.icon,
+        label: t(tab.labelKey),
+      })),
+    [t],
+  );
+  const activeTabConfig =
+    buyerTabDefinitions.find((tab) => tab.id === activeTab) || buyerTabDefinitions[0];
 
   const loadOrders = async () => {
     const nextOrders = await fetchBuyerOrders();
@@ -1456,21 +1350,7 @@ export function BuyerDashboardNative() {
   };
 
   useEffect(() => {
-    if (authLoading) return;
-
-    if (!isAuthenticated) {
-      router.replace('/login?returnTo=/buyer/dashboard' as Href);
-      return;
-    }
-
-    if (!hasUserRole(authUser, 'buyer') && authUser) {
-      router.replace(getRoleDestination(authUser));
-      return;
-    }
-  }, [authLoading, authUser, isAuthenticated, router]);
-
-  useEffect(() => {
-    if (!canLoadDashboard) return;
+    if (!isReady) return;
 
     const controller = new AbortController();
     const loadDashboard = async () => {
@@ -1488,8 +1368,7 @@ export function BuyerDashboardNative() {
       } catch (err) {
         if (!controller.signal.aborted) {
           if (err instanceof ApiError && err.status === 401) {
-            await logout();
-            router.replace('/login?returnTo=/buyer/dashboard' as Href);
+            await handleUnauthorized();
             return;
           }
           setError(err instanceof Error ? err.message : t('buyer_dashboard.loading_dashboard'));
@@ -1501,7 +1380,15 @@ export function BuyerDashboardNative() {
 
     void loadDashboard();
     return () => controller.abort();
-  }, [canLoadDashboard, logout, router, t]);
+  }, [handleUnauthorized, isReady, t]);
+
+  const handleSelectTab = useCallback(
+    (tab: string) => {
+      selectTab(tab as BuyerTab);
+      setSidebarOpen(false);
+    },
+    [selectTab],
+  );
 
   const handleCancelConfirm = async () => {
     if (!cancelOrder) return;
@@ -1543,14 +1430,12 @@ export function BuyerDashboardNative() {
     }
   };
 
-  if (authLoading || !canLoadDashboard || loading) {
+  if (!isReady || loading) {
     return (
-      <SafeAreaView className="flex-1 items-center justify-center bg-green-50 dark:bg-slate-950">
-        <ActivityIndicator color="#16a34a" size="large" />
-        <Text className="mt-4 font-sans text-sm text-gray-600 dark:text-slate-400">
-          {t('buyer_dashboard.loading_dashboard')}
-        </Text>
-      </SafeAreaView>
+      <DashboardLoading
+        message={t('buyer_dashboard.loading_dashboard')}
+        className="flex-1 items-center justify-center bg-green-50 dark:bg-slate-950"
+      />
     );
   }
 
@@ -1573,9 +1458,35 @@ export function BuyerDashboardNative() {
 
   return (
     <DashboardShell
+      navItems={navItems}
+      navVariant="pill"
       activeTab={activeTab}
-      setActiveTab={setActiveTab}
-      user={user}>
+      onTab={handleSelectTab}
+      title={t(activeTabConfig.labelKey)}
+      subtitle={t('buyer_dashboard.buyer_account')}
+      dashboardHref={BUYER_DASHBOARD_PATH as Href}
+      sidebarOpen={sidebarOpen}
+      onSidebarOpen={setSidebarOpen}
+      mobileTabBar
+      brandSubtitle={t('buyer_dashboard.buyer_account')}
+      sidebarHeader={
+        <View className="mb-4 flex-row items-center gap-3 px-2">
+          <View className="h-12 w-12 items-center justify-center rounded-2xl bg-green-600">
+            <Text className="font-sans text-lg font-bold text-white">
+              {user?.name?.charAt(0)?.toUpperCase() || 'B'}
+            </Text>
+          </View>
+          <View className="min-w-0 flex-1">
+            <Text className="font-sans text-base font-bold text-gray-950 dark:text-slate-100" numberOfLines={1}>
+              {user?.name || t('buyer_dashboard.buyer')}
+            </Text>
+            <Text className="font-sans text-sm font-semibold text-green-700 dark:text-green-300">
+              {t('buyer_dashboard.buyer_account')}
+            </Text>
+          </View>
+        </View>
+      }>
+      <View className="flex-1">
       {error ? (
         <View className="absolute left-4 right-4 top-4 z-10 rounded-xl border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950">
           <Pressable onPress={() => setError('')} className="flex-row items-center gap-2">
@@ -1590,7 +1501,7 @@ export function BuyerDashboardNative() {
         <DashboardOverview
           user={user}
           orders={orders}
-          onTab={setActiveTab}
+          onTab={(tab) => selectTab(tab)}
           onOrderDetails={setSelectedOrder}
           onCancel={setCancelOrder}
           onConfirmDelivery={handleConfirmDelivery}
@@ -1631,6 +1542,7 @@ export function BuyerDashboardNative() {
         }}
         onConfirm={handleCancelConfirm}
       />
+      </View>
     </DashboardShell>
   );
 }

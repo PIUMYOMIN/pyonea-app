@@ -3,15 +3,16 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider as ExpoThemeProvider } fr
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
-import { ActivityIndicator, Text, View } from 'react-native';
 
 import { AnalyticsPageTracker } from '@/components/analytics-page-tracker';
 import { AuthDeepLinkHandler } from '@/components/auth-deep-link-handler';
 import { NativeSeo } from '@/components/SEO/native-seo';
 import { CookieBannerNative } from '@/components/ui/cookie-banner-native';
 import { CookieProvider } from '@/context/cookies';
+import { CartCountProvider } from '@/context/cart-count-context';
 import { NativeAuthProvider } from '@/context/native-auth';
 import { AppThemeProvider, useTheme } from '@/context/theme';
+import { WishlistProvider } from '@/context/wishlist-context';
 import '@/i18n';
 import '../global.css';
 
@@ -32,24 +33,6 @@ function RootStack() {
   );
 }
 
-function RootLoading() {
-  return (
-    <View className="flex-1 items-center justify-center bg-gray-50 px-6">
-      <View className="items-center rounded-2xl border border-gray-100 bg-white px-8 py-7 shadow-sm">
-        <View className="mb-4 h-14 w-14 items-center justify-center rounded-full bg-green-50">
-          <ActivityIndicator color="#16a34a" size="large" />
-        </View>
-        <Text className="font-brand text-2xl text-green-600">
-          Pyonea<Text className="font-sans text-gray-400">.com</Text>
-        </Text>
-        <Text className="mt-2 text-center font-sans text-sm text-gray-500">
-          Preparing marketplace...
-        </Text>
-      </View>
-    </View>
-  );
-}
-
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
     'NotoSansMyanmar-Regular': require('@/fonts/NotoSansMyanmar/NotoSansMyanmar-Regular.ttf'),
@@ -63,16 +46,16 @@ export default function RootLayout() {
     }
   }, [fontError, fontsLoaded]);
 
-  if (!fontsLoaded && !fontError) {
-    return <RootLoading />;
-  }
-
   return (
     <AppThemeProvider>
       <NativeAuthProvider>
-        <CookieProvider>
-          <RootStack />
-        </CookieProvider>
+        <CartCountProvider>
+          <WishlistProvider>
+            <CookieProvider>
+              <RootStack />
+            </CookieProvider>
+          </WishlistProvider>
+        </CartCountProvider>
       </NativeAuthProvider>
     </AppThemeProvider>
   );

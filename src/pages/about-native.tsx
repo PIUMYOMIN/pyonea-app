@@ -2,13 +2,14 @@ import type { ReactNode } from 'react';
 import { Text, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
+import { SITE_CONTAINER_5XL_CLASS } from '@/constants/layout';
 import { useAppTranslation } from '@/i18n';
 
 function PageShell({ children }: { children: ReactNode }) {
   return (
     <AppLayout>
-      <View className="bg-gray-50 px-4 py-10 dark:bg-slate-950 sm:px-6 sm:py-12 lg:px-8">
-        <View className="mx-auto w-full max-w-5xl">{children}</View>
+      <View className="bg-gray-50 py-10 dark:bg-slate-950 sm:py-12">
+        <View className={SITE_CONTAINER_5XL_CLASS}>{children}</View>
       </View>
     </AppLayout>
   );

@@ -4,6 +4,7 @@ import { ComponentProps, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
+import { SITE_CONTAINER_CLASS } from '@/constants/layout';
 import { useAppTranslation } from '@/i18n';
 
 type CategoryId = 'general' | 'buying' | 'selling' | 'payments' | 'shipping' | 'account';
@@ -173,7 +174,7 @@ export function FaqNative() {
   return (
     <AppLayout>
       <View className="bg-green-700">
-        <View className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
+        <View className={`${SITE_CONTAINER_CLASS} py-14 sm:py-20`}>
           <View className="max-w-2xl">
             <Text className="mb-3 font-sans text-xs font-semibold uppercase tracking-widest text-green-200">
               {t('faq_page.hero.label')}
@@ -200,8 +201,8 @@ export function FaqNative() {
         </View>
       </View>
 
-      <View className="bg-gray-50 px-4 py-10 dark:bg-slate-950 sm:px-6 sm:py-14 lg:px-8">
-        <View className="mx-auto w-full max-w-7xl gap-8 lg:flex-row lg:gap-12">
+      <View className="bg-gray-50 py-10 dark:bg-slate-950 sm:py-14">
+        <View className={`${SITE_CONTAINER_CLASS} gap-8 lg:flex-row lg:gap-12`}>
           <View className="hidden w-52 shrink-0 lg:block">
             <View className="sticky top-24">
               <Text className="mb-3 px-2 font-sans text-xs font-semibold uppercase tracking-wider text-gray-400 dark:text-slate-500">
