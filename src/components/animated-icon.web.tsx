@@ -1,4 +1,4 @@
-import { Image } from 'expo-image';
+import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { StyleSheet, View } from 'react-native';
 import Animated, { Keyframe, Easing } from 'react-native-reanimated';
 

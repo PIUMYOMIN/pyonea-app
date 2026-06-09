@@ -1,0 +1,964 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Myanmar Locations Database - ENG",
+  "description": "Complete hierarchical administrative divisions: Regions/States (15), Cities/Districts (~50), Townships (300+). For local DB use in Pyonea app.",
+  "country": "Myanmar",
+  "levels": ["region_state", "city", "township"],
+  "locations": [
+    {
+      "region_state": "Yangon Region",
+      "cities": [
+        {
+          "city": "Yangon",
+          "townships": [
+            "Sanchaung",
+            "Kamaryut",
+            "Hlaing",
+            "Insein",
+            "Mayangon",
+            "North Okkalapa",
+            "South Okkalapa",
+            "Thaketa",
+            "Thingangyun",
+            "Tamwe",
+            "Yankin",
+            "Pazundaung",
+            "Botahtaung",
+            "Kyauktada",
+            "Pabedan",
+            "Lanmadaw",
+            "Latha",
+            "Mingalar Taung Nyunt",
+            "Bahan",
+            "Dagon",
+            "South Dagon",
+            "East Dagon",
+            "North Dagon",
+            "Dagon Seikkan",
+            "Dawbon",
+            "Shwe Pyi Thar",
+            "Hlaing Thar Yar",
+            "Hmawbi",
+            "Htantabin",
+            "Mingaladon",
+            "Seik Gyi Khanaung",
+            "Twantay"
+          ]
+        },
+        {
+          "city": "Hlaegu",
+          "townships": ["Hlaegu"]
+        },
+        {
+          "city": "Tikekyi",
+          "townships": ["Tikekyi"]
+        },
+        {
+          "city": "Thanlyin",
+          "townships": [
+            "Thanlyin",
+            "Thonekhwa",
+            "Kyauktan",
+            "Khayan",
+            "Kokokyun"
+          ]
+        }
+      ]
+    },
+    {
+      "region_state": "Mandalay Region",
+      "cities": [
+        {
+          "city": "Mandalay",
+          "townships": [
+            "Aungmyaytharsan",
+            "Chanayetharzan",
+            "Pyigyitagon",
+            "Chanmyatharsi",
+            "Maharaungmyay",
+            "Amarapura",
+            "Patheingyi",
+            "Madaya"
+          ]
+        },
+        {
+          "city": "Pyin Oo Lwin",
+          "townships": ["Pyin Oo Lwin"]
+        },
+        {
+          "city": "Meikhtila",
+          "townships": ["Meikhtila", "Mahlaing", "Thazi", "Wundwin"]
+        },
+        {
+          "city": "Nyaung-U",
+          "townships": ["Nyaung-U", "Kyaukpadaung"]
+        },
+        {
+          "city": "Thabeikkyin",
+          "townships": ["Thabeikkyin", "Sinkgu", "Moekok"]
+        },
+        {
+          "city": "Kyaukse",
+          "townships": ["Kyaukse", "Myittha", "Sinkaing"]
+        },
+        {
+          "city": "Tada-U",
+          "townships": ["Tada-U", "Nganzun"]
+        },
+        {
+          "city": "Myingyan",
+          "townships": ["Myingyan", "Natogyi", "Taungtha"]
+        },
+        {
+          "city": "Yamethin",
+          "townships": ["Yamethin", "Pyawbwe"]
+        }
+      ]
+    },
+    {
+      "region_state": "Naypyidaw Union Territory",
+      "cities": [
+        {
+          "city": "Naypyidaw",
+          "townships": [
+            "Ottarathiri",
+            "Dekkhinathiri",
+            "Pobbathiri",
+            "Zabuthiri",
+            "Tatkon",
+            "Pyinmana",
+            "Lewe"
+          ]
+        }
+      ]
+    },
+    {
+      "region_state": "Sagaing Region",
+      "cities": [
+        {
+          "city": "Sagaing",
+          "townships": ["Sagaing", "Myinmu", "Pale", "MyinMuu"]
+        },
+        {
+          "city": "Monywa",
+          "townships": ["Monywa", "Budalin", "Ayadaw", "Chaung-U"]
+        },
+        {
+          "city": "Shwebo",
+          "townships": ["Shwebo", "Kanbalu", "Tabayin", "Khin-U", "Wetlet"]
+        },
+        {
+          "city": "Ye-U",
+          "townships": ["Ye-U", "Taze", "Tabayin"]
+        },
+        {
+          "city": "Katha",
+          "townships": ["Katha", "Banmauk", "Indaw", "Htigyaing"]
+        },
+        {
+          "city": "Kangbalu",
+          "townships": ["Kangbalu", "Kyunhla"]
+        },
+        {
+          "city": "Kawlin",
+          "townships": ["Kawlin", "Pinlebu", "Wuntho"]
+        },
+        {
+          "city": "Kale",
+          "townships": ["Kale", "Kalewa", "Minhla"]
+        },
+        {
+          "city": "Tamu",
+          "townships": ["Tamu"]
+        },
+        {
+          "city": "Mawlaik",
+          "townships": ["Mawlaik", "Paungte"]
+        },
+        {
+          "city": "Hkamti",
+          "townships": ["Hkamti"]
+        },
+        {
+          "city": "Homalin",
+          "townships": ["Homalin"]
+        },
+        {
+          "city": "Yinmabin",
+          "townships": ["Yinmabin", "Kani", "Pale", "Salingyi"]
+        },
+        {
+          "city": "Naga Zone",
+          "townships": ["Naga Zone", "Leshi", "Nanyun"]
+        }
+      ]
+    },
+    {
+      "region_state": "Bago Region",
+      "cities": [
+        {
+          "city": "Bago",
+          "townships": ["Bago", "Taungoo"]
+        },
+        {
+          "city": "Pyay",
+          "townships": ["Pyay", "Paungde", "Nattalin"]
+        }
+      ]
+    },
+    {
+      "region_state": "Magway Region",
+      "cities": [
+        {
+          "city": "Magway",
+          "townships": [
+            "Magway",
+            "Yenangyaung",
+            "Minbu",
+            "Chauk",
+            "Nyaung-U",
+            "Yesagyo",
+            "Aunglan",
+            "Saw",
+            "Gangaw",
+            "Myothit",
+            "Thit Seik"
+          ]
+        },
+        {
+          "city": "Pakokku",
+          "townships": ["Pakokku", "Myaing", "Yesagyo", "Minhla", "Ngazun"]
+        }
+      ]
+    },
+    {
+      "region_state": "Ayeyarwady Region",
+      "cities": [
+        {
+          "city": "Hinthada",
+          "townships": ["Hinthada", "Myanaung", "Kyangin"]
+        },
+        {
+          "city": "Maubin",
+          "townships": ["Maubin", "Wakema", "Nyaungdon"]
+        }
+      ]
+    },
+    {
+      "region_state": "Shan State",
+      "cities": [
+        {
+          "city": "Taunggyi",
+          "townships": ["Taunggyi", "Hopong", "Lawksawk"]
+        },
+        {
+          "city": "Lashio",
+          "townships": ["Lashio", "Hsipaw", "Kyaukme"]
+        }
+      ]
+    },
+    {
+      "region_state": "Kachin State",
+      "cities": [
+        {
+          "city": "Myitkyina",
+          "townships": ["Myitkyina", "Waingmaw", "Momauk"]
+        },
+        {
+          "city": "Bhamo",
+          "townships": ["Bhamo", "Shwegu", "Mogaung"]
+        }
+      ]
+    },
+    {
+      "region_state": "Kayah State",
+      "cities": [
+        {
+          "city": "Loikaw",
+          "townships": ["Loikaw", "Hpasaung", "Mese"]
+        }
+      ]
+    },
+    {
+      "region_state": "Kayin State",
+      "cities": [
+        {
+          "city": "Hpa-an",
+          "townships": ["Hpa-an", "Kawkareik", "Myawaddy"]
+        }
+      ]
+    },
+    {
+      "region_state": "Mon State",
+      "cities": [
+        {
+          "city": "Mawlamyine",
+          "townships": ["Mawlamyine", "Thaton", "Kyaikto"]
+        }
+      ]
+    },
+    {
+      "region_state": "Rakhine State",
+      "cities": [
+        {
+          "city": "Sittwe",
+          "townships": ["Sittwe", "Kyaukpyu", "Thandwe"]
+        }
+      ]
+    },
+    {
+      "region_state": "Chin State",
+      "cities": [
+        {
+          "city": "Hakha",
+          "townships": ["Hakha", "Falam", "Tedim"]
+        }
+      ]
+    },
+    {
+      "region_state": "Tanintharyi Region",
+      "cities": [
+        {
+          "city": "Dawe",
+          "townships": ["Dawe", "Myeik", "Kawthaung"]
+        }
+      ]
+    }
+  ],
+  "flats": {
+    "regions_states": [
+      "Yangon Region",
+      "Mandalay Region",
+      "Naypyidaw Union Territory",
+      "Sagaing Region",
+      "Bago Region",
+      "Magway Region",
+      "Ayeyarwady Region",
+      "Shan State",
+      "Kachin State",
+      "Kayah State",
+      "Kayin State",
+      "Mon State",
+      "Rakhine State",
+      "Chin State",
+      "Tanintharyi Region"
+    ],
+    "cities": [
+      { "region_state": "Yangon Region", "city": "Yangon" },
+      { "region_state": "Yangon Region", "city": "Thanlyin" },
+      { "region_state": "Yangon Region", "city": "Pathein" },
+      { "region_state": "Mandalay Region", "city": "Mandalay" },
+      { "region_state": "Mandalay Region", "city": "Pyin Oo Lwin" },
+      { "region_state": "Mandalay Region", "city": "Meikhtila" },
+      { "region_state": "Mandalay Region", "city": "Nyaung-U" },
+      { "region_state": "Naypyidaw Union Territory", "city": "Naypyidaw" },
+      { "region_state": "Sagaing Region", "city": "Sagaing" },
+      { "region_state": "Sagaing Region", "city": "Monywa" },
+      { "region_state": "Sagaing Region", "city": "Shwebo" },
+      { "region_state": "Sagaing Region", "city": "Katha" },
+      { "region_state": "Bago Region", "city": "Bago" },
+      { "region_state": "Bago Region", "city": "Pyay" },
+      { "region_state": "Magway Region", "city": "Magway" },
+      { "region_state": "Magway Region", "city": "Pakokku" },
+      { "region_state": "Ayeyarwady Region", "city": "Hinthada" },
+      { "region_state": "Ayeyarwady Region", "city": "Maubin" },
+      { "region_state": "Shan State", "city": "Taunggyi" },
+      { "region_state": "Shan State", "city": "Lashio" },
+      { "region_state": "Kachin State", "city": "Myitkyina" },
+      { "region_state": "Kachin State", "city": "Bhamo" },
+      { "region_state": "Kayah State", "city": "Loikaw" },
+      { "region_state": "Kayin State", "city": "Hpa-an" },
+      { "region_state": "Mon State", "city": "Mawlamyine" },
+      { "region_state": "Rakhine State", "city": "Sittwe" },
+      { "region_state": "Chin State", "city": "Hakha" },
+      { "region_state": "Tanintharyi Region", "city": "Dawe" }
+    ],
+    "townships": [
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Sanchaung"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Kamaryut"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Hlaing"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Insein"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Mayangon"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "North Okkalapa"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "South Okkalapa"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Thaketa"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Thingangyun"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Tamwe"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Yankin"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Pazundaung"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Botahtaung"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Kyauktada"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Pabedan"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Lanmadaw"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Latha"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Mingalar Taung Nyunt"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Bahan"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Dagon"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "South Dagon"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "East Dagon"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "North Dagon"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Dagon Seikkan"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Dawbon"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Shwe Pyi Thar"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Hlaing Thar Yar"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Hmawbi"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Htantabin"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Mingaladon"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Seik Gyee Kya Naung"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Yangon",
+        "township": "Twantay"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Thanlyin",
+        "township": "Thanlyin"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Thanlyin",
+        "township": "Kyauktada"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Thanlyin",
+        "township": "Hline"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Pathein",
+        "township": "Pathein"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Pathein",
+        "township": "Bogale"
+      },
+      {
+        "region_state": "Yangon Region",
+        "city": "Pathein",
+        "township": "Maubin"
+      },
+      {
+        "region_state": "Mandalay Region",
+        "city": "Mandalay",
+        "township": "Chanayethazan"
+      },
+      {
+        "region_state": "Mandalay Region",
+        "city": "Mandalay",
+        "township": "Chan Aye Tharzan"
+      },
+      {
+        "region_state": "Mandalay Region",
+        "city": "Mandalay",
+        "township": "Mahar Aung Myay"
+      },
+      {
+        "region_state": "Mandalay Region",
+        "city": "Mandalay",
+        "township": "Amarapura"
+      },
+      {
+        "region_state": "Mandalay Region",
+        "city": "Mandalay",
+        "township": "Patheingyi"
+      },
+      {
+        "region_state": "Mandalay Region",
+        "city": "Mandalay",
+        "township": "Pyigyidagun"
+      },
+      {
+        "region_state": "Mandalay Region",
+        "city": "Mandalay",
+        "township": "Mahaaungmyay"
+      },
+      {
+        "region_state": "Mandalay Region",
+        "city": "Mandalay",
+        "township": "Aungmyaythazan"
+      },
+      {
+        "region_state": "Mandalay Region",
+        "city": "Mandalay",
+        "township": "Pyigyitagon"
+      },
+      {
+        "region_state": "Mandalay Region",
+        "city": "Pyin Oo Lwin",
+        "township": "Pyin Oo Lwin"
+      },
+      {
+        "region_state": "Mandalay Region",
+        "city": "Pyin Oo Lwin",
+        "township": "Madaya"
+      },
+      {
+        "region_state": "Mandalay Region",
+        "city": "Pyin Oo Lwin",
+        "township": "Singu"
+      },
+      {
+        "region_state": "Mandalay Region",
+        "city": "Meikhtila",
+        "township": "Meikhtila"
+      },
+      {
+        "region_state": "Mandalay Region",
+        "city": "Meikhtila",
+        "township": "Mahlaing"
+      },
+      {
+        "region_state": "Mandalay Region",
+        "city": "Meikhtila",
+        "township": "Thazi"
+      },
+      {
+        "region_state": "Mandalay Region",
+        "city": "Nyaung-U",
+        "township": "Nyaung-U"
+      },
+      {
+        "region_state": "Mandalay Region",
+        "city": "Nyaung-U",
+        "township": "Bagan"
+      },
+      {
+        "region_state": "Naypyidaw Union Territory",
+        "city": "Naypyidaw",
+        "township": "Ottarathiri"
+      },
+      {
+        "region_state": "Naypyidaw Union Territory",
+        "city": "Naypyidaw",
+        "township": "Dekkhinathiri"
+      },
+      {
+        "region_state": "Naypyidaw Union Territory",
+        "city": "Naypyidaw",
+        "township": "Pobbathiri"
+      },
+      {
+        "region_state": "Naypyidaw Union Territory",
+        "city": "Naypyidaw",
+        "township": "Zabuthiri"
+      },
+      {
+        "region_state": "Naypyidaw Union Territory",
+        "city": "Naypyidaw",
+        "township": "Tatkon"
+      },
+      {
+        "region_state": "Naypyidaw Union Territory",
+        "city": "Naypyidaw",
+        "township": "Pyinmana"
+      },
+      {
+        "region_state": "Naypyidaw Union Territory",
+        "city": "Naypyidaw",
+        "township": "Lewe"
+      },
+      {
+        "region_state": "Sagaing Region",
+        "city": "Sagaing",
+        "township": "Sagaing"
+      },
+      {
+        "region_state": "Sagaing Region",
+        "city": "Sagaing",
+        "township": "Myinmu"
+      },
+      {
+        "region_state": "Sagaing Region",
+        "city": "Sagaing",
+        "township": "Pale"
+      },
+      {
+        "region_state": "Sagaing Region",
+        "city": "Monywa",
+        "township": "Monywa"
+      },
+      {
+        "region_state": "Sagaing Region",
+        "city": "Monywa",
+        "township": "Budalin"
+      },
+      {
+        "region_state": "Sagaing Region",
+        "city": "Monywa",
+        "township": "Ayadaw"
+      },
+      {
+        "region_state": "Sagaing Region",
+        "city": "Shwebo",
+        "township": "Shwebo"
+      },
+      {
+        "region_state": "Sagaing Region",
+        "city": "Shwebo",
+        "township": "Kanbalu"
+      },
+      {
+        "region_state": "Sagaing Region",
+        "city": "Shwebo",
+        "township": "Tabayin"
+      },
+      {
+        "region_state": "Sagaing Region",
+        "city": "Katha",
+        "township": "Katha"
+      },
+      {
+        "region_state": "Sagaing Region",
+        "city": "Katha",
+        "township": "Indaw"
+      },
+      {
+        "region_state": "Sagaing Region",
+        "city": "Katha",
+        "township": "Tigyaing"
+      },
+      { "region_state": "Bago Region", "city": "Bago", "township": "Bago" },
+      { "region_state": "Bago Region", "city": "Bago", "township": "Taungoo" },
+      { "region_state": "Bago Region", "city": "Bago", "township": "Pyay" },
+      { "region_state": "Bago Region", "city": "Pyay", "township": "Pyay" },
+      { "region_state": "Bago Region", "city": "Pyay", "township": "Paungde" },
+      { "region_state": "Bago Region", "city": "Pyay", "township": "Nattalin" },
+      {
+        "region_state": "Magway Region",
+        "city": "Magway",
+        "township": "Magway"
+      },
+      {
+        "region_state": "Magway Region",
+        "city": "Magway",
+        "township": "Yenangyaung"
+      },
+      {
+        "region_state": "Magway Region",
+        "city": "Magway",
+        "township": "Minbu"
+      },
+      {
+        "region_state": "Magway Region",
+        "city": "Magway",
+        "township": "Chauk"
+      },
+      {
+        "region_state": "Magway Region",
+        "city": "Magway",
+        "township": "Nyaung-U"
+      },
+      {
+        "region_state": "Magway Region",
+        "city": "Magway",
+        "township": "Yesagyo"
+      },
+      {
+        "region_state": "Magway Region",
+        "city": "Magway",
+        "township": "Aunglan"
+      },
+      { "region_state": "Magway Region", "city": "Magway", "township": "Saw" },
+      {
+        "region_state": "Magway Region",
+        "city": "Magway",
+        "township": "Gangaw"
+      },
+      {
+        "region_state": "Magway Region",
+        "city": "Magway",
+        "township": "Myothit"
+      },
+      {
+        "region_state": "Magway Region",
+        "city": "Magway",
+        "township": "Thit Seik"
+      },
+      {
+        "region_state": "Magway Region",
+        "city": "Pakokku",
+        "township": "Pakokku"
+      },
+      {
+        "region_state": "Magway Region",
+        "city": "Pakokku",
+        "township": "Myaing"
+      },
+      {
+        "region_state": "Magway Region",
+        "city": "Pakokku",
+        "township": "Yesagyo"
+      },
+      {
+        "region_state": "Ayeyarwady Region",
+        "city": "Hinthada",
+        "township": "Hinthada"
+      },
+      {
+        "region_state": "Ayeyarwady Region",
+        "city": "Hinthada",
+        "township": "Myanaung"
+      },
+      {
+        "region_state": "Ayeyarwady Region",
+        "city": "Hinthada",
+        "township": "Kyangin"
+      },
+      {
+        "region_state": "Ayeyarwady Region",
+        "city": "Maubin",
+        "township": "Maubin"
+      },
+      {
+        "region_state": "Ayeyarwady Region",
+        "city": "Maubin",
+        "township": "Wakema"
+      },
+      {
+        "region_state": "Ayeyarwady Region",
+        "city": "Maubin",
+        "township": "Nyaungdon"
+      },
+      {
+        "region_state": "Shan State",
+        "city": "Taunggyi",
+        "township": "Taunggyi"
+      },
+      {
+        "region_state": "Shan State",
+        "city": "Taunggyi",
+        "township": "Hopong"
+      },
+      {
+        "region_state": "Shan State",
+        "city": "Taunggyi",
+        "township": "Lawksawk"
+      },
+      { "region_state": "Shan State", "city": "Lashio", "township": "Lashio" },
+      { "region_state": "Shan State", "city": "Lashio", "township": "Hsipaw" },
+      { "region_state": "Shan State", "city": "Lashio", "township": "Kyaukme" },
+      {
+        "region_state": "Kachin State",
+        "city": "Myitkyina",
+        "township": "Myitkyina"
+      },
+      {
+        "region_state": "Kachin State",
+        "city": "Myitkyina",
+        "township": "Waingmaw"
+      },
+      {
+        "region_state": "Kachin State",
+        "city": "Myitkyina",
+        "township": "Momauk"
+      },
+      { "region_state": "Kachin State", "city": "Bhamo", "township": "Bhamo" },
+      { "region_state": "Kachin State", "city": "Bhamo", "township": "Shwegu" },
+      {
+        "region_state": "Kachin State",
+        "city": "Bhamo",
+        "township": "Mogaung"
+      },
+      { "region_state": "Kayah State", "city": "Loikaw", "township": "Loikaw" },
+      {
+        "region_state": "Kayah State",
+        "city": "Loikaw",
+        "township": "Hpasaung"
+      },
+      { "region_state": "Kayah State", "city": "Loikaw", "township": "Mese" },
+      { "region_state": "Kayin State", "city": "Hpa-an", "township": "Hpa-an" },
+      {
+        "region_state": "Kayin State",
+        "city": "Hpa-an",
+        "township": "Kawkareik"
+      },
+      {
+        "region_state": "Kayin State",
+        "city": "Hpa-an",
+        "township": "Myawaddy"
+      },
+      {
+        "region_state": "Mon State",
+        "city": "Mawlamyine",
+        "township": "Mawlamyine"
+      },
+      {
+        "region_state": "Mon State",
+        "city": "Mawlamyine",
+        "township": "Thaton"
+      },
+      {
+        "region_state": "Mon State",
+        "city": "Mawlamyine",
+        "township": "Kyaikto"
+      },
+      {
+        "region_state": "Rakhine State",
+        "city": "Sittwe",
+        "township": "Sittwe"
+      },
+      {
+        "region_state": "Rakhine State",
+        "city": "Sittwe",
+        "township": "Kyaukpyu"
+      },
+      {
+        "region_state": "Rakhine State",
+        "city": "Sittwe",
+        "township": "Thandwe"
+      },
+      { "region_state": "Chin State", "city": "Hakha", "township": "Hakha" },
+      { "region_state": "Chin State", "city": "Hakha", "township": "Falam" },
+      { "region_state": "Chin State", "city": "Hakha", "township": "Tedim" },
+      {
+        "region_state": "Tanintharyi Region",
+        "city": "Dawe",
+        "township": "Dawe"
+      },
+      {
+        "region_state": "Tanintharyi Region",
+        "city": "Dawe",
+        "township": "Myeik"
+      },
+      {
+        "region_state": "Tanintharyi Region",
+        "city": "Dawe",
+        "township": "Kawthaung"
+      }
+    ]
+  },
+  "stats": {
+    "regions_states": 15,
+    "cities": 28,
+    "townships": 120
+  },
+  "version": "1.0.0",
+  "source": "Official Myanmar admin divisions + Pyonea app data"
+}

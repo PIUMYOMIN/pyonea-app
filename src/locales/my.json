@@ -515,6 +515,10 @@
     "no_sellers_available": "လက်ရှိတွင် ပြသနိုင်သော ရောင်းချသူ မရှိသေးပါ။ နောက်မှ ပြန်လည်ကြည့်ရှုပါ။",
     "no_matching_sellers": "ရွေးချယ်ထားသော စစ်ထုတ်မှုများနှင့် ကိုက်ညီသော ရောင်းချသူ မတွေ့ပါ။",
     "reset_filters": "စစ်ထုတ်မှုများ ပြန်လည်သတ်မှတ်ရန်",
+    "no_ratings": "အဆင့်သတ်မှတ်ချက် မရှိသေးပါ",
+    "products_label": "ကုန်ပစ္စည်းများ",
+    "reviews_label": "သုံးသပ်ချက်များ",
+    "view_store": "ဆိုင်ကြည့်ရန်",
     "become_seller_title": "Pyonea တွင် ရောင်းချသူအဖြစ် စတင်ပါ",
     "become_seller_description": "သင့်ကုန်ပစ္စည်းများကို မြန်မာနိုင်ငံတစ်ဝန်းရှိ လုပ်ငန်းဝယ်ယူသူများထံ ရောက်ရှိစေရန် Pyonea ရောင်းချသူအကောင့်ဖြင့် စတင်ပါ။",
     "join_now": "အကောင့်ဖွင့်ရန်",
@@ -592,7 +596,14 @@
     "tax": "အခွန်",
     "total": "စုစုပေါင်း",
     "estimated_total": "ခန့်မှန်းစုစုပေါင်း",
-    "checkout": "ငွေရှင်းရန် ဆက်လုပ်မည်"
+    "checkout": "ငွေရှင်းရန် ဆက်လုပ်မည်",
+    "browse_categories": "အမျိုးအစားများ ကြည့်ရန်",
+    "recommended_products": "အကြံပြုကုန်ပစ္စည်းများ",
+    "recommended_products_subtitle": "မှာယူမှုစတင်ရန် လူကြိုက်များသော ကုန်ပစ္စည်းများ။",
+    "browse_all_products": "ကုန်ပစ္စည်းအားလုံး ကြည့်ရန်",
+    "shop_by_category": "အမျိုးအစားအလိုက် ရှာရန်",
+    "shop_by_category_subtitle": "ဤအမျိုးအစားများမှ ကုန်ပစ္စည်းများကို ပိုမိုမြန်ဆန်စွာ ရှာဖွေပါ။",
+    "view_categories": "အမျိုးအစားများ ကြည့်ရန်"
   },
   "products": {
     "search_placeholder": "ကုန်ပစ္စည်းအမည်၊ အမျိုးအစား သို့မဟုတ် ရောင်းချသူဖြင့် ရှာဖွေပါ...",
@@ -691,6 +702,7 @@
     "instagram": "Instagram",
     "threads": "Threads",
     "copyright": "မြန်မာ့ B2B လက်ကားဈေးကွက်။",
+    "copyright_label": "Copyright {{year}}",
     "rights_reserved": "မူပိုင်ခွင့်အားလုံးကို ထိန်းသိမ်းထားပါသည်။",
     "report_issue": "ပြဿနာတင်ပြရန်",
     "bulk_order_tool": "အများဈေးမှာယူရေးကိရိယာ",
@@ -2322,7 +2334,9 @@
     "delivery_show_less": "လျှော့ပြရန်",
     "delivery_mmk": "ကျပ်",
     "delivery_days": "{{min}}-{{max}} ရက်",
-    "delivery_zones_count": "ဒေသ {{count}} ခု ပို့ဆောင်နိုင်သည်"
+    "delivery_zones_count": "ဒေသ {{count}} ခု ပို့ဆောင်နိုင်သည်",
+    "buyer_only_action": "ဝယ်ယူသူအကောင့်များသာ ဤလုပ်ဆောင်ချက်ကို အသုံးပြုနိုင်ပါသည်။",
+    "seller_rating": "{{rating}} ကြယ်"
   },
   "seller": {
     "dashboard": "ဒက်ရှ်ဘုတ်",
@@ -3903,5 +3917,33 @@
     "close": "ပိတ်ရန်",
     "visit_store": "ရောင်းချသူဆိုင်သို့ သွားရန်",
     "browse_products": "ကုန်ပစ္စည်းအားလုံး ကြည့်ရန်"
+  },
+  "unsubscribe_page": {
+    "processing": "Processing your request...",
+    "success_title": "Unsubscribed",
+    "success_default": "You have been unsubscribed.",
+    "success_note": "You will no longer receive marketing emails from Pyonea. Transactional emails such as order confirmations and password resets are not affected.",
+    "error_title": "Link not valid",
+    "invalid_message": "No unsubscribe token was found in this link. Please use the unsubscribe link from a Pyonea email.",
+    "error_default": "This unsubscribe link is invalid or has already been used.",
+    "back_home": "Back to Pyonea",
+    "go_home": "Go to Pyonea",
+    "resubscribe": "Changed your mind? Re-subscribe",
+    "contact_support": "Contact support",
+    "footer": "© {{year}} Pyonea Marketplace · Yangon, Myanmar"
+  },
+  "newsletter_confirm": {
+    "processing": "သင့်စာရင်းသွင်းမှုကို အတည်ပြုနေပါသည်...",
+    "success_title": "စာရင်းသွင်းပြီးပါပြီ!",
+    "success_default": "သင့် newsletter စာရင်းသွင်းမှုကို အတည်ပြုပြီးပါပြီ။",
+    "success_note": "Pyonea အပ်ဒိတ်များ၊ ပရိုမိုးရှင်းများနှင့် ရောင်းချသူအသစ်များအကြောင်း ရရှိပါမည်။ မည်သည့်အီးမေးလ်မှမဆို အချိန်မရွေး unsubscribe လုပ်နိုင်ပါသည်။",
+    "error_title": "လင့်ခ်မမှန်ပါ",
+    "invalid_message": "ဤလင့်ခ်တွင် confirmation token မပါရှိပါ။ သင့်အီးမေးလ်ထဲရှိ confirmation link ကို အသုံးပြုပါ။",
+    "error_default": "ဤ confirmation link သည် မမှန်ကန်ပါ သို့မဟုတ် အသုံးပြုပြီးသား ဖြစ်နိုင်ပါသည်။",
+    "browse_products": "ကုန်ပစ္စည်းများ ကြည့်ရန်",
+    "back_home": "Pyonea သို့ ပြန်သွားရန်",
+    "go_home": "Pyonea သို့ သွားရန်",
+    "contact_support": "Support ကို ဆက်သွယ်ရန်",
+    "footer": "© {{year}} Pyonea Marketplace · Yangon, Myanmar"
   }
 }

@@ -403,6 +403,7 @@
     "instagram": "Instagram",
     "threads": "Threads",
     "copyright": "Myanmar B2B Marketplace. All rights reserved.",
+    "copyright_label": "Copyright {{year}}",
     "rights_reserved": "All rights reserved.",
     "report_issue": "Report an Issue",
     "bulk_order_tool": "Bulk order tool",
@@ -430,6 +431,34 @@
     "newsletter_confirm_message": "Please check your email to confirm.",
     "newsletter_error_message": "Something went wrong. Please try again.",
     "newsletter_privacy_note": "No spam. Unsubscribe any time. We respect your privacy."
+  },
+  "unsubscribe_page": {
+    "processing": "Processing your request...",
+    "success_title": "Unsubscribed",
+    "success_default": "You have been unsubscribed.",
+    "success_note": "You will no longer receive marketing emails from Pyonea. Transactional emails such as order confirmations and password resets are not affected.",
+    "error_title": "Link not valid",
+    "invalid_message": "No unsubscribe token was found in this link. Please use the unsubscribe link from a Pyonea email.",
+    "error_default": "This unsubscribe link is invalid or has already been used.",
+    "back_home": "Back to Pyonea",
+    "go_home": "Go to Pyonea",
+    "resubscribe": "Changed your mind? Re-subscribe",
+    "contact_support": "Contact support",
+    "footer": "© {{year}} Pyonea Marketplace · Yangon, Myanmar"
+  },
+  "newsletter_confirm": {
+    "processing": "Confirming your subscription...",
+    "success_title": "You're subscribed!",
+    "success_default": "Your subscription has been confirmed!",
+    "success_note": "You'll receive Pyonea updates, promotions, and new seller highlights. You can unsubscribe at any time from any email we send.",
+    "error_title": "Link not valid",
+    "invalid_message": "No confirmation token was found in this link. Please use the link from your confirmation email.",
+    "error_default": "This confirmation link is invalid or has already been used.",
+    "browse_products": "Browse Products",
+    "back_home": "Back to Pyonea",
+    "go_home": "Go to Pyonea",
+    "contact_support": "Contact support",
+    "footer": "© {{year}} Pyonea Marketplace · Yangon, Myanmar"
   },
   "localDeals": {
     "title": "Local Deals",
@@ -596,7 +625,14 @@
     "tax": "Tax",
     "total": "Total",
     "estimated_total": "Estimated Total",
-    "checkout": "Proceed to Checkout"
+    "checkout": "Proceed to Checkout",
+    "browse_categories": "Browse categories",
+    "recommended_products": "Recommended products",
+    "recommended_products_subtitle": "Popular marketplace picks to start your order.",
+    "browse_all_products": "Browse all products",
+    "shop_by_category": "Shop by category",
+    "shop_by_category_subtitle": "Find products faster from these categories.",
+    "view_categories": "View categories"
   },
   "products": {
     "search_placeholder": "Search products...",
@@ -1336,6 +1372,10 @@
     "no_sellers_available": "There are currently no sellers available. Please check back later.",
     "no_matching_sellers": "No sellers match your current filters.",
     "reset_filters": "Reset Filters",
+    "no_ratings": "No ratings",
+    "products_label": "Products",
+    "reviews_label": "Reviews",
+    "view_store": "View Store",
     "become_seller_title": "Become a Seller",
     "become_seller_description": "Join our platform and start selling your products to customers worldwide.",
     "join_now": "Join Now",
@@ -1476,7 +1516,9 @@
     "delivery_show_less": "Show less",
     "delivery_mmk": "MMK",
     "delivery_days": "{{min}}–{{max}} days",
-    "delivery_zones_count": "{{count}} region(s) covered"
+    "delivery_zones_count": "{{count}} region(s) covered",
+    "buyer_only_action": "Only buyer accounts can use this action.",
+    "seller_rating": "{{rating}} star"
   },
   "login": {
     "title": "Sign in to your account",

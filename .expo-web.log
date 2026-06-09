@@ -1,0 +1,50 @@
+Starting project at D:\React Projects\For sell\pyonea-app
+Using src/app as the root directory for Expo Router.
+React Compiler enabled
+Starting Metro Bundler
+
+warning: Bundler cache is empty, rebuilding (this may take a minute)
+Waiting on http://localhost:8083
+Logs for your project will appear below.
+λ Bundled 32865ms node_modules\expo\node_modules\@expo\cli\node_modules\@expo\router-server\node\render.js (998 modules)
+λ Bundled 33274ms node_modules\expo\node_modules\@expo\cli\node_modules\@expo\router-server\node\render.js (1 module)
+λ Bundled 31691ms node_modules\expo\node_modules\@expo\cli\node_modules\@expo\router-server\node\render.js (1 module)
+λ Bundled 26316ms node_modules\expo\node_modules\@expo\cli\node_modules\@expo\router-server\node\render.js (1 module)
+Web Bundled 41069ms node_modules\expo-router\entry.js (1 module)
+Web Bundled 39947ms node_modules\expo-router\entry.js (1 module)
+Web Bundled 38346ms node_modules\expo-router\entry.js (1 module)
+Web Bundled 32949ms node_modules\expo-router\entry.js (1 module)
+λ Bundled 127ms node_modules\expo\node_modules\@expo\cli\node_modules\@expo\router-server\node\render.js (1 module)
+λ Bundled 112ms node_modules\expo\node_modules\@expo\cli\node_modules\@expo\router-server\node\render.js (1 module)
+λ Bundled 82ms node_modules\expo\node_modules\@expo\cli\node_modules\@expo\router-server\node\render.js (1 module)
+λ Bundled 72ms node_modules\expo\node_modules\@expo\cli\node_modules\@expo\router-server\node\render.js (1 module)
+Web Bundled 5041ms node_modules\expo-router\entry.js (1 module)
+Web Bundled 3774ms node_modules\expo-router\entry.js (1 module)
+Web Bundled 2735ms node_modules\expo-router\entry.js (1 module)
+Web Bundled 1701ms node_modules\expo-router\entry.js (1 module)
+Web Bundled 6211ms node_modules\expo-router\entry.js (1 module)
+λ Bundled 6670ms node_modules\expo\node_modules\@expo\cli\node_modules\@expo\router-server\node\render.js (1 module)
+λ Bundled 8480ms node_modules\expo\node_modules\@expo\cli\node_modules\@expo\router-server\node\render.js (1 module)
+Web Bundled 9879ms node_modules\expo-router\entry.js (1 module)
+D:\React Projects\For sell\pyonea-app\node_modules\expo\node_modules\@expo\cli\build\src\utils\errors.js:130
+    throw error;
+    ^
+
+Error: ENOENT: no such file or directory, watch 'D:\React Projects\For sell\pyonea-app\node_modules\@testing-library\.dom-TukJPHAG\node_modules\pretty-format\build\plugins\lib'
+    at FSWatcher.<computed> (node:internal/fs/watchers:247:19)
+    at Object.watch (node:fs:2491:36)
+    at #watchdir (D:\React Projects\For sell\pyonea-app\node_modules\@expo\metro-file-map\build\watchers\FallbackWatcher.js:164:38)
+    at D:\React Projects\For sell\pyonea-app\node_modules\@expo\metro-file-map\build\watchers\FallbackWatcher.js:268:39
+    at Walker.<anonymous> (D:\React Projects\For sell\pyonea-app\node_modules\@expo\metro-file-map\build\watchers\FallbackWatcher.js:410:33)
+    at Walker.emit (node:events:524:28)
+    at D:\React Projects\For sell\pyonea-app\node_modules\walker\lib\walker.js:69:16
+    at FSReqCallback.oncomplete (node:fs:188:23)
+    at FSReqCallback.callbackTrampoline (node:internal/async_hooks:130:17) {
+  errno: -4058,
+  syscall: 'watch',
+  code: 'ENOENT',
+  path: 'D:\\React Projects\\For sell\\pyonea-app\\node_modules\\@testing-library\\.dom-TukJPHAG\\node_modules\\pretty-format\\build\\plugins\\lib',
+  filename: 'D:\\React Projects\\For sell\\pyonea-app\\node_modules\\@testing-library\\.dom-TukJPHAG\\node_modules\\pretty-format\\build\\plugins\\lib'
+}
+
+Node.js v20.19.0

@@ -1,0 +1,271 @@
+import Feather from '@expo/vector-icons/Feather';
+import { Link, type Href } from 'expo-router';
+import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useState } from 'react';
+
+import { ProductListCard } from '@/components/marketplace-list-screen';
+import { useAppTranslation } from '@/i18n';
+import type { HomeProduct, ProductDetail, ProductReview } from '@/utils/native-api';
+
+function Stars({ rating, count }: { rating: number; count?: number }) {
+  const filled = Math.round(rating || 0);
+  return (
+    <View className="flex-row items-center gap-1">
+      <View className="flex-row">
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Feather
+            key={star}
+            name="star"
+            color={star <= filled ? '#f59e0b' : '#d1d5db'}
+            size={14}
+          />
+        ))}
+      </View>
+      {count !== undefined ? (
+        <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">
+          ({count})
+        </Text>
+      ) : null}
+    </View>
+  );
+}
+
+function ReviewItem({ review }: { review: ProductReview }) {
+  return (
+    <View className="rounded-xl border border-gray-100 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+      <View className="flex-row gap-4">
+        <View className="h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+          <Text className="font-sans text-sm font-bold text-green-700 dark:text-green-300">
+            {review.author.charAt(0).toUpperCase()}
+          </Text>
+        </View>
+        <View className="min-w-0 flex-1">
+          <Text className="font-sans font-semibold text-gray-900 dark:text-slate-100">
+            {review.author}
+          </Text>
+          {review.company ? (
+            <Text className="font-sans text-xs text-gray-500 dark:text-slate-500">
+              {review.company}
+            </Text>
+          ) : null}
+          <View className="mt-2 flex-row items-center gap-2">
+            <Stars rating={review.rating} />
+            {review.createdAt ? (
+              <Text className="font-sans text-xs text-gray-400 dark:text-slate-500">
+                {review.createdAt}
+              </Text>
+            ) : null}
+          </View>
+          <Text className="mt-3 font-sans text-sm leading-6 text-gray-600 dark:text-slate-400">
+            {review.comment}
+          </Text>
+        </View>
+      </View>
+    </View>
+  );
+}
+
+export function ProductDetailSecondarySections({
+  product,
+  moreProducts,
+  reviews,
+  sellerHref,
+  canReview,
+  submittingReview,
+  reviewMessage,
+  onSubmitReview,
+  onWriteReviewPress,
+}: {
+  product: ProductDetail;
+  moreProducts: HomeProduct[];
+  reviews: ProductReview[];
+  sellerHref: Href;
+  canReview: boolean;
+  submittingReview: boolean;
+  reviewMessage?: { type: 'success' | 'error' | 'info'; text: string } | null;
+  onSubmitReview: (rating: number, comment: string) => Promise<boolean>;
+  onWriteReviewPress?: () => boolean;
+}) {
+  const { t } = useAppTranslation();
+  const [formOpen, setFormOpen] = useState(false);
+  const [rating, setRating] = useState(0);
+  const [comment, setComment] = useState('');
+
+  const submit = async () => {
+    const ok = await onSubmitReview(rating, comment);
+    if (ok) {
+      setRating(0);
+      setComment('');
+      setFormOpen(false);
+    }
+  };
+
+  return (
+    <>
+      {moreProducts.length > 0 ? (
+        <View className="mt-14">
+          <View className="mb-5 gap-3 sm:flex-row sm:items-end sm:justify-between">
+            <View className="min-w-0">
+              <Text className="font-sans text-xl font-bold text-gray-900 dark:text-slate-100">
+                {t('productDetail.more_from_seller')}
+              </Text>
+              <Text className="font-sans text-sm text-gray-500 dark:text-slate-500">
+                {t('productDetail.more_from_seller_subtitle')}
+              </Text>
+            </View>
+            {product.seller ? (
+              <Link href={sellerHref} asChild>
+                <Pressable>
+                  <Text className="font-sans text-sm font-medium text-green-600 dark:text-green-400">
+                    {t('productDetail.view_store')}
+                  </Text>
+                </Pressable>
+              </Link>
+            ) : null}
+          </View>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="-mx-4 sm:-mx-6 lg:-mx-0"
+            contentContainerClassName="gap-3 px-4 sm:gap-4 sm:px-6 lg:px-0">
+            {moreProducts.map((item) => (
+              <ProductListCard
+                key={String(item.id)}
+                product={item}
+                className="h-[320px] w-48 flex-shrink-0 sm:h-[354px] sm:w-52 lg:h-[376px] lg:w-56"
+              />
+            ))}
+          </ScrollView>
+        </View>
+      ) : null}
+
+      <View className="mt-16">
+        <View className="mb-6 gap-3 sm:flex-row sm:items-center sm:justify-between">
+          <Text className="font-sans text-xl font-bold text-gray-900 dark:text-slate-100 sm:text-2xl">
+            {t('productDetail.customer_reviews')} ({product.reviewCount || reviews.length})
+          </Text>
+          <Pressable
+            onPress={() => {
+              if (onWriteReviewPress && !onWriteReviewPress()) return;
+              setFormOpen((current) => !current);
+            }}
+            className="self-start rounded-md bg-green-600 px-4 py-2"
+          >
+            <Text className="font-sans text-sm font-semibold text-white">
+              {t('productDetail.write_review')}
+            </Text>
+          </Pressable>
+        </View>
+
+        {formOpen ? (
+          <View className="mb-6 rounded-2xl border border-gray-100 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+            {reviewMessage ? (
+              <View
+                className={`mb-4 rounded-xl p-3 ${
+                  reviewMessage.type === 'error'
+                    ? 'bg-red-50 dark:bg-red-900/20'
+                    : 'bg-green-50 dark:bg-green-900/20'
+                }`}
+              >
+                <Text
+                  className={`font-sans text-sm font-semibold ${
+                    reviewMessage.type === 'error'
+                      ? 'text-red-700 dark:text-red-300'
+                      : 'text-green-700 dark:text-green-300'
+                  }`}
+                >
+                  {reviewMessage.text}
+                </Text>
+              </View>
+            ) : null}
+            <Text className="font-sans text-base font-bold text-gray-950 dark:text-slate-100">
+              {t('productDetail.write_review')}
+            </Text>
+            <Text className="mt-3 font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">
+              {t('productDetail.your_rating')}
+            </Text>
+            <View className="mt-2 flex-row gap-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <Pressable key={star} onPress={() => setRating(star)} className="h-10 w-10 items-center justify-center">
+                  <Feather name="star" color={star <= rating ? '#f59e0b' : '#d1d5db'} size={28} />
+                </Pressable>
+              ))}
+            </View>
+            <Text className="mt-4 font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">
+              {t('productDetail.your_review')}
+            </Text>
+            <TextInput
+              value={comment}
+              onChangeText={setComment}
+              placeholder={t('productDetail.review_placeholder')}
+              placeholderTextColor="#94a3b8"
+              multiline
+              textAlignVertical="top"
+              className="mt-2 min-h-28 rounded-xl border border-gray-200 bg-white px-4 py-3 font-sans text-sm text-gray-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+            />
+            {!canReview ? (
+              <Text className="mt-3 font-sans text-xs text-amber-700 dark:text-amber-300">
+                {t('productDetail.only_buyers_review')}
+              </Text>
+            ) : null}
+            <View className="mt-4 flex-row gap-3">
+              <Pressable
+                onPress={() => setFormOpen(false)}
+                className="flex-1 rounded-xl border border-gray-200 px-4 py-3 dark:border-slate-700"
+              >
+                <Text className="text-center font-sans text-sm font-bold text-gray-600 dark:text-slate-300">
+                  {t('common.cancel', { defaultValue: 'Cancel' })}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => void submit()}
+                disabled={!canReview || !rating || submittingReview}
+                className="flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-3 disabled:opacity-50"
+              >
+                {submittingReview ? <ActivityIndicator color="#ffffff" /> : null}
+                <Text className="text-center font-sans text-sm font-bold text-white">
+                  {submittingReview ? t('productDetail.submitting') : t('productDetail.submit_review')}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : reviewMessage ? (
+          <View
+            className={`mb-6 rounded-xl p-3 ${
+              reviewMessage.type === 'error'
+                ? 'bg-red-50 dark:bg-red-900/20'
+                : 'bg-green-50 dark:bg-green-900/20'
+            }`}
+          >
+            <Text
+              className={`font-sans text-sm font-semibold ${
+                reviewMessage.type === 'error'
+                  ? 'text-red-700 dark:text-red-300'
+                  : 'text-green-700 dark:text-green-300'
+              }`}
+            >
+              {reviewMessage.text}
+            </Text>
+          </View>
+        ) : null}
+
+        {reviews.length > 0 ? (
+          <View className="gap-6">
+            {reviews.map((review) => (
+              <ReviewItem key={String(review.id)} review={review} />
+            ))}
+          </View>
+        ) : (
+          <View className="items-center py-8">
+            <Text className="font-sans text-lg text-gray-500 dark:text-slate-500">
+              {t('productDetail.no_reviews_title')}
+            </Text>
+            <Text className="mt-1 text-center font-sans text-sm text-gray-400 dark:text-slate-600">
+              {t('productDetail.no_reviews_subtitle')}
+            </Text>
+          </View>
+        )}
+      </View>
+    </>
+  );
+}
