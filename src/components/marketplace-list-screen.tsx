@@ -7,7 +7,7 @@ import { Platform, Pressable, Text, View } from "react-native";
 
 import { AppLayout } from "@/components/layout/app-layout";
 import { CategoryCardFromHome } from "@/components/ui/category-card";
-import { useAppTranslation } from "@/i18n";
+import { localizeBilingualName, useAppTranslation } from "@/i18n";
 import {
   isProductCompared,
   toggleCompareProduct,
@@ -157,66 +157,88 @@ export function ProductListCard({
   className?: string;
   imagePriority?: boolean;
 }) {
-  const { t } = useAppTranslation();
+  const { t, language } = useAppTranslation();
   const router = useRouter();
   const productHref = `/products/${product.id}` as Href;
   const [compared, setCompared] = useState(() => isProductCompared(product.id));
-  const isNative = Platform.OS !== "web";
+  const productName = localizeBilingualName(
+    language,
+    product.nameEn,
+    product.nameMm,
+    product.name,
+  );
+  const categoryLabel = localizeBilingualName(
+    language,
+    product.categoryNameEn,
+    product.categoryNameMm,
+    product.categoryName,
+  );
+
+  const nameLineHeight = Platform.OS === "android" ? 20 : 18;
 
   return (
     <View
-      className={`${className} min-w-0 overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm shadow-gray-200/70 dark:border-gray-700 dark:bg-gray-800 dark:shadow-slate-950/40`}
+      className={`${className} min-w-0 flex-col overflow-hidden rounded-xl border border-gray-100 bg-white shadow-sm shadow-gray-200/70 dark:border-gray-700 dark:bg-gray-800 dark:shadow-slate-950/40`}
     >
-      <Link href={productHref} asChild>
-        <Pressable className="relative aspect-square flex-shrink-0 overflow-hidden bg-gray-100 dark:bg-gray-700">
-          <Image
-            source={
-              product.imageUrl ? { uri: product.imageUrl } : placeholderProduct
-            }
-            style={{ width: "100%", height: "100%" }}
-            contentFit="cover"
-            loading={imagePriority ? "eager" : "lazy"}
-            priority={imagePriority ? "high" : "normal"}
-          />
-          <View className="absolute left-2 top-2 gap-1">
-            {product.discountPct && product.discountPct > 0 ? (
-              <View className="self-start rounded-full bg-red-500 px-2 py-0.5 shadow-sm">
-                <Text className="text-[10px] font-black text-white">
-                  -{product.discountPct}%
-                </Text>
-              </View>
-            ) : null}
-            {product.isNew ? (
-              <View className="self-start rounded-full bg-green-500 px-2 py-0.5 shadow-sm">
-                <Text className="text-[10px] font-black text-white">
-                  {t("productCard.new_badge")}
-                </Text>
-              </View>
-            ) : null}
-          </View>
-          {product.categoryName ? (
-            <View className="absolute bottom-2 left-2 max-w-[82%] rounded-full bg-white/80 px-2 py-0.5 dark:bg-gray-900/75">
-              <Text
-                className="font-sans text-[10px] font-medium text-gray-700 dark:text-gray-200"
-                numberOfLines={1}
-              >
-                {product.categoryName}
-              </Text>
-            </View>
-          ) : null}
-        </Pressable>
-      </Link>
-      <Pressable className="absolute right-2 top-2 h-7 w-7 items-center justify-center">
-        <Feather name="heart" color="#9ca3af" size={16} />
-      </Pressable>
-      <View className="min-h-0 flex-1 px-2.5 pb-2.5 pt-2 sm:px-3">
+      <View className="relative w-full flex-shrink-0">
         <Link href={productHref} asChild>
-          <Pressable>
+          <Pressable className="aspect-square w-full overflow-hidden bg-gray-100 dark:bg-gray-700">
+            <Image
+              source={
+                product.imageUrl ? { uri: product.imageUrl } : placeholderProduct
+              }
+              style={{ width: "100%", height: "100%" }}
+              contentFit="cover"
+              loading={imagePriority ? "eager" : "lazy"}
+              priority={imagePriority ? "high" : "normal"}
+            />
+            <View className="absolute left-2 top-2 z-10 gap-1">
+              {product.discountPct && product.discountPct > 0 ? (
+                <View className="self-start rounded-full bg-red-500 px-2 py-0.5 shadow-sm">
+                  <Text className="text-[10px] font-black text-white">
+                    -{product.discountPct}%
+                  </Text>
+                </View>
+              ) : null}
+              {product.isNew ? (
+                <View className="self-start rounded-full bg-green-500 px-2 py-0.5 shadow-sm">
+                  <Text className="text-[10px] font-black text-white">
+                    {t("productCard.new_badge")}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+            {categoryLabel ? (
+              <View className="absolute bottom-2 left-2 z-10 max-w-[82%] rounded-full bg-white/80 px-2 py-0.5 dark:bg-gray-900/75">
+                <Text
+                  className="font-sans text-[10px] font-medium text-gray-700 dark:text-gray-200"
+                  numberOfLines={1}
+                >
+                  {categoryLabel}
+                </Text>
+              </View>
+            ) : null}
+          </Pressable>
+        </Link>
+        <Pressable className="absolute right-2 top-2 z-20 h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow-sm dark:bg-gray-900/85">
+          <Feather name="heart" color="#9ca3af" size={16} />
+        </Pressable>
+      </View>
+      <View className="mt-1.5 flex-1 flex-col px-2.5 pb-2.5 pt-2 sm:px-3">
+        <Link href={productHref} asChild>
+          <Pressable className="shrink-0">
             <Text
-              className="mb-0.5 min-h-8 font-sans text-[12px] font-semibold leading-4 text-gray-900 dark:text-gray-100 sm:min-h-9 sm:text-[13px] sm:leading-[18px]"
+              className="mb-0.5 shrink-0 font-sans text-[12px] font-semibold text-gray-900 dark:text-gray-100 sm:text-[13px]"
               numberOfLines={2}
+              style={{
+                lineHeight: nameLineHeight,
+                minHeight: nameLineHeight * 2,
+                ...(Platform.OS === "android"
+                  ? { includeFontPadding: false }
+                  : null),
+              }}
             >
-              {product.name}
+              {productName}
             </Text>
           </Pressable>
         </Link>
@@ -234,81 +256,38 @@ export function ProductListCard({
           </View>
         ) : null}
         <View className="mt-auto border-t border-gray-100 pt-1.5 dark:border-gray-700">
-          {isNative ? (
-            <View
-              className={`w-full px-1 ${
-                product.moq && product.moq > 1 ? "min-h-10 justify-between py-0.5" : "min-h-8 justify-center"
-              } items-center`}
-            >
-              <View className="w-full items-center">
-                <View className="flex-row flex-wrap items-center justify-center gap-x-2 gap-y-0.5">
-                  <Text
-                    className={`text-center font-sans text-[12px] font-bold leading-none sm:text-[13px] ${
-                      product.discountPct && product.discountPct > 0
-                        ? "text-red-600 dark:text-red-400"
-                        : "text-green-700 dark:text-green-400"
-                    }`}
-                    numberOfLines={1}
-                  >
-                    {product.price}
-                  </Text>
-                  {product.originalPrice ? (
-                    <Text
-                      className="text-center font-sans text-[10px] leading-none text-gray-400 line-through dark:text-slate-500 sm:text-[11px]"
-                      numberOfLines={1}
-                    >
-                      {product.originalPrice}
-                    </Text>
-                  ) : null}
-                </View>
-              </View>
-              {product.moq && product.moq > 1 ? (
-                <View className="w-full items-center">
-                  <View className="rounded-md border border-gray-200 bg-gray-100 px-1.5 py-0.5 dark:border-gray-600 dark:bg-gray-700">
-                    <Text
-                      className="text-center font-sans text-[10px] font-medium text-gray-600 dark:text-slate-300"
-                      numberOfLines={1}
-                    >
-                      {t("productCard.moq", { count: product.moq })}
-                    </Text>
-                  </View>
-                </View>
-              ) : null}
-            </View>
-          ) : (
-            <View className="h-8 flex-row items-end justify-between gap-1 overflow-hidden">
-              <View className="min-w-0 flex-1">
+          <View className="min-h-8 flex-row items-center justify-between gap-2 overflow-hidden px-0.5">
+            <View className="min-w-0 flex-1 flex-row flex-wrap items-center gap-x-2 gap-y-0.5">
+              <Text
+                className={`font-sans text-[12px] font-bold leading-none sm:text-[13px] ${
+                  product.discountPct && product.discountPct > 0
+                    ? "text-red-600 dark:text-red-400"
+                    : "text-green-700 dark:text-green-400"
+                }`}
+                numberOfLines={1}
+              >
+                {product.price}
+              </Text>
+              {product.originalPrice ? (
                 <Text
-                  className={`font-sans text-[12px] font-bold leading-none sm:text-[13px] ${
-                    product.discountPct && product.discountPct > 0
-                      ? "text-red-600 dark:text-red-400"
-                      : "text-green-700 dark:text-green-400"
-                  }`}
+                  className="font-sans text-[10px] leading-none text-gray-400 line-through dark:text-slate-500 sm:text-[11px]"
                   numberOfLines={1}
                 >
-                  {product.price}
+                  {product.originalPrice}
                 </Text>
-                {product.originalPrice ? (
-                  <Text
-                    className="mt-1 font-sans text-[10px] leading-none text-gray-400 line-through dark:text-slate-500 sm:text-[11px]"
-                    numberOfLines={1}
-                  >
-                    {product.originalPrice}
-                  </Text>
-                ) : null}
-              </View>
-              {product.moq && product.moq > 1 ? (
-                <View className="max-w-[46%]">
-                  <Text
-                    className="font-sans text-[10px] font-medium text-gray-500 dark:text-slate-400"
-                    numberOfLines={1}
-                  >
-                    {t("productCard.moq", { count: product.moq })}
-                  </Text>
-                </View>
               ) : null}
             </View>
-          )}
+            {product.moq && product.moq > 1 ? (
+              <View className="max-w-[46%] flex-shrink-0 rounded-md border border-gray-200 bg-gray-100 px-1.5 py-0.5 dark:border-gray-600 dark:bg-gray-700">
+                <Text
+                  className="font-sans text-[10px] font-medium text-gray-600 dark:text-slate-300"
+                  numberOfLines={1}
+                >
+                  {t("productCard.moq", { count: product.moq })}
+                </Text>
+              </View>
+            ) : null}
+          </View>
         </View>
         <Pressable
           onPress={() => setCompared(toggleCompareProduct(product).compared)}

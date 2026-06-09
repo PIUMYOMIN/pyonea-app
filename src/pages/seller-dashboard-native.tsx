@@ -26,7 +26,12 @@ import { NativeNotificationBell } from "@/components/notifications/native-notifi
 import { useNativeAuth } from "@/context/native-auth";
 import { useTheme } from "@/context/theme";
 import { supportedLanguages, useAppTranslation, type SupportedLanguage } from "@/i18n";
-import { getRoleDestination, hasUserRole } from "@/utils/auth-routing";
+import {
+  getRoleDestination,
+  hasUserRole,
+  needsEmailVerification,
+} from "@/utils/auth-routing";
+import { getSellerTierConfig } from "@/utils/seller-tier";
 import {
   ApiError,
   fetchSellerDashboardOverview,
@@ -205,6 +210,10 @@ const protectedSellerTabs: Partial<Record<SellerTab, SellerFeatureFlag>> = {
 const getParam = (value: string | string[] | undefined) =>
   Array.isArray(value) ? value[0] : value;
 
+const SELLER_HEADER_CONTROL_CLASS = "h-10 w-10";
+const SELLER_HEADER_ICON_SIZE = 20;
+const SELLER_HEADER_CONTROL_PX = 40;
+
 const normalizeSellerTab = (value?: string): SellerTab => {
   const normalized = value?.toLowerCase().replaceAll("-", "_");
   if (normalized === "store_profile" || normalized === "edit_store")
@@ -224,7 +233,8 @@ function StoreAvatar({ store }: { store: SellerStoreSummary | null }) {
     return (
       <Image
         source={{ uri: store.logoUrl }}
-        className="h-12 w-12 rounded-2xl border-2 border-green-200"
+        style={{ width: 48, height: 48 }}
+        className="rounded-2xl border-2 border-green-200"
         contentFit="cover"
       />
     );
@@ -578,7 +588,7 @@ function SetupChecklistPanel({
 }) {
   const progress = store?.setupProgress;
   const percent = getProgressNumber(progress);
-  const rawItems = Array.isArray(progress?.items) ? progress.items : [];
+  const rawItems = Array.isArray(progress?.items) ? progress?.items ?? [] : [];
   const items = rawItems.length
     ? rawItems.slice(0, 5).map((item) => {
         const record =
@@ -653,23 +663,77 @@ function SetupChecklistPanel({
   );
 }
 
-function TierCard({ store }: { store: SellerStoreSummary | null }) {
-  const delivered = 0;
-  const threshold = 50;
-  const progress = Math.min(100, Math.round((delivered / threshold) * 100));
+function TierCard({
+  store,
+  stats,
+  subscription,
+  onUpgrade,
+}: {
+  store: SellerStoreSummary | null;
+  stats: SellerDashboardStats;
+  subscription: SellerSubscription | null;
+  onUpgrade: () => void;
+}) {
+  const { t } = useAppTranslation();
+  const tierConfig = getSellerTierConfig(store?.sellerTier);
+  const delivered = Math.max(
+    0,
+    store?.deliveredOrdersCount ||
+      store?.completedOrdersCount ||
+      stats.deliveredOrders ||
+      0,
+  );
+  const promotedAt = store?.tierPromotedAt
+    ? new Date(store.tierPromotedAt).toLocaleDateString("en-GB", {
+        month: "short",
+        year: "numeric",
+      })
+    : null;
+
+  const plan = subscription?.plan;
+  const productsUsed = Math.max(
+    0,
+    subscription?.productsUsed ?? plan?.productsUsed ?? stats.totalProducts ?? 0,
+  );
+  const productLimit = plan?.productLimitValue ?? -1;
+  const finiteProductLimit = productLimit !== -1;
+  const productsRemaining = finiteProductLimit
+    ? Math.max(0, productLimit - productsUsed)
+    : null;
+  const productProgress = finiteProductLimit
+    ? Math.min(100, Math.round((productsUsed / Math.max(productLimit, 1)) * 100))
+    : 0;
+  const productNearLimit =
+    finiteProductLimit && productsUsed >= Math.max(0, productLimit - 1);
+
+  const tierProgress = tierConfig.threshold
+    ? Math.min(100, Math.round((delivered / tierConfig.threshold) * 100))
+    : 100;
+  const ordersRemaining =
+    tierConfig.threshold != null ? Math.max(0, tierConfig.threshold - delivered) : 0;
 
   return (
-    <View className="rounded-xl border border-amber-200 bg-amber-50 p-5 dark:border-amber-800 dark:bg-amber-900/20">
+    <View
+      className={`rounded-xl border p-5 ${tierConfig.borderClass} ${tierConfig.bgClass}`}
+    >
       <View className="flex-row items-start justify-between gap-3">
-        <View>
-          <Text className="font-sans text-xs font-medium uppercase text-gray-500 dark:text-slate-400">
-            Your Tier
+        <View className="min-w-0 flex-1">
+          <Text className="font-sans text-xs font-medium uppercase tracking-wide text-gray-500 dark:text-slate-400">
+            {t("seller.tier.your_tier", "Your Tier")}
           </Text>
-          <Text className="mt-1 font-sans text-xl font-bold text-amber-700 dark:text-amber-300">
-            Bronze
-          </Text>
+          <View className="mt-1 flex-row items-center gap-2">
+            <Text className="text-2xl">{tierConfig.emoji}</Text>
+            <Text className={`font-sans text-xl font-bold ${tierConfig.textClass}`}>
+              {tierConfig.label}
+            </Text>
+          </View>
+          {promotedAt ? (
+            <Text className="mt-0.5 font-sans text-xs text-gray-400 dark:text-slate-500">
+              {t("seller.tier.since", "Since")} {promotedAt}
+            </Text>
+          ) : null}
           <Text className="mt-1 font-sans text-xs text-gray-500 dark:text-slate-400">
-            Delivered orders:{" "}
+            {t("seller.tier.delivered_orders", "Delivered orders")}:{" "}
             <Text className="font-semibold text-gray-700 dark:text-slate-200">
               {delivered}
             </Text>
@@ -677,35 +741,129 @@ function TierCard({ store }: { store: SellerStoreSummary | null }) {
         </View>
         <View className="items-end">
           <Text className="font-sans text-xs font-medium text-gray-500 dark:text-slate-400">
-            Commission Rate
+            {t("subscription.commission_rate", "Commission rate")}
           </Text>
-          <Text className="mt-1 font-sans text-2xl font-bold text-amber-700 dark:text-amber-300">
-            6%
+          <Text className={`mt-1 font-sans text-2xl font-bold ${tierConfig.textClass}`}>
+            {tierConfig.rate}
           </Text>
           <Text className="font-sans text-xs text-gray-400 dark:text-slate-500">
-            per order
+            {t("seller.tier.per_order", "per order")}
           </Text>
         </View>
       </View>
-      <View className="mt-4">
-        <View className="mb-1.5 flex-row justify-between">
-          <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">
-            {delivered} delivered orders
-          </Text>
-          <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">
-            {threshold} for Silver
+
+      {tierConfig.threshold ? (
+        <View className="mt-4">
+          <View className="mb-1.5 flex-row justify-between">
+            <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">
+              {t("seller.tier.delivered_orders_count", "{{count}} delivered orders", {
+                count: delivered,
+              })}
+            </Text>
+            <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">
+              {t("seller.tier.threshold_for_next", "{{count}} for {{next}}", {
+                count: tierConfig.threshold,
+                next: tierConfig.next,
+              })}
+            </Text>
+          </View>
+          <View className="h-2 overflow-hidden rounded-full border border-gray-200 bg-white dark:border-slate-600 dark:bg-slate-700">
+            <View
+              className={`h-full rounded-full ${tierConfig.progressClass}`}
+              style={{ width: `${tierProgress}%` }}
+            />
+          </View>
+          <Text className="mt-1.5 font-sans text-xs text-gray-400 dark:text-slate-500">
+            {ordersRemaining > 0
+              ? t(
+                  "seller.tier.orders_to_next",
+                  "{{count}} more delivered orders to reach {{next}}",
+                  { count: ordersRemaining, next: tierConfig.next },
+                )
+              : t(
+                  "seller.tier.ready_for_next",
+                  "Ready to be promoted to {{next}}!",
+                  { next: tierConfig.next },
+                )}
           </Text>
         </View>
-        <View className="h-2 rounded-full border border-gray-200 bg-white dark:border-slate-600 dark:bg-slate-700">
-          <View
-            className="h-full rounded-full bg-amber-500"
-            style={{ width: `${progress}%` }}
-          />
+      ) : (
+        <View className="mt-3 flex-row items-center gap-1.5">
+          <View className="h-2 w-2 rounded-full bg-yellow-400" />
+          <Text className="font-sans text-xs font-medium text-yellow-700 dark:text-yellow-300">
+            {t(
+              "seller.tier.highest_tier",
+              "Highest tier — lowest commission rate",
+            )}
+          </Text>
         </View>
-        <Text className="mt-1.5 font-sans text-xs text-gray-400 dark:text-slate-500">
-          {threshold - delivered} more delivered orders to reach Silver
-        </Text>
-      </View>
+      )}
+
+      {plan ? (
+        <View className="mt-4 border-t border-gray-200/80 pt-4 dark:border-slate-600/80">
+          <View className="mb-1.5 flex-row items-center justify-between gap-2">
+            <Text className="font-sans text-xs font-medium text-gray-500 dark:text-slate-400">
+              {t("subscription.products_used", "Products used")}
+            </Text>
+            <Text
+              className={`font-sans text-xs font-semibold ${
+                productNearLimit
+                  ? "text-red-500"
+                  : "text-gray-600 dark:text-slate-300"
+              }`}
+            >
+              {productsUsed} /{" "}
+              {finiteProductLimit
+                ? productLimit
+                : t("pricing_page.format.unlimited_symbol", "∞")}
+            </Text>
+          </View>
+          {finiteProductLimit ? (
+            <View className="h-2 overflow-hidden rounded-full bg-white dark:bg-slate-700">
+              <View
+                className={`h-full rounded-full ${
+                  productNearLimit ? "bg-red-500" : "bg-green-500"
+                }`}
+                style={{ width: `${productProgress}%` }}
+              />
+            </View>
+          ) : null}
+          <Text className="mt-1.5 font-sans text-xs text-gray-400 dark:text-slate-500">
+            {finiteProductLimit
+              ? productsRemaining === 0
+                ? t(
+                    "seller.product.limit_warning.reached_message",
+                    "You have reached {{used}} of {{limit}} products on your {{plan}} plan. Upgrade to add more products.",
+                    {
+                      used: productsUsed,
+                      limit: productLimit,
+                      plan: plan.name,
+                    },
+                  )
+                : t(
+                    "seller.tier.products_remaining",
+                    "{{count}} products remaining on your {{plan}} plan",
+                    { count: productsRemaining ?? 0, plan: plan.name },
+                  )
+              : t(
+                  "seller.tier.unlimited_products",
+                  "Unlimited product listings on your {{plan}} plan",
+                  { plan: plan.name },
+                )}
+          </Text>
+          {productNearLimit && finiteProductLimit ? (
+            <Pressable
+              onPress={onUpgrade}
+              className="mt-3 flex-row items-center justify-center gap-1.5 rounded-lg bg-green-600 px-3 py-2"
+            >
+              <Feather name="arrow-up-circle" color="#ffffff" size={14} />
+              <Text className="font-sans text-xs font-bold text-white">
+                {t("seller.product.limit_warning.upgrade", "Upgrade plan")}
+              </Text>
+            </Pressable>
+          ) : null}
+        </View>
+      ) : null}
     </View>
   );
 }
@@ -722,7 +880,7 @@ function DashboardLanguageSwitch() {
   const { i18n, language } = useAppTranslation();
 
   return (
-    <View className="flex-row rounded-xl border border-gray-200 bg-gray-50 p-1 dark:border-slate-700 dark:bg-slate-900">
+    <View className="h-10 flex-row items-center rounded-xl border border-gray-200 bg-gray-50 p-1 dark:border-slate-700 dark:bg-slate-900">
       {supportedLanguages.map((code) => {
         const active = language === code;
         const label = code === "my" ? "MY" : "EN";
@@ -730,7 +888,7 @@ function DashboardLanguageSwitch() {
           <Pressable
             key={code}
             onPress={() => void i18n.changeLanguage(code as SupportedLanguage)}
-            className={`min-h-8 min-w-10 items-center justify-center rounded-lg px-2 ${
+            className={`h-8 w-10 items-center justify-center rounded-lg px-2 ${
               active ? "bg-green-600" : ""
             }`}
           >
@@ -810,70 +968,64 @@ function SellerTopHeader({
 
   return (
     <View className="relative z-30 flex-shrink-0 border-b border-gray-200/60 bg-white/90 px-4 py-4 dark:border-slate-700/60 dark:bg-slate-800/90 sm:px-6">
-      <View className="flex-row items-center justify-between gap-4">
-        <View className="min-w-0 flex-1 flex-row items-center gap-3">
-          <Pressable
-            onPress={onMenu}
-            className="h-10 w-10 items-center justify-center rounded-lg bg-white dark:bg-slate-800 md:hidden"
-          >
-            <Feather name="menu" color="#64748b" size={22} />
-          </Pressable>
-          <View className="min-w-0 flex-1">
-            <Text
-              className="font-sans text-2xl font-bold text-green-600 dark:text-green-400"
-              numberOfLines={1}
-            >
-              Seller Center
-            </Text>
-            <Text
-              className="mt-1 font-sans text-sm text-gray-600 dark:text-slate-400"
-              numberOfLines={1}
-            >
-              Manage your store and grow your business
-            </Text>
-          </View>
-        </View>
-        <View className="flex-row items-center gap-2 sm:gap-3">
+      <View className="flex-row items-center justify-between gap-3">
+        <Pressable
+          onPress={onMenu}
+          className={`${SELLER_HEADER_CONTROL_CLASS} flex-shrink-0 items-center justify-center rounded-lg bg-white dark:bg-slate-800 md:hidden`}
+        >
+          <Feather name="menu" color="#64748b" size={SELLER_HEADER_ICON_SIZE} />
+        </Pressable>
+        <View className="hidden flex-1 md:flex" />
+        <View className="flex-row flex-shrink-0 items-center gap-2 sm:gap-3">
           <Link href="/" asChild>
-            <Pressable className="hidden flex-row items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-3 py-2 dark:border-green-800 dark:bg-green-900/20 sm:flex">
-              <Feather name="external-link" color="#16a34a" size={16} />
+            <Pressable className="hidden h-10 flex-row items-center gap-2 rounded-xl border border-green-200 bg-green-50 px-3 dark:border-green-800 dark:bg-green-900/20 sm:flex">
+              <Feather name="external-link" color="#16a34a" size={SELLER_HEADER_ICON_SIZE} />
               <Text className="font-sans text-sm font-bold text-green-700 dark:text-green-300">
                 Main site
               </Text>
             </Pressable>
           </Link>
           <Link href="/" asChild>
-            <Pressable className="h-10 w-10 items-center justify-center rounded-xl border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20 sm:hidden">
-              <Feather name="external-link" color="#16a34a" size={17} />
+            <Pressable
+              className={`${SELLER_HEADER_CONTROL_CLASS} items-center justify-center rounded-xl border border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20 sm:hidden`}
+            >
+              <Feather name="external-link" color="#16a34a" size={SELLER_HEADER_ICON_SIZE} />
             </Pressable>
           </Link>
           <DashboardLanguageSwitch />
-          <Pressable onPress={onNotifications}>
-            <NativeNotificationBell compact />
-          </Pressable>
+          <NativeNotificationBell compact iconSize={SELLER_HEADER_ICON_SIZE} />
           <View className="hidden flex-row items-center gap-2 md:flex">
             <View className="h-2 w-2 rounded-full bg-green-400" />
             <Text className="font-sans text-sm text-gray-600 dark:text-slate-400">
               Store Active
             </Text>
           </View>
-          <View className="relative">
+          <View className="relative flex-shrink-0">
             <Pressable
               onPress={() => setProfileOpen((open) => !open)}
-              className={`flex-row items-center gap-1.5 rounded-2xl border p-1.5 ${
+              className={`h-10 flex-row items-center gap-1 rounded-xl border pl-0 pr-2 ${
                 profileOpen
                   ? "border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/30"
                   : "border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-900"
               }`}
             >
               {store?.logoUrl ? (
-                <Image
-                  source={{ uri: store.logoUrl }}
-                  className="h-9 w-9 rounded-xl"
-                  contentFit="cover"
-                />
+                <View
+                  className={`${SELLER_HEADER_CONTROL_CLASS} overflow-hidden rounded-lg`}
+                >
+                  <Image
+                    source={{ uri: store.logoUrl }}
+                    style={{
+                      width: SELLER_HEADER_CONTROL_PX,
+                      height: SELLER_HEADER_CONTROL_PX,
+                    }}
+                    contentFit="cover"
+                  />
+                </View>
               ) : (
-                <View className="h-9 w-9 items-center justify-center rounded-xl bg-green-600">
+                <View
+                  className={`${SELLER_HEADER_CONTROL_CLASS} items-center justify-center rounded-lg bg-green-600`}
+                >
                   <Text className="font-sans text-sm font-extrabold text-white">
                     {initial}
                   </Text>
@@ -882,7 +1034,7 @@ function SellerTopHeader({
               <Feather
                 name={profileOpen ? "chevron-up" : "chevron-down"}
                 color="#64748b"
-                size={16}
+                size={SELLER_HEADER_ICON_SIZE}
               />
             </Pressable>
 
@@ -1181,6 +1333,7 @@ function SellerMyStoreNative({
     totalOrders: 0,
     totalRevenue: 0,
     pendingOrders: 0,
+    deliveredOrders: 0,
   };
 
   if (!store) {
@@ -1547,10 +1700,12 @@ function SellerMyStoreNative({
 function SellerDashboardOverviewPanel({
   overview,
   wallet,
+  subscription,
   onTab,
 }: {
   overview: SellerDashboardOverview | null;
   wallet: SellerWalletSummary | null;
+  subscription: SellerSubscription | null;
   onTab: (tab: SellerTab) => void;
 }) {
   const { isDark } = useTheme();
@@ -1560,6 +1715,7 @@ function SellerDashboardOverviewPanel({
     totalOrders: 0,
     totalRevenue: 0,
     pendingOrders: 0,
+    deliveredOrders: 0,
   };
   const completionRate =
     stats.totalOrders > 0
@@ -1627,7 +1783,12 @@ function SellerDashboardOverviewPanel({
       </View>
 
       <SetupChecklistPanel store={store} onTab={onTab} />
-      <TierCard store={store} />
+      <TierCard
+        store={store}
+        stats={stats}
+        subscription={subscription}
+        onUpgrade={() => onTab("subscription")}
+      />
 
       <View>
         <SectionTitle>Wallet & Earnings</SectionTitle>
@@ -1908,6 +2069,7 @@ export function SellerDashboardNative() {
     totalOrders: 0,
     totalRevenue: 0,
     pendingOrders: 0,
+    deliveredOrders: 0,
   };
   const activeItem = useMemo(
     () => sellerTabs.find((item) => item.id === activeTab) || sellerTabs[0],
@@ -1928,6 +2090,10 @@ export function SellerDashboardNative() {
     if (authLoading) return;
     if (!isAuthenticated) {
       router.replace("/login?returnTo=/seller/dashboard" as Href);
+      return;
+    }
+    if (user && needsEmailVerification(user)) {
+      router.replace("/verify-email?returnTo=/seller/dashboard" as Href);
       return;
     }
     if (user && !isSeller) router.replace(getRoleDestination(user));
@@ -2095,6 +2261,7 @@ export function SellerDashboardNative() {
               <SellerDashboardOverviewPanel
                 overview={overview}
                 wallet={wallet}
+                subscription={subscription}
                 onTab={selectTab}
               />
             ) : activeTab === "my_store" ? (

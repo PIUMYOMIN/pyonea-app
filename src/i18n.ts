@@ -17,6 +17,13 @@ export const normalizeLanguage = (language?: string | null): SupportedLanguage =
   return 'my';
 };
 
+export const localizeBilingualName = (
+  language: SupportedLanguage,
+  nameEn?: string,
+  nameMm?: string,
+  fallback = '',
+) => (language === 'my' ? nameMm || nameEn || fallback : nameEn || nameMm || fallback);
+
 const deviceLanguage = normalizeLanguage(Localization.getLocales()[0]?.languageCode);
 const i18n = createInstance();
 

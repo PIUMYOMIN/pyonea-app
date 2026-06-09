@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import { useRouter, type Href } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Pressable, ScrollView, Text, View } from 'react-native';
+import { useCallback, useEffect, useState } from 'react';
+import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { useTheme } from '@/context/theme';
 import { useAppTranslation } from '@/i18n';
@@ -48,27 +48,6 @@ const notificationHref = (notification: NativeNotification): Href | null => {
   return null;
 };
 
-function EmptyState({ filter }: { filter: NotificationFilter }) {
-  const { t } = useAppTranslation();
-  const { isDark } = useTheme();
-
-  return (
-    <View className="items-center rounded-2xl border border-dashed border-gray-200 bg-white px-5 py-12 dark:border-slate-700 dark:bg-slate-800">
-      <View className="h-14 w-14 items-center justify-center rounded-2xl bg-gray-100 dark:bg-slate-900">
-        <Feather name="bell-off" color={isDark ? '#64748b' : '#9ca3af'} size={26} />
-      </View>
-      <Text className="mt-4 text-center font-sans text-base font-bold text-gray-900 dark:text-slate-100">
-        {filter === 'unread'
-          ? t('notifications.no_unread')
-          : t('notifications.no_notifications')}
-      </Text>
-      <Text className="mt-2 text-center font-sans text-sm leading-6 text-gray-500 dark:text-slate-400">
-        Seller order, RFQ, review, and account updates will appear here.
-      </Text>
-    </View>
-  );
-}
-
 function NotificationRow({
   notification,
   busy,
@@ -89,10 +68,10 @@ function NotificationRow({
 
   return (
     <View
-      className={`rounded-2xl border p-4 ${
+      className={`border-b border-gray-100 p-4 dark:border-slate-700 ${
         unread
-          ? 'border-green-200 bg-green-50 dark:border-green-900 dark:bg-green-950/30'
-          : 'border-gray-100 bg-white dark:border-slate-700 dark:bg-slate-800'
+          ? 'bg-green-50/70 dark:bg-green-950/20'
+          : 'bg-white dark:bg-slate-800'
       }`}
     >
       <View className="flex-row items-start gap-3">
@@ -101,7 +80,7 @@ function NotificationRow({
           className="min-w-0 flex-1 flex-row gap-3"
         >
           <View
-            className={`h-11 w-11 items-center justify-center rounded-2xl ${
+            className={`h-10 w-10 items-center justify-center rounded-full ${
               unread ? 'bg-white dark:bg-slate-900' : 'bg-gray-100 dark:bg-slate-900'
             }`}
           >
@@ -117,7 +96,7 @@ function NotificationRow({
               <Text
                 className={`min-w-0 flex-1 font-sans text-sm leading-5 ${
                   unread
-                    ? 'font-bold text-gray-950 dark:text-slate-100'
+                    ? 'font-semibold text-gray-950 dark:text-slate-100'
                     : 'font-medium text-gray-700 dark:text-slate-300'
                 }`}
               >
@@ -141,22 +120,30 @@ function NotificationRow({
         </Pressable>
 
         <View className="items-end gap-2">
-          <Pressable
-            disabled={busy}
-            onPress={() => onDelete(notification)}
-            className="h-11 w-11 items-center justify-center rounded-xl border border-red-200 bg-white/70 dark:border-red-900 dark:bg-slate-900/50"
-          >
-            {busy ? <ActivityIndicator color="#ef4444" /> : <Feather name="trash-2" color="#ef4444" size={17} />}
-          </Pressable>
           {unread ? (
             <Pressable
               disabled={busy}
               onPress={() => onRead(notification)}
-              className="h-11 w-11 items-center justify-center rounded-xl border border-green-200 bg-white/70 dark:border-green-800 dark:bg-slate-900/50"
+              className="h-9 w-9 items-center justify-center rounded-lg"
             >
-              {busy ? <ActivityIndicator color="#16a34a" /> : <Feather name="check" color="#16a34a" size={17} />}
+              {busy ? (
+                <ActivityIndicator color="#16a34a" />
+              ) : (
+                <Feather name="check-circle" color="#16a34a" size={16} />
+              )}
             </Pressable>
           ) : null}
+          <Pressable
+            disabled={busy}
+            onPress={() => onDelete(notification)}
+            className="h-9 w-9 items-center justify-center rounded-lg"
+          >
+            {busy ? (
+              <ActivityIndicator color="#ef4444" />
+            ) : (
+              <Feather name="trash-2" color="#ef4444" size={15} />
+            )}
+          </Pressable>
         </View>
       </View>
     </View>
@@ -166,6 +153,7 @@ function NotificationRow({
 export function SellerNotificationsNative() {
   const router = useRouter();
   const { t } = useAppTranslation();
+  const { isDark } = useTheme();
   const [items, setItems] = useState<NativeNotification[]>([]);
   const [filter, setFilter] = useState<NotificationFilter>('all');
   const [page, setPage] = useState(1);
@@ -176,11 +164,6 @@ export function SellerNotificationsNative() {
   const [busyIds, setBusyIds] = useState<(string | number)[]>([]);
   const [confirmClear, setConfirmClear] = useState(false);
   const [error, setError] = useState('');
-
-  const title = useMemo(
-    () => t('notifications.panel_title', { defaultValue: 'Notifications' }),
-    [t],
-  );
 
   const loadNotifications = useCallback(
     async (targetPage = 1, reset = true, signal?: AbortSignal) => {
@@ -282,83 +265,58 @@ export function SellerNotificationsNative() {
 
   return (
     <View className="w-full gap-4">
-      <View className="rounded-2xl bg-green-600 p-4 dark:bg-emerald-700 sm:p-6">
-        <View className="gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <View className="min-w-0 flex-1">
-            <Text className="font-sans text-xl font-black text-white sm:text-2xl">
-              {title}
-            </Text>
-            <Text className="mt-1 font-sans text-sm leading-6 text-green-50">
-              Track store, order, RFQ, review, and subscription updates in one place.
-            </Text>
-          </View>
-          <View className="self-start rounded-2xl bg-white/15 px-4 py-3">
-            <Text className="font-sans text-2xl font-black text-white">{unreadCount}</Text>
-            <Text className="font-sans text-xs font-semibold text-green-50">Unread</Text>
-          </View>
+      <View className="flex-row flex-wrap items-center justify-between gap-3">
+        <View className="min-w-0 flex-1 flex-row flex-wrap items-center gap-2">
+          <Feather
+            name="bell"
+            color={unreadCount > 0 ? '#16a34a' : isDark ? '#94a3b8' : '#6b7280'}
+            size={20}
+          />
+          <Text className="font-sans text-xl font-bold text-gray-900 dark:text-slate-100">
+            {t('notifications.panel_title', { defaultValue: 'Notifications' })}
+          </Text>
+          {unreadCount > 0 ? (
+            <View className="rounded-full bg-green-600 px-2 py-0.5">
+              <Text className="font-sans text-xs font-semibold text-white">{unreadCount}</Text>
+            </View>
+          ) : null}
+        </View>
+
+        <View className="flex-row flex-wrap gap-2">
+          {unreadCount > 0 ? (
+            <Pressable
+              onPress={() => void markEveryNotificationRead()}
+              className="min-h-9 flex-row items-center rounded-lg border border-green-200 px-3 dark:border-green-800"
+            >
+              <Text className="font-sans text-xs font-semibold text-green-700 dark:text-green-300">
+                {t('notifications.mark_all_read')}
+              </Text>
+            </Pressable>
+          ) : null}
+          {items.length > 0 ? (
+            <Pressable
+              onPress={() => setConfirmClear(true)}
+              className="min-h-9 flex-row items-center rounded-lg border border-red-200 px-3 dark:border-red-900"
+            >
+              <Text className="font-sans text-xs font-semibold text-red-600 dark:text-red-300">
+                {t('notifications.clear_all')}
+              </Text>
+            </Pressable>
+          ) : null}
         </View>
       </View>
 
-      <View className="gap-3 rounded-2xl border border-gray-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View className="flex-row gap-2">
-            {(['all', 'unread'] as const).map((item) => {
-              const active = filter === item;
-              return (
-                <Pressable
-                  key={item}
-                  onPress={() => setFilter(item)}
-                  className={`min-h-10 rounded-xl px-4 py-2 ${
-                    active ? 'bg-green-600' : 'bg-gray-100 dark:bg-slate-900'
-                  }`}
-                >
-                  <Text
-                    className={`font-sans text-sm font-bold ${
-                      active ? 'text-white' : 'text-gray-600 dark:text-slate-300'
-                    }`}
-                  >
-                    {item === 'all'
-                      ? t('notifications.filter_all')
-                      : `${t('notifications.filter_unread')}${unreadCount > 0 ? ` (${unreadCount})` : ''}`}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </View>
-        </ScrollView>
-
-        <View className="gap-2 sm:flex-row">
-          <Pressable
-            disabled={unreadCount === 0}
-            onPress={() => void markEveryNotificationRead()}
-            className="min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-xl border border-green-200 px-4 disabled:opacity-50 dark:border-green-800"
-          >
-            <Feather name="check-circle" color="#16a34a" size={16} />
-            <Text className="font-sans text-sm font-bold text-green-700 dark:text-green-300">
-              {t('notifications.mark_all_read')}
-            </Text>
-          </Pressable>
-          <Pressable
-            disabled={items.length === 0}
-            onPress={() => setConfirmClear((current) => !current)}
-            className="min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-xl border border-red-200 px-4 disabled:opacity-50 dark:border-red-900"
-          >
-            <Feather name="trash-2" color="#ef4444" size={16} />
-            <Text className="font-sans text-sm font-bold text-red-600 dark:text-red-300">
-              {t('notifications.clear_all')}
-            </Text>
-          </Pressable>
-        </View>
-
-        {confirmClear ? (
-          <View className="rounded-xl border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950/40">
+      {confirmClear ? (
+        <View className="flex-row items-start gap-3 rounded-xl border border-red-200 bg-red-50 p-3 dark:border-red-900 dark:bg-red-950/40">
+          <Feather name="alert-triangle" color="#ef4444" size={18} />
+          <View className="min-w-0 flex-1">
             <Text className="font-sans text-sm font-semibold text-red-700 dark:text-red-300">
               {t('notifications.clear_confirm')}
             </Text>
-            <View className="mt-3 flex-row gap-2">
+            <View className="mt-3 flex-row flex-wrap gap-2">
               <Pressable
                 onPress={() => setConfirmClear(false)}
-                className="min-h-10 flex-1 items-center justify-center rounded-lg border border-gray-300 dark:border-slate-600"
+                className="min-h-9 flex-1 items-center justify-center rounded-lg border border-gray-300 px-3 dark:border-slate-600"
               >
                 <Text className="font-sans text-xs font-bold text-gray-600 dark:text-slate-300">
                   {t('notifications.cancel')}
@@ -366,7 +324,7 @@ export function SellerNotificationsNative() {
               </Pressable>
               <Pressable
                 onPress={() => void clearEveryNotification()}
-                className="min-h-10 flex-1 items-center justify-center rounded-lg bg-red-600"
+                className="min-h-9 flex-1 items-center justify-center rounded-lg bg-red-600 px-3"
               >
                 <Text className="font-sans text-xs font-bold text-white">
                   {t('notifications.clear_confirm_yes')}
@@ -374,7 +332,34 @@ export function SellerNotificationsNative() {
               </Pressable>
             </View>
           </View>
-        ) : null}
+        </View>
+      ) : null}
+
+      <View className="flex-row self-start rounded-xl bg-gray-100 p-1 dark:bg-slate-700">
+        {(['all', 'unread'] as const).map((item) => {
+          const active = filter === item;
+          return (
+            <Pressable
+              key={item}
+              onPress={() => setFilter(item)}
+              className={`min-h-9 rounded-lg px-4 py-2 ${
+                active ? 'bg-white shadow-sm dark:bg-slate-600' : ''
+              }`}
+            >
+              <Text
+                className={`font-sans text-sm font-semibold ${
+                  active
+                    ? 'text-green-700 dark:text-green-300'
+                    : 'text-gray-500 dark:text-slate-400'
+                }`}
+              >
+                {item === 'all'
+                  ? t('notifications.filter_all')
+                  : `${t('notifications.filter_unread')}${unreadCount > 0 ? ` (${unreadCount})` : ''}`}
+              </Text>
+            </Pressable>
+          );
+        })}
       </View>
 
       {error ? (
@@ -391,41 +376,50 @@ export function SellerNotificationsNative() {
         </Pressable>
       ) : null}
 
-      {loading ? (
-        <View className="items-center rounded-2xl border border-gray-100 bg-white py-16 dark:border-slate-700 dark:bg-slate-800">
-          <ActivityIndicator color="#16a34a" size="large" />
-          <Text className="mt-3 font-sans text-sm text-gray-500 dark:text-slate-400">
-            {t('notifications.loading')}
-          </Text>
-        </View>
-      ) : items.length === 0 ? (
-        <EmptyState filter={filter} />
-      ) : (
-        <View className="gap-3">
-          {items.map((notification) => (
-            <NotificationRow
-              key={String(notification.id)}
-              notification={notification}
-              busy={busyIds.includes(notification.id)}
-              onOpen={(item) => void openNotification(item)}
-              onRead={(item) => void markRead(item)}
-              onDelete={(item) => void removeNotification(item)}
-            />
-          ))}
+      <View className="overflow-hidden rounded-2xl border border-gray-100 bg-white dark:border-slate-700 dark:bg-slate-800">
+        {loading ? (
+          <View className="items-center py-16">
+            <ActivityIndicator color="#16a34a" size="large" />
+            <Text className="mt-3 font-sans text-sm text-gray-500 dark:text-slate-400">
+              {t('notifications.loading')}
+            </Text>
+          </View>
+        ) : items.length === 0 ? (
+          <View className="items-center py-16">
+            <Feather name="bell-off" color={isDark ? '#64748b' : '#9ca3af'} size={32} />
+            <Text className="mt-3 text-center font-sans text-sm text-gray-400 dark:text-slate-500">
+              {filter === 'unread'
+                ? t('notifications.no_unread')
+                : t('notifications.no_notifications')}
+            </Text>
+          </View>
+        ) : (
+          <>
+            {items.map((notification) => (
+              <NotificationRow
+                key={String(notification.id)}
+                notification={notification}
+                busy={busyIds.includes(notification.id)}
+                onOpen={(item) => void openNotification(item)}
+                onRead={(item) => void markRead(item)}
+                onDelete={(item) => void removeNotification(item)}
+              />
+            ))}
 
-          {hasMore ? (
-            <Pressable
-              disabled={loadingMore}
-              onPress={() => void loadNotifications(page + 1, false)}
-              className="min-h-12 items-center justify-center rounded-xl border border-green-200 bg-white px-4 dark:border-green-800 dark:bg-slate-800"
-            >
-              <Text className="font-sans text-sm font-bold text-green-700 dark:text-green-300">
-                {loadingMore ? t('notifications.loading') : t('notifications.load_more')}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
-      )}
+            {hasMore ? (
+              <Pressable
+                disabled={loadingMore}
+                onPress={() => void loadNotifications(page + 1, false)}
+                className="min-h-12 items-center justify-center border-t border-gray-100 px-4 dark:border-slate-700"
+              >
+                <Text className="font-sans text-sm font-semibold text-green-700 dark:text-green-300">
+                  {loadingMore ? t('notifications.loading') : t('notifications.load_more')}
+                </Text>
+              </Pressable>
+            ) : null}
+          </>
+        )}
+      </View>
     </View>
   );
 }

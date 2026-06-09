@@ -11,9 +11,11 @@ import {
   useWindowDimensions,
   View,
 } from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { ProductListCard } from '@/components/marketplace-list-screen';
+import { useTheme } from '@/context/theme';
 import { useAppTranslation } from '@/i18n';
 import {
   fetchProductFilterCategories,
@@ -58,7 +60,7 @@ const sortOptions = [
 ];
 
 function CardSkeleton({
-  className = 'h-[320px] w-[47%] sm:h-[354px] sm:w-[30.5%] lg:h-[376px] lg:w-[22.5%]',
+  className = 'h-[340px] w-[47%] sm:h-[372px] sm:w-[30.5%] lg:h-[396px] lg:w-[22.5%]',
 }: {
   className?: string;
 }) {
@@ -86,8 +88,11 @@ function ProductSearchBar({
   onDebouncedChange: (value: string) => void;
 }) {
   const { t } = useAppTranslation();
+  const { isDark } = useTheme();
   const [draft, setDraft] = useState(initialValue);
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const iconColor = isDark ? '#94a3b8' : '#9ca3af';
+  const placeholderColor = isDark ? '#64748b' : '#9ca3af';
 
   useEffect(
     () => () => {
@@ -103,20 +108,23 @@ function ProductSearchBar({
   };
 
   return (
-    <View className="mx-auto w-full max-w-2xl flex-row overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-gray-600 dark:bg-gray-800">
+    <View className="mx-auto w-full max-w-2xl flex-row overflow-hidden rounded-xl border border-gray-200 bg-white shadow-sm dark:border-slate-600 dark:bg-slate-800">
       <View className="items-center justify-center pl-3.5">
-        <Feather name="search" color="#9ca3af" size={20} />
+        <Feather name="search" color={iconColor} size={20} />
       </View>
       <TextInput
         value={draft}
         onChangeText={updateDraft}
         onSubmitEditing={() => onSubmit(draft)}
         placeholder={t('products.search_placeholder')}
-        placeholderTextColor="#9ca3af"
-        className="min-w-0 flex-1 py-3 pl-3 pr-3 font-sans text-sm text-gray-900 dark:text-gray-100"
+        placeholderTextColor={placeholderColor}
+        className="min-w-0 flex-1 py-3 pl-3 pr-3 font-sans text-sm text-gray-900 dark:text-slate-100"
         returnKeyType="search"
       />
-      <Pressable onPress={() => onSubmit(draft)} className="flex-shrink-0 justify-center bg-green-600 px-5 py-3">
+      <Pressable
+        onPress={() => onSubmit(draft)}
+        className="flex-shrink-0 justify-center bg-green-600 px-4 py-3 active:bg-green-700 sm:px-5"
+      >
         <Text className="font-sans text-sm font-medium text-white">{t('products.search')}</Text>
       </Pressable>
     </View>
@@ -149,7 +157,7 @@ function CategorySelector({
       <View key={String(category.id)} className="gap-0.5">
         <Pressable
           onPress={() => onSelect(String(category.id))}
-          className={`flex-row items-center justify-between rounded-lg px-2.5 py-1.5 ${
+          className={`min-h-10 flex-row items-center justify-between rounded-lg px-2.5 py-2 active:bg-gray-100 dark:active:bg-slate-700/60 ${
             isSelected ? 'bg-green-100 dark:bg-green-900/40' : ''
           }`}
           style={depth > 0 ? { marginLeft: 16 } : undefined}>
@@ -168,7 +176,9 @@ function CategorySelector({
                 ({category.productCount})
               </Text>
             ) : null}
-            {hasChildren ? <Feather name="chevron-right" color="#9ca3af" size={14} /> : null}
+            {hasChildren ? (
+              <Feather name="chevron-right" color={isSelected ? '#16a34a' : '#9ca3af'} size={14} />
+            ) : null}
           </View>
         </Pressable>
         {hasChildren ? category.children.map((child) => renderCategory(child, depth + 1)) : null}
@@ -182,9 +192,10 @@ function CategorySelector({
     <View className="gap-0.5">
       <Pressable
         onPress={() => onSelect('')}
-        className={`rounded-lg px-2.5 py-1.5 ${
+        className={`min-h-10 justify-center rounded-lg px-2.5 py-2 active:bg-gray-100 dark:active:bg-slate-700/60 ${
           allSelected ? 'bg-green-100 dark:bg-green-900/40' : ''
-        }`}>
+        }`}
+      >
         <Text
           className={`font-sans text-sm ${
             allSelected
@@ -208,6 +219,8 @@ function FilterPanel({
   sortBy,
   sortOrder,
   hasActiveFilters,
+  showHeader = true,
+  scrollCategories = false,
   onCategory,
   onPrice,
   onSort,
@@ -221,6 +234,8 @@ function FilterPanel({
   sortBy: string;
   sortOrder: string;
   hasActiveFilters: boolean;
+  showHeader?: boolean;
+  scrollCategories?: boolean;
   onCategory: (id: string) => void;
   onPrice: (min: string, max: string) => void;
   onSort: (sortBy: string, sortOrder: string) => void;
@@ -232,28 +247,39 @@ function FilterPanel({
   )?.value;
   const selectedSort = `${sortBy}:${sortOrder}`;
 
-  return (
-    <View className="gap-6">
-      <View className="rounded-xl border border-gray-100 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-        <View className="mb-4 flex-row items-center justify-between">
-          <Text className="font-sans text-sm font-semibold text-gray-900 dark:text-gray-100">
-            {t('products.filters')}
-          </Text>
-          {hasActiveFilters ? (
-            <Pressable onPress={onClear}>
-              <Text className="font-sans text-xs text-green-600 dark:text-green-400">
-                {t('products.clear_all')}
-              </Text>
-            </Pressable>
-          ) : null}
-        </View>
+  const categoryList = (
+    <CategorySelector
+      categories={categories}
+      selectedCategory={selectedCategory}
+      activeLanguage={activeLanguage}
+      onSelect={onCategory}
+    />
+  );
 
-        <View className="gap-6">
+  return (
+    <View className="gap-4 sm:gap-6">
+      <View className="rounded-xl border border-gray-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+        {showHeader ? (
+          <View className="mb-4 flex-row items-center justify-between gap-2">
+            <Text className="font-sans text-sm font-semibold text-gray-900 dark:text-slate-100">
+              {t('products.filters')}
+            </Text>
+            {hasActiveFilters ? (
+              <Pressable onPress={onClear} className="rounded-lg px-2 py-1 active:bg-gray-100 dark:active:bg-slate-700">
+                <Text className="font-sans text-xs font-semibold text-green-600 dark:text-green-400">
+                  {t('products.clear_all')}
+                </Text>
+              </Pressable>
+            ) : null}
+          </View>
+        ) : null}
+
+        <View className="gap-5">
           <View>
-            <Text className="mb-3 font-sans text-sm font-semibold text-gray-800 dark:text-gray-200">
+            <Text className="mb-3 font-sans text-sm font-semibold text-gray-800 dark:text-slate-200">
               {t('filter.price_range')}
             </Text>
-            <View className="gap-2">
+            <View className="gap-1">
               {priceRanges.map((range) => {
                 const active = selectedPrice === range.value;
                 return (
@@ -262,16 +288,24 @@ function FilterPanel({
                     onPress={() =>
                       active ? onPrice('', '') : onPrice(range.minPrice, range.maxPrice)
                     }
-                    className="flex-row items-center gap-3">
+                    className="min-h-10 flex-row items-center gap-3 rounded-lg px-1 active:bg-gray-50 dark:active:bg-slate-700/50"
+                  >
                     <View
-                      className={`h-4 w-4 rounded border ${
+                      className={`h-4 w-4 items-center justify-center rounded border ${
                         active
                           ? 'border-green-600 bg-green-600'
-                          : 'border-gray-300 dark:border-gray-600'
-                      }`}>
+                          : 'border-gray-300 bg-white dark:border-slate-500 dark:bg-slate-700'
+                      }`}
+                    >
                       {active ? <Feather name="check" color="#ffffff" size={12} /> : null}
                     </View>
-                    <Text className="font-sans text-sm text-gray-600 dark:text-gray-400">
+                    <Text
+                      className={`flex-1 font-sans text-sm ${
+                        active
+                          ? 'font-medium text-green-800 dark:text-green-300'
+                          : 'text-gray-600 dark:text-slate-400'
+                      }`}
+                    >
                       {t(range.labelKey)}
                     </Text>
                   </Pressable>
@@ -281,27 +315,29 @@ function FilterPanel({
           </View>
 
           <View>
-            <Text className="mb-3 font-sans text-sm font-semibold text-gray-800 dark:text-gray-200">
+            <Text className="mb-3 font-sans text-sm font-semibold text-gray-800 dark:text-slate-200">
               {t('filter.sort_by')}
             </Text>
-            <View className="gap-2">
+            <View className="gap-1.5">
               {sortOptions.map((option) => {
                 const active = selectedSort === option.value;
                 return (
                   <Pressable
                     key={option.value}
                     onPress={() => onSort(option.sortBy, option.sortOrder)}
-                    className={`rounded-lg border px-3 py-2 ${
+                    className={`min-h-10 justify-center rounded-lg border px-3 py-2 ${
                       active
-                        ? 'border-green-500 bg-green-50 dark:bg-green-900/30'
-                        : 'border-gray-200 bg-white dark:border-gray-600 dark:bg-gray-700'
-                    }`}>
+                        ? 'border-green-500 bg-green-50 dark:border-green-600 dark:bg-green-900/30'
+                        : 'border-gray-200 bg-white dark:border-slate-600 dark:bg-slate-700/80'
+                    }`}
+                  >
                     <Text
                       className={`font-sans text-sm ${
                         active
                           ? 'font-semibold text-green-700 dark:text-green-300'
-                          : 'text-gray-700 dark:text-gray-300'
-                      }`}>
+                          : 'text-gray-700 dark:text-slate-300'
+                      }`}
+                    >
                       {t(option.labelKey)}
                     </Text>
                   </Pressable>
@@ -312,23 +348,31 @@ function FilterPanel({
         </View>
       </View>
 
-      <View className="rounded-xl border border-gray-100 bg-white p-4 dark:border-gray-700 dark:bg-gray-800">
-        <Text className="mb-3 font-sans text-sm font-semibold text-gray-900 dark:text-gray-100">
+      <View className="rounded-xl border border-gray-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+        <Text className="mb-3 font-sans text-sm font-semibold text-gray-900 dark:text-slate-100">
           {t('products.categories')}
         </Text>
-        <CategorySelector
-          categories={categories}
-          selectedCategory={selectedCategory}
-          activeLanguage={activeLanguage}
-          onSelect={onCategory}
-        />
+        {scrollCategories ? (
+          <ScrollView
+            style={{ maxHeight: 320 }}
+            showsVerticalScrollIndicator={false}
+            nestedScrollEnabled
+          >
+            {categoryList}
+          </ScrollView>
+        ) : (
+          categoryList
+        )}
       </View>
     </View>
   );
 }
 
+const DESKTOP_FILTER_BREAKPOINT = 768;
+
 export function ProductListNative() {
   const { t, language } = useAppTranslation();
+  const { isDark } = useTheme();
   const router = useRouter();
   const params = useGlobalSearchParams<{
     search?: string;
@@ -353,9 +397,16 @@ export function ProductListNative() {
   const [error, setError] = useState('');
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const { width } = useWindowDimensions();
+  const isDesktop = width >= DESKTOP_FILTER_BREAKPOINT;
   const currencyLabel = t('common.currency.mmk', 'MMK');
   const activeLanguage = language;
   const hasActiveFilters = Boolean(searchQuery || selectedCategory || minPrice || maxPrice);
+  const activeFilterCount = [
+    searchQuery,
+    selectedCategory,
+    minPrice || maxPrice,
+  ].filter(Boolean).length;
+  const mutedIconColor = isDark ? '#94a3b8' : '#64748b';
   const queryKey = `${searchQuery}|${selectedCategory}|${minPrice}|${maxPrice}|${sortBy}|${sortOrder}`;
   const productColumns = width >= 1024 ? 4 : width >= 640 ? 3 : 2;
   const productRows = useMemo(() => {
@@ -385,6 +436,10 @@ export function ProductListNative() {
   };
 
   const clearFilters = () => router.push('/products');
+
+  useEffect(() => {
+    if (isDesktop && sidebarOpen) setSidebarOpen(false);
+  }, [isDesktop, sidebarOpen]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -505,7 +560,7 @@ export function ProductListNative() {
 
           {hasActiveFilters ? (
             <View className="mb-5 flex-row flex-wrap items-center gap-2">
-              <Text className="font-sans text-xs font-medium text-gray-500 dark:text-gray-400">
+              <Text className="w-full font-sans text-xs font-medium text-gray-500 dark:text-slate-400 sm:w-auto">
                 {t('products.active_filters')}:
               </Text>
               {searchQuery ? (
@@ -537,8 +592,8 @@ export function ProductListNative() {
                   onClear={() => pushParams({ min_price: undefined, max_price: undefined })}
                 />
               ) : null}
-              <Pressable onPress={clearFilters} className="ml-auto">
-                <Text className="font-sans text-xs text-gray-500 underline dark:text-gray-400">
+              <Pressable onPress={clearFilters} className="w-full sm:ml-auto sm:w-auto">
+                <Text className="font-sans text-xs text-gray-500 underline dark:text-slate-400">
                   {t('products.clear_all')}
                 </Text>
               </Pressable>
@@ -546,23 +601,38 @@ export function ProductListNative() {
           ) : null}
 
           <Modal
-            visible={sidebarOpen}
+            visible={!isDesktop && sidebarOpen}
             transparent
             animationType="fade"
             onRequestClose={() => setSidebarOpen(false)}
           >
-            <View className="flex-1 md:hidden">
-              <Pressable className="absolute inset-0 bg-black/50" onPress={() => setSidebarOpen(false)} />
-              <View className="h-full w-72 bg-gray-50 p-4 shadow-2xl dark:bg-gray-900">
-                <View className="mb-4 flex-row items-center justify-between">
-                  <Text className="font-sans font-semibold text-gray-900 dark:text-gray-100">
-                    {t('products.filters')}
-                  </Text>
-                  <Pressable onPress={() => setSidebarOpen(false)}>
-                    <Feather name="x" color="#9ca3af" size={20} />
-                  </Pressable>
+            <View className="flex-1">
+              <Pressable
+                className="absolute inset-0 bg-black/50"
+                onPress={() => setSidebarOpen(false)}
+              />
+              <SafeAreaView
+                edges={['top', 'bottom', 'left']}
+                className="absolute bottom-0 left-0 top-0 w-72 max-w-[85%] bg-gray-50 shadow-2xl dark:bg-slate-900"
+              >
+                <View className="border-b border-gray-200 px-4 py-3 dark:border-slate-700">
+                  <View className="flex-row items-center justify-between gap-3">
+                    <Text className="font-sans text-base font-semibold text-gray-900 dark:text-slate-100">
+                      {t('products.filters')}
+                    </Text>
+                    <Pressable
+                      onPress={() => setSidebarOpen(false)}
+                      className="h-9 w-9 items-center justify-center rounded-lg active:bg-gray-200 dark:active:bg-slate-800"
+                    >
+                      <Feather name="x" color={mutedIconColor} size={20} />
+                    </Pressable>
+                  </View>
                 </View>
-                <ScrollView showsVerticalScrollIndicator={false}>
+                <ScrollView
+                  className="flex-1 px-4 py-4"
+                  showsVerticalScrollIndicator={false}
+                  keyboardShouldPersistTaps="handled"
+                >
                   <FilterPanel
                     categories={categories}
                     selectedCategory={selectedCategory}
@@ -572,6 +642,8 @@ export function ProductListNative() {
                     sortBy={sortBy}
                     sortOrder={sortOrder}
                     hasActiveFilters={hasActiveFilters}
+                    showHeader={false}
+                    scrollCategories
                     onCategory={(id) => {
                       pushParams({ category: id || undefined });
                       setSidebarOpen(false);
@@ -586,29 +658,31 @@ export function ProductListNative() {
                     }}
                   />
                 </ScrollView>
-              </View>
+              </SafeAreaView>
             </View>
           </Modal>
 
-          <View className="gap-6 md:flex-row lg:gap-8">
-            <View className="hidden w-56 shrink-0 md:block lg:w-64">
-              <FilterPanel
-                categories={categories}
-                selectedCategory={selectedCategory}
-                activeLanguage={activeLanguage}
-                minPrice={minPrice}
-                maxPrice={maxPrice}
-                sortBy={sortBy}
-                sortOrder={sortOrder}
-                hasActiveFilters={hasActiveFilters}
-                onCategory={(id) => pushParams({ category: id || undefined })}
-                onPrice={(min, max) => pushParams({ min_price: min, max_price: max })}
-                onSort={(nextSortBy, nextSortOrder) =>
-                  pushParams({ sort_by: nextSortBy, sort_order: nextSortOrder })
-                }
-                onClear={clearFilters}
-              />
-            </View>
+          <View className={`gap-6 ${isDesktop ? 'flex-row lg:gap-8' : ''}`}>
+            {isDesktop ? (
+              <View className="w-56 shrink-0 lg:w-64">
+                <FilterPanel
+                  categories={categories}
+                  selectedCategory={selectedCategory}
+                  activeLanguage={activeLanguage}
+                  minPrice={minPrice}
+                  maxPrice={maxPrice}
+                  sortBy={sortBy}
+                  sortOrder={sortOrder}
+                  hasActiveFilters={hasActiveFilters}
+                  onCategory={(id) => pushParams({ category: id || undefined })}
+                  onPrice={(min, max) => pushParams({ min_price: min, max_price: max })}
+                  onSort={(nextSortBy, nextSortOrder) =>
+                    pushParams({ sort_by: nextSortBy, sort_order: nextSortOrder })
+                  }
+                  onClear={clearFilters}
+                />
+              </View>
+            ) : null}
 
             <View className="min-w-0 flex-1">
               <View className="mb-4 flex-row items-center justify-between gap-3">
@@ -617,19 +691,43 @@ export function ProductListNative() {
                 </Text>
                 <View className="shrink-0 flex-row items-center gap-2">
                   {products.length > 0 ? (
-                    <Text className="hidden font-sans text-xs text-gray-500 dark:text-gray-400 sm:block">
+                    <Text className="hidden font-sans text-xs text-gray-500 dark:text-slate-400 sm:block">
                       {t('products.showing_count', { count: products.length })}
                       {hasMore ? '+' : ''}
                     </Text>
                   ) : null}
-                  <Pressable
-                    onPress={() => setSidebarOpen(true)}
-                    className="flex-row items-center gap-1.5 rounded-lg border border-gray-200 bg-white px-3 py-1.5 dark:border-gray-600 dark:bg-gray-800 md:hidden">
-                    <Feather name="sliders" color="#64748b" size={16} />
-                    <Text className="font-sans text-sm text-gray-700 dark:text-gray-300">
-                      {t('products.filters')}
-                    </Text>
-                  </Pressable>
+                  {!isDesktop ? (
+                    <Pressable
+                      onPress={() => setSidebarOpen(true)}
+                      className={`min-h-10 flex-row items-center gap-1.5 rounded-lg border px-3 py-2 ${
+                        hasActiveFilters
+                          ? 'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/20'
+                          : 'border-gray-200 bg-white dark:border-slate-600 dark:bg-slate-800'
+                      }`}
+                    >
+                      <Feather
+                        name="sliders"
+                        color={hasActiveFilters ? '#16a34a' : mutedIconColor}
+                        size={16}
+                      />
+                      <Text
+                        className={`font-sans text-sm font-medium ${
+                          hasActiveFilters
+                            ? 'text-green-700 dark:text-green-300'
+                            : 'text-gray-700 dark:text-slate-300'
+                        }`}
+                      >
+                        {t('products.filters')}
+                      </Text>
+                      {activeFilterCount > 0 ? (
+                        <View className="min-h-5 min-w-5 items-center justify-center rounded-full bg-green-600 px-1.5">
+                          <Text className="font-sans text-[10px] font-bold text-white">
+                            {activeFilterCount}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </Pressable>
+                  ) : null}
                 </View>
               </View>
 
@@ -660,7 +758,7 @@ export function ProductListNative() {
                           <ProductListCard
                             key={String(product.id)}
                             product={product}
-                            className="h-[320px] min-w-0 flex-1 sm:h-[354px] lg:h-[376px]"
+                            className="h-[340px] min-w-0 flex-1 sm:h-[372px] lg:h-[396px]"
                             imagePriority={rowIndex < 2}
                           />
                         ))}
@@ -682,7 +780,7 @@ export function ProductListNative() {
                         {Array.from({ length: productColumns }).map((_, index) => (
                           <CardSkeleton
                             key={`more-product-skeleton-${index}`}
-                            className="h-[320px] min-w-0 flex-1 sm:h-[354px] lg:h-[376px]"
+                            className="h-[340px] min-w-0 flex-1 sm:h-[372px] lg:h-[396px]"
                           />
                         ))}
                       </View>
@@ -691,7 +789,7 @@ export function ProductListNative() {
                 />
               ) : !loading ? (
                 <View className="w-full items-center py-16">
-                  <Feather name="search" color="#cbd5e1" size={48} />
+                  <Feather name="search" color={isDark ? '#475569' : '#cbd5e1'} size={48} />
                   <Text className="mt-3 font-sans text-lg font-semibold text-gray-900 dark:text-gray-100">
                     {t('products.no_products_found')}
                   </Text>
@@ -728,17 +826,30 @@ function FilterChip({
   tone: 'blue' | 'green' | 'purple';
   onClear: () => void;
 }) {
+  const { isDark } = useTheme();
   const classes = {
-    blue: 'bg-blue-100 dark:bg-blue-900/40 text-blue-800 dark:text-blue-300',
-    green: 'bg-green-100 dark:bg-green-900/40 text-green-800 dark:text-green-300',
-    purple: 'bg-purple-100 dark:bg-purple-900/40 text-purple-800 dark:text-purple-300',
+    blue: 'bg-blue-100 dark:bg-blue-900/40',
+    green: 'bg-green-100 dark:bg-green-900/40',
+    purple: 'bg-purple-100 dark:bg-purple-900/40',
+  };
+  const textClasses = {
+    blue: 'text-blue-800 dark:text-blue-300',
+    green: 'text-green-800 dark:text-green-300',
+    purple: 'text-purple-800 dark:text-purple-300',
+  };
+  const iconColors = {
+    blue: isDark ? '#93c5fd' : '#1d4ed8',
+    green: isDark ? '#86efac' : '#15803d',
+    purple: isDark ? '#d8b4fe' : '#7e22ce',
   };
 
   return (
-    <View className={`flex-row items-center gap-1 rounded-full px-2.5 py-1 ${classes[tone]}`}>
-      <Text className="font-sans text-xs font-medium">{label}</Text>
-      <Pressable onPress={onClear}>
-        <Feather name="x" color="#64748b" size={12} />
+    <View className={`max-w-full flex-row items-center gap-1 rounded-full px-2.5 py-1 ${classes[tone]}`}>
+      <Text className={`min-w-0 flex-1 font-sans text-xs font-medium ${textClasses[tone]}`} numberOfLines={1}>
+        {label}
+      </Text>
+      <Pressable onPress={onClear} className="h-5 w-5 items-center justify-center rounded-full">
+        <Feather name="x" color={iconColors[tone]} size={12} />
       </Pressable>
     </View>
   );

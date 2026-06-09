@@ -323,7 +323,13 @@ function NotificationPanel({
   );
 }
 
-export function NativeNotificationBell({ compact = false }: { compact?: boolean }) {
+export function NativeNotificationBell({
+  compact = false,
+  iconSize,
+}: {
+  compact?: boolean;
+  iconSize?: number;
+}) {
   const { user } = useNativeAuth();
   const { isDark } = useTheme();
   const { t } = useAppTranslation();
@@ -363,15 +369,15 @@ export function NativeNotificationBell({ compact = false }: { compact?: boolean 
 
   if (!user) return null;
 
+  const resolvedIconSize = iconSize ?? (compact ? 20 : 19);
+
   return (
     <>
       <Pressable
         onPress={() => setOpen(true)}
         accessibilityLabel={t('notifications.open_notifications')}
-        className={`relative items-center justify-center ${
-          compact ? 'h-10 w-10' : 'h-10 w-10'
-        }`}>
-        <Feather name="bell" color={isDark ? '#cbd5e1' : '#475569'} size={compact ? 18 : 19} />
+        className="relative h-10 w-10 items-center justify-center">
+        <Feather name="bell" color={isDark ? '#cbd5e1' : '#475569'} size={resolvedIconSize} />
         {unreadCount > 0 ? (
           <View className="absolute -right-1 -top-1 min-w-5 items-center rounded-full bg-red-600 px-1.5 py-0.5">
             <Text className="font-sans text-[10px] font-bold text-white">{badgeText}</Text>

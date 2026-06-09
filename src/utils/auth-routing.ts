@@ -21,7 +21,36 @@ export const getRoleDestination = (user: NativeUser): Href => {
   return '/';
 };
 
+export const needsEmailVerification = (user: NativeUser) => {
+  if (!user.email || user.emailVerifiedAt) return false;
+  return hasUserRole(user, 'seller') || hasUserRole(user, 'admin');
+};
+
+const buildVerifyEmailHref = (returnTo?: string | string[]): Href => {
+  const safeReturn = isLocalHref(returnTo);
+  if (!safeReturn) return '/verify-email';
+  return `/verify-email?returnTo=${encodeURIComponent(safeReturn)}` as Href;
+};
+
+export const getPostAuthDestination = (
+  user: NativeUser,
+  returnTo?: string | string[]
+): Href => {
+  if (needsEmailVerification(user)) {
+    return buildVerifyEmailHref(returnTo);
+  }
+  return (isLocalHref(returnTo) || getRoleDestination(user)) as Href;
+};
+
+export const getPostRegistrationDestination = (user: NativeUser): Href => {
+  if (user.email && hasUserRole(user, 'seller')) {
+    return '/verify-email';
+  }
+  if (hasUserRole(user, 'seller')) return '/seller/dashboard';
+  return '/products';
+};
+
 export const getPostLoginDestination = (
   user: NativeUser,
   returnTo?: string | string[]
-): Href => (isLocalHref(returnTo) || getRoleDestination(user)) as Href;
+): Href => getPostAuthDestination(user, returnTo);

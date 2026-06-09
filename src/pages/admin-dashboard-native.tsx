@@ -8,7 +8,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { DashboardTopNav } from '@/components/dashboard/dashboard-top-nav';
 import { useNativeAuth } from '@/context/native-auth';
 import { useTheme } from '@/context/theme';
-import { getRoleDestination, hasUserRole } from '@/utils/auth-routing';
+import {
+  getRoleDestination,
+  hasUserRole,
+  needsEmailVerification,
+} from '@/utils/auth-routing';
 import {
   ApiError,
   fetchAdminStats,
@@ -299,6 +303,10 @@ export function AdminDashboardNative() {
     if (authLoading) return;
     if (!isAuthenticated) {
       router.replace('/login?returnTo=/admin/dashboard' as Href);
+      return;
+    }
+    if (user && needsEmailVerification(user)) {
+      router.replace('/verify-email?returnTo=/admin/dashboard' as Href);
       return;
     }
     if (user && !isAdmin) {

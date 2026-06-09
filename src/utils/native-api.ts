@@ -30,6 +30,8 @@ export type HomeProduct = {
   id: string | number;
   slug?: string;
   name: string;
+  nameEn: string;
+  nameMm: string;
   seller: string;
   price: string;
   rating: string;
@@ -40,6 +42,8 @@ export type HomeProduct = {
   reviewCount?: number;
   moq?: number;
   categoryName?: string;
+  categoryNameEn?: string;
+  categoryNameMm?: string;
   hasVariants?: boolean;
 };
 
@@ -343,6 +347,10 @@ export type SellerStoreSummary = {
   currency?: string;
   businessHoursEnabled?: boolean;
   businessHours?: UnknownRecord;
+  sellerTier: 'bronze' | 'silver' | 'gold';
+  deliveredOrdersCount: number;
+  completedOrdersCount: number;
+  tierPromotedAt: string;
 };
 
 export type SellerDashboardStats = {
@@ -350,6 +358,7 @@ export type SellerDashboardStats = {
   totalOrders: number;
   totalRevenue: number;
   pendingOrders: number;
+  deliveredOrders: number;
 };
 
 export type SellerOnboardingStatus = {
@@ -1913,7 +1922,14 @@ export async function fetchNotifications(
 
   return {
     notifications: data.map(mapNotification),
-    unreadCount: isRecord(payload) ? getNumber(payload.unread_count || payload.unreadCount) : 0,
+    unreadCount: isRecord(payload)
+      ? getNumber(
+          payload.unread_count ||
+            payload.unreadCount ||
+            meta.unread_count ||
+            meta.unreadCount,
+        )
+      : 0,
     currentPage: getNumber(meta.current_page, options.page || 1),
     lastPage: getNumber(meta.last_page, options.page || 1),
   };
@@ -2060,6 +2076,17 @@ const mapSellerStoreSummary = (store: UnknownRecord): SellerStoreSummary => ({
   currency: getString(store.currency, 'MMK'),
   businessHoursEnabled: Boolean(store.business_hours_enabled),
   businessHours: isRecord(store.business_hours) ? store.business_hours : undefined,
+  sellerTier: (() => {
+    const tier = getString(store.seller_tier || store.sellerTier, 'bronze').toLowerCase();
+    return tier === 'silver' || tier === 'gold' ? tier : 'bronze';
+  })(),
+  deliveredOrdersCount: getNumber(
+    store.delivered_orders_count ?? store.deliveredOrdersCount ?? store.delivered_orders
+  ),
+  completedOrdersCount: getNumber(
+    store.completed_orders_count ?? store.completedOrdersCount ?? store.completed_orders
+  ),
+  tierPromotedAt: getString(store.tier_promoted_at || store.tierPromotedAt),
 });
 
 const emptySellerDashboardStats: SellerDashboardStats = {
@@ -2067,6 +2094,7 @@ const emptySellerDashboardStats: SellerDashboardStats = {
   totalOrders: 0,
   totalRevenue: 0,
   pendingOrders: 0,
+  deliveredOrders: 0,
 };
 
 const mapSellerDashboardStats = (summary: UnknownRecord): SellerDashboardStats => {
@@ -2079,6 +2107,13 @@ const mapSellerDashboardStats = (summary: UnknownRecord): SellerDashboardStats =
     totalOrders: getNumber(sales.total_orders ?? summary.total_orders),
     totalRevenue: getNumber(sales.total_revenue ?? summary.total_revenue),
     pendingOrders: getNumber(ordersByStatus.pending ?? summary.pending_orders),
+    deliveredOrders: getNumber(
+      ordersByStatus.delivered ??
+        summary.delivered_orders_count ??
+        summary.delivered_orders ??
+        summary.completed_orders_count ??
+        summary.completed_orders
+    ),
   };
 };
 
@@ -3374,10 +3409,17 @@ export const mapHomeProduct = (product: UnknownRecord, index = 0): HomeProduct =
   const discountPct = getDiscountPct(product);
   const effectivePrice = getEffectiveProductPrice(product, discountPct);
 
+  const nameEn = getString(product.name_en || product.name, 'Unnamed product');
+  const nameMm = getString(product.name_mm);
+  const categoryNameEn = getString(category?.name_en || category?.name);
+  const categoryNameMm = getString(category?.name_mm);
+
   return {
     id: getString(product.slug_en || product.slug || product.id, `product-${index}`),
     slug: getString(product.slug_en || product.slug || product.id, `product-${index}`),
-    name: getString(product.name_en || product.name_mm, 'Unnamed product'),
+    name: nameEn || nameMm || 'Unnamed product',
+    nameEn,
+    nameMm,
     seller: getString(
       seller?.store_name || seller?.business_name || product.seller_name,
       'Pyonea seller'
@@ -3390,7 +3432,9 @@ export const mapHomeProduct = (product: UnknownRecord, index = 0): HomeProduct =
     discountPct,
     reviewCount: getNumber(product.review_count),
     moq: getNumber(product.moq || product.minimum_order_quantity, 1),
-    categoryName: getString(category?.name_en || category?.name_mm),
+    categoryName: categoryNameEn || categoryNameMm,
+    categoryNameEn,
+    categoryNameMm,
     hasVariants: product.has_variants === true || product.has_variants === 1,
   };
 };
@@ -4762,6 +4806,44 @@ export async function updateBuyerPassword(
 
 export async function resendBuyerVerificationEmail(signal?: AbortSignal): Promise<void> {
   await apiPost('/email/resend', {}, signal);
+}
+
+export type EmailVerificationResult = {
+  emailVerifiedAt: string;
+  message: string;
+};
+
+const extractEmailVerificationResult = (payload: unknown): EmailVerificationResult => {
+  const root = isRecord(payload) ? payload : {};
+  const data = isRecord(root.data) ? root.data : root;
+
+  return {
+    emailVerifiedAt: getString(data.email_verified_at || data.emailVerifiedAt),
+    message: getString(root.message),
+  };
+};
+
+export async function verifyEmailWithCode(
+  code: string,
+  signal?: AbortSignal
+): Promise<EmailVerificationResult> {
+  const payload = await apiPost('/email/verify-code', { code: code.trim() }, signal);
+  return extractEmailVerificationResult(payload);
+}
+
+export async function verifyEmailWithLink(
+  id: string,
+  hash: string,
+  expires: string,
+  signature: string,
+  signal?: AbortSignal
+): Promise<EmailVerificationResult> {
+  const query = new URLSearchParams({ expires, signature }).toString();
+  const payload = await apiGet(
+    `/email/verify/${encodeURIComponent(id)}/${encodeURIComponent(hash)}?${query}`,
+    signal
+  );
+  return extractEmailVerificationResult(payload);
 }
 
 export async function fetchBuyerOrders(signal?: AbortSignal): Promise<TrackedOrder[]> {

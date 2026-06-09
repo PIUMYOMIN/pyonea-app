@@ -15,7 +15,10 @@ import {
 import { AppLayout } from "@/components/layout/app-layout";
 import { useNativeAuth } from "@/context/native-auth";
 import { useAppTranslation } from "@/i18n";
-import { getPostLoginDestination } from "@/utils/auth-routing";
+import {
+  getPostAuthDestination,
+  getPostRegistrationDestination,
+} from "@/utils/auth-routing";
 import { trackLogin, trackSignUp } from "@/utils/analytics";
 import {
   ApiError,
@@ -96,7 +99,7 @@ async function finishGoogleAuth(
 
   await applySession(result);
   trackLogin("google");
-  router.replace(getPostLoginDestination(result.user, returnTo));
+  router.replace(getPostAuthDestination(result.user, returnTo));
 }
 
 function useAuthCopy(mode: AuthMode) {
@@ -523,7 +526,7 @@ export function LoginScreen() {
 
   useEffect(() => {
     if (!auth.isLoading && auth.user) {
-      router.replace(getPostLoginDestination(auth.user, params.returnTo));
+      router.replace(getPostAuthDestination(auth.user, params.returnTo));
     }
   }, [auth.isLoading, auth.user, params.returnTo, router]);
 
@@ -549,7 +552,7 @@ export function LoginScreen() {
         recaptcha_token: recaptchaToken,
       });
       trackLogin("phone");
-      router.replace(getPostLoginDestination(session.user, params.returnTo));
+      router.replace(getPostAuthDestination(session.user, params.returnTo));
     } catch (submitError) {
       setError(
         getApiMessage(
@@ -724,7 +727,7 @@ export function RegisterScreen() {
 
   useEffect(() => {
     if (!auth.isLoading && auth.user) {
-      router.replace(getPostLoginDestination(auth.user));
+      router.replace(getPostAuthDestination(auth.user));
     }
   }, [auth.isLoading, auth.user, router]);
 
@@ -770,7 +773,7 @@ export function RegisterScreen() {
       });
 
       trackSignUp(userType);
-      router.replace(getPostLoginDestination(session.user));
+      router.replace(getPostRegistrationDestination(session.user));
     } catch (submitError) {
       setError(
         getApiMessage(
@@ -1306,7 +1309,7 @@ export function SocialRoleSelectScreen() {
       await auth.applySession(session);
       trackSignUp("google");
 
-      router.replace(getPostLoginDestination(session.user));
+      router.replace(getPostRegistrationDestination(session.user));
     } catch (submitError) {
       setError(
         getApiMessage(
