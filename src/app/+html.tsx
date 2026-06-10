@@ -57,8 +57,15 @@ body {
 
 .pyonea-fill-wrap {
   position: relative;
-  display: inline-block;
-  line-height: 1;
+  display: inline-grid;
+  line-height: 1.15;
+  overflow: visible;
+}
+
+.pyonea-fill-outline,
+.pyonea-fill-clip {
+  grid-column: 1;
+  grid-row: 1;
 }
 
 .pyonea-fill-outline,
@@ -66,8 +73,9 @@ body {
   font-family: 'Torus-SemiBold', ui-sans-serif, system-ui, sans-serif;
   font-size: clamp(3rem, 12vw, 8rem);
   font-weight: 600;
-  line-height: 1;
+  line-height: 1.15;
   letter-spacing: -0.02em;
+  white-space: nowrap;
   user-select: none;
 }
 
@@ -78,31 +86,24 @@ body {
   -webkit-text-stroke: 2px var(--welcome-stroke);
 }
 
-.pyonea-fill-outline.is-complete {
+.pyonea-fill-wrap.is-complete .pyonea-fill-outline {
   -webkit-text-stroke: 2px var(--welcome-fill);
 }
 
-.pyonea-fill-text {
-  position: absolute;
-  inset: 0;
-  display: block;
-  color: transparent;
-  -webkit-text-fill-color: transparent;
-  -webkit-text-stroke: 0;
-  background: linear-gradient(to right, var(--welcome-fill) 50%, transparent 50%);
-  background-size: 200% 100%;
-  background-position: 100% 0;
-  -webkit-background-clip: text;
-  background-clip: text;
-  transition: background-position 450ms ease-out;
+.pyonea-fill-clip {
+  overflow: hidden;
+  width: 0%;
+  max-width: 100%;
+  justify-self: start;
+  align-self: stretch;
+  transition: width 450ms ease-out;
+  will-change: width;
 }
 
-.pyonea-fill-text.is-complete {
+.pyonea-fill-text {
+  display: block;
   color: var(--welcome-fill);
   -webkit-text-fill-color: var(--welcome-fill);
-  background: none;
-  -webkit-background-clip: border-box;
-  background-clip: border-box;
 }
 `;
 
@@ -113,23 +114,23 @@ const loaderScript = `
   var loader = document.getElementById('pyonea-web-loader');
   if (!loader) return;
 
-  var fillText = loader.querySelector('.pyonea-fill-text');
-  var outlineText = loader.querySelector('.pyonea-fill-outline');
+  var fillWrap = loader.querySelector('.pyonea-fill-wrap');
+  var fillClip = loader.querySelector('.pyonea-fill-clip');
   var startedAt = Date.now();
   var bootstrapRaf = 0;
 
   function applyProgress(progress) {
     var clamped = Math.max(0, Math.min(100, Number(progress) || 0));
-    if (!fillText) return;
+    if (fillClip) {
+      fillClip.style.width = clamped + '%';
+    }
 
-    fillText.style.backgroundPosition = (100 - clamped) + '% 0';
-
-    if (clamped >= 100) {
-      fillText.classList.add('is-complete');
-      if (outlineText) outlineText.classList.add('is-complete');
-    } else {
-      fillText.classList.remove('is-complete');
-      if (outlineText) outlineText.classList.remove('is-complete');
+    if (fillWrap) {
+      if (clamped >= 100) {
+        fillWrap.classList.add('is-complete');
+      } else {
+        fillWrap.classList.remove('is-complete');
+      }
     }
   }
 
@@ -258,9 +259,9 @@ export default function RootHtml({ children }: PropsWithChildren) {
             <span className="pyonea-fill-outline" aria-hidden="true">
               Pyonea
             </span>
-            <span className="pyonea-fill-text" aria-hidden="true">
-              Pyonea
-            </span>
+            <div className="pyonea-fill-clip" aria-hidden="true">
+              <span className="pyonea-fill-text">Pyonea</span>
+            </div>
           </div>
         </div>
         {children}
