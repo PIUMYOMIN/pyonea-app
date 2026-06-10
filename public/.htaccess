@@ -6,24 +6,25 @@
   RewriteCond %{HTTPS} !=on
   RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
 
-  # 1) Serve existing files and directories as-is (JS, CSS, images, pre-rendered HTML).
-  RewriteCond %{REQUEST_FILENAME} -f [OR]
-  RewriteCond %{REQUEST_FILENAME} -d
+  # 1) Serve existing files as-is (JS, CSS, images, pre-rendered HTML).
+  RewriteCond %{REQUEST_FILENAME} -f
   RewriteRule ^ - [L]
 
-  # 2) Expo static export: /products/slug -> /products/slug.html
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteCond %{REQUEST_FILENAME}.html -f
+  # 2) Expo static export: /products -> /products.html, /products/slug -> /products/slug.html.
+  #    MUST run before directory handling: /products is both products.html and the
+  #    products/ directory, and the directory-slash redirect would end in 403.
+  RewriteCond %{DOCUMENT_ROOT}/$1.html -f
   RewriteRule ^(.+?)/?$ $1.html [L]
 
   # 3) Directory-style static export fallback: /path -> /path/index.html
-  RewriteCond %{REQUEST_FILENAME} !-f
-  RewriteCond %{REQUEST_FILENAME} !-d
-  RewriteCond %{REQUEST_FILENAME}/index.html -f
+  RewriteCond %{DOCUMENT_ROOT}/$1/index.html -f
   RewriteRule ^(.+?)/?$ $1/index.html [L]
 
-  # 4) Crawlers without a static HTML match — OG proxy fetches server-rendered meta.
+  # 4) Missing build assets must 404 — never serve the SPA shell as JS/CSS.
+  RewriteCond %{REQUEST_URI} ^/(_expo|assets|fonts)/ [NC]
+  RewriteRule ^ - [R=404,L]
+
+  # 5) Crawlers without a static HTML match — OG proxy fetches server-rendered meta.
   RewriteCond %{REQUEST_URI} !^/_expo/ [NC]
   RewriteCond %{REQUEST_URI} !^/assets/ [NC]
   RewriteCond %{REQUEST_URI} !^/fonts/ [NC]
@@ -31,7 +32,7 @@
   RewriteCond %{HTTP_USER_AGENT} (facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Slackbot|Discordbot|Googlebot|bingbot|Snapchat|Pinterest|viber|vkShare) [NC]
   RewriteRule ^ og-proxy.php [L]
 
-  # 5) SPA fallback for client-side routes.
+  # 6) SPA fallback for client-side routes.
   RewriteCond %{REQUEST_FILENAME} !-f
   RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule ^ index.html [L]

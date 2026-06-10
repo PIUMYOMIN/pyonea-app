@@ -1,5 +1,6 @@
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { useAppTranslation } from '@/i18n';
+import { getThumbUrl } from '@/utils/image-thumbs';
 import type { BrowserCategory, HomeCategory } from '@/utils/native-api';
 import { Link, type Href } from 'expo-router';
 import { useEffect, useState } from 'react';
@@ -227,7 +228,7 @@ export function CategoryCard({
           <View className="relative aspect-square overflow-hidden bg-gray-100 dark:bg-slate-700">
             {showImage ? (
               <Image
-                source={{ uri: imageUrl }}
+                source={{ uri: getThumbUrl(imageUrl, 300) }}
                 style={{ width: '100%', height: '100%' }}
                 contentFit="cover"
                 loading={priority ? 'eager' : 'lazy'}

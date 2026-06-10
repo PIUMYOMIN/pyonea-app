@@ -1,5 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
+import { getThumbUrl } from '@/utils/image-thumbs';
 import { useEffect, useState } from 'react';
 import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 
@@ -46,7 +47,7 @@ function NativeGallery({
     <View className="gap-4">
       <View className="relative aspect-square w-full overflow-hidden rounded-xl bg-gray-100 dark:bg-slate-800">
         <Image
-          source={currentImage ? { uri: currentImage } : placeholderProduct}
+          source={currentImage ? { uri: getThumbUrl(currentImage, 800) } : placeholderProduct}
           style={{ width: '100%', height: '100%' }}
           contentFit="contain"
           loading="eager"
@@ -108,7 +109,7 @@ function NativeGallery({
                 }`}
               >
                 <Image
-                  source={{ uri: image }}
+                  source={{ uri: getThumbUrl(image, 160) }}
                   style={{ width: '100%', height: '100%' }}
                   contentFit="cover"
                   priority={index === activeImage ? 'high' : 'low'}

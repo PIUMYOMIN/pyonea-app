@@ -19,6 +19,7 @@ import { useWishlistProductState } from "@/context/wishlist-context";
 import { localizeBilingualName, useAppTranslation } from "@/i18n";
 import { hasUserRole } from "@/utils/auth-routing";
 import { toggleCompareProduct } from "@/utils/compare-native";
+import { getThumbUrl } from "@/utils/image-thumbs";
 import {
   addProductToCart,
   getProductApiId,
@@ -256,7 +257,8 @@ function ProductListCardComponent({
     product.categoryName,
   );
   const resolvedImageSource = useMemo(() => {
-    if (product.imageUrl) return { uri: product.imageUrl };
+    const uri = getThumbUrl(product.imageUrl, 480);
+    if (uri) return { uri };
     return placeholderProduct;
   }, [product.imageUrl]);
 

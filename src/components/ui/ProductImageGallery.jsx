@@ -1,6 +1,7 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ProductImageBrandPlaceholder } from "@/components/ui/product-image-brand-placeholder";
+import { getThumbUrl } from "@/utils/image-thumbs";
 
 function ChevronLeftIcon({ className = "h-6 w-6" }) {
   return (
@@ -135,7 +136,7 @@ const ProductImageGallery = ({
   }, [lightboxOpen, next, prev]);
 
   const activeSrc = total ? getImageUrl(normalized[active]) : null;
-  const mainSrc = activeSrc;
+  const mainSrc = activeSrc ? getThumbUrl(activeSrc, 800) : null;
   const lightboxSrc = activeSrc;
 
   useEffect(() => {
@@ -281,7 +282,7 @@ const ProductImageGallery = ({
         >
           {normalized.map((img, idx) => {
             const src = getImageUrl(img);
-            const thumbSrc = src;
+            const thumbSrc = getThumbUrl(src, 160);
             const selected = idx === active;
             return (
               <button
