@@ -7,10 +7,22 @@ import { getPreconnectOrigins } from '@/utils/image-optimization';
 const loaderStyles = `
 :root {
   --app-bg: #f9fafb;
+  --welcome-fill: ${BRAND_LOGO_BACKGROUND};
+  --welcome-stroke: #cbd5e1;
 }
 
 html.dark {
   --app-bg: #020617;
+  --welcome-fill: #4ade80;
+  --welcome-stroke: #444444;
+}
+
+@font-face {
+  font-family: 'Torus-SemiBold';
+  src: url('/fonts/Torus-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
 }
 
 html,
@@ -27,9 +39,8 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background: ${BRAND_LOGO_BACKGROUND};
-  font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
-  transition: opacity 220ms ease, visibility 220ms ease;
+  background: var(--app-bg);
+  transition: opacity 260ms ease, visibility 260ms ease;
 }
 
 #pyonea-web-loader.is-hidden {
@@ -38,43 +49,27 @@ body {
   pointer-events: none;
 }
 
-.pyonea-loader-card {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  text-align: center;
-  padding: 24px;
-}
-
-.pyonea-loader-logo {
-  width: 120px;
-  height: 120px;
-  object-fit: contain;
-}
-
-.pyonea-loader-spinner {
-  width: 28px;
-  height: 28px;
-  margin-top: 20px;
-  border: 3px solid rgba(255, 255, 255, 0.35);
-  border-top-color: #ffffff;
-  border-radius: 999px;
-  animation: pyonea-spin 800ms linear infinite;
-}
-
-.pyonea-loader-text {
-  margin-top: 14px;
-  color: rgba(255, 255, 255, 0.92);
-  font-size: 14px;
-  line-height: 1.5;
+.pyonea-fill-text {
+  font-family: 'Torus-SemiBold', ui-sans-serif, system-ui, sans-serif;
+  font-size: clamp(3rem, 12vw, 8rem);
   font-weight: 600;
+  line-height: 1;
+  letter-spacing: -0.02em;
+  position: relative;
+  display: inline-block;
+  color: transparent;
+  -webkit-text-stroke: 2px var(--welcome-stroke);
+  background: linear-gradient(to right, var(--welcome-fill) 50%, transparent 50%);
+  background-size: 200% 100%;
+  background-position: 100% 0;
+  -webkit-background-clip: text;
+  background-clip: text;
+  transition: background-position 450ms ease-out;
+  user-select: none;
 }
 
-@keyframes pyonea-spin {
-  to {
-    transform: rotate(360deg);
-  }
+.pyonea-fill-text.is-complete {
+  -webkit-text-stroke: 2px var(--welcome-fill);
 }
 `;
 
@@ -83,15 +78,19 @@ const loaderScript = `
   var loader = document.getElementById('pyonea-web-loader');
   if (!loader) return;
 
-  function getRoot() {
-    return document.getElementById('root') ||
-      document.getElementById('__expo') ||
-      document.querySelector('[data-expo-root]');
-  }
+  var fillText = loader.querySelector('.pyonea-fill-text');
 
-  function rootReady() {
-    var root = getRoot();
-    return Boolean(root && root.children && root.children.length > 0);
+  function applyProgress(progress) {
+    var clamped = Math.max(0, Math.min(100, Number(progress) || 0));
+    if (!fillText) return;
+
+    fillText.style.backgroundPosition = (100 - clamped) + '% 0';
+
+    if (clamped >= 100) {
+      fillText.classList.add('is-complete');
+    } else {
+      fillText.classList.remove('is-complete');
+    }
   }
 
   function hideLoader() {
@@ -100,31 +99,29 @@ const loaderScript = `
       if (loader && loader.parentNode) {
         loader.parentNode.removeChild(loader);
       }
-    }, 260);
+      delete window.__pyoneaWelcome;
+    }, 280);
   }
 
-  if (rootReady()) {
-    hideLoader();
-    return;
-  }
+  window.__pyoneaWelcome = {
+    setProgress: applyProgress,
+    hide: hideLoader,
+  };
 
-  var observer = new MutationObserver(function () {
-    if (rootReady()) {
-      observer.disconnect();
+  try {
+    if (localStorage.getItem('pyonea-welcome-seen') === '1') {
+      hideLoader();
+      return;
+    }
+  } catch (e) {}
+
+  applyProgress(0);
+
+  window.setTimeout(function () {
+    if (window.__pyoneaWelcome) {
       hideLoader();
     }
-  });
-
-  observer.observe(document.body, { childList: true, subtree: true });
-
-  window.addEventListener('load', function () {
-    window.setTimeout(function () {
-      if (rootReady()) {
-        observer.disconnect();
-        hideLoader();
-      }
-    }, 100);
-  });
+  }, 30000);
 })();
 `;
 
@@ -166,17 +163,20 @@ export default function RootHtml({ children }: PropsWithChildren) {
         {preconnectOrigins.map((origin) => (
           <link key={`${origin}-dns`} rel="dns-prefetch" href={origin} />
         ))}
+        <link
+          rel="preload"
+          href="/fonts/Torus-SemiBold.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
         {headNodes}
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
         <style dangerouslySetInnerHTML={{ __html: loaderStyles }} />
       </head>
       <body {...bodyAttributes}>
-        <div id="pyonea-web-loader" role="status" aria-live="polite" aria-label="Loading Pyonea marketplace">
-          <div className="pyonea-loader-card">
-            <img src="/logo.png" alt="Pyonea" className="pyonea-loader-logo" width="120" height="120" />
-            <div className="pyonea-loader-spinner" />
-            <div className="pyonea-loader-text">Preparing marketplace...</div>
-          </div>
+        <div id="pyonea-web-loader" role="status" aria-live="polite" aria-label="Loading Pyonea">
+          <div className="pyonea-fill-text">Pyonea</div>
         </div>
         {children}
         {bodyNodes}

@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { useTranslation } from 'react-i18next';
+
+import { useAppTranslation } from '@/i18n';
 
 const SearchFilters = ({ filters, onFilterChange, mobile = false }) => {
-  const { t } = useTranslation();
+  const { t } = useAppTranslation();
 
   const getSelectedPriceRange = () => {
     const { minPrice, maxPrice } = filters;

@@ -20,6 +20,7 @@ import {
   CategoryCardSkeleton,
 } from '@/components/ui/category-card';
 import { useNativeAuth } from '@/context/native-auth';
+import { useWelcomeLoaderProgress } from '@/context/welcome-loader';
 import { useAppTranslation } from '@/i18n';
 import { hasUserRole } from '@/utils/auth-routing';
 import {
@@ -277,6 +278,7 @@ function SellerCardSkeleton() {
 export default function HomeNative() {
   const { t, language } = useAppTranslation();
   const { user, isAuthenticated } = useNativeAuth();
+  const welcomeLoader = useWelcomeLoaderProgress();
   const cachedFeed = getScreenCache<HomeFeedCache>(HOME_CACHE_KEY, HOME_CACHE_TTL_MS);
   const [categories, setCategories] = useState<HomeCategory[]>(cachedFeed?.categories ?? []);
   const [products, setProducts] = useState<HomeProduct[]>(cachedFeed?.products ?? []);
@@ -312,54 +314,108 @@ export default function HomeNative() {
           : t('home.get_started');
 
   useEffect(() => {
+    if (cachedFeed) {
+      welcomeLoader?.setHomeDataProgress(100);
+    }
+  }, [cachedFeed, welcomeLoader]);
+
+  useEffect(() => {
     const controller = new AbortController();
     const hasCachedFeed = Boolean(cachedFeed);
+    let completedTasks = 0;
+    let nextCategories: HomeCategory[] | null = null;
+    let nextProducts: HomeProduct[] | null = null;
+    let nextSellers: HomeSeller[] | null = null;
 
-    const loadHomeFeed = async () => {
-      try {
-        const [nextCategories, nextProducts, nextSellers] = await Promise.all([
-          fetchHomeCategories(controller.signal),
-          fetchFeaturedProducts(controller.signal),
-          fetchTopSellers(controller.signal),
-        ]);
-
-        if (controller.signal.aborted) return;
-
-        setCategories(nextCategories);
-        setProducts(nextProducts);
-        setSellers(nextSellers);
-        setErrors({});
-        setScreenCache<HomeFeedCache>(HOME_CACHE_KEY, {
-          categories: nextCategories,
-          products: nextProducts,
-          sellers: nextSellers,
-        });
-        setScreenCache('home-feed:products', nextProducts);
-        setScreenCache('home-feed:categories', nextCategories);
-      } catch (error) {
-        if (controller.signal.aborted) return;
-        console.error('Failed to fetch home feed:', error);
-        if (!hasCachedFeed) {
-          setCategories([]);
-          setProducts([]);
-          setSellers([]);
-          setErrors({
-            categories: t('home.no_categories_found'),
-            products: t('home.no_featured_products'),
-            sellers: t('home.no_top_sellers'),
-          });
-        }
-      } finally {
-        if (!controller.signal.aborted) {
-          setLoading({ categories: false, products: false, sellers: false });
-        }
-      }
+    const reportTaskDone = () => {
+      if (hasCachedFeed) return;
+      completedTasks += 1;
+      welcomeLoader?.setHomeDataProgress(Math.round((completedTasks / 3) * 100));
     };
 
-    void loadHomeFeed();
+    const categoriesPromise = fetchHomeCategories(controller.signal)
+      .then((result) => {
+        if (controller.signal.aborted) return;
+        nextCategories = result;
+        setCategories(result);
+        setLoading((current) => ({ ...current, categories: false }));
+        setErrors((current) => ({ ...current, categories: undefined }));
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        console.error('Failed to fetch home categories:', error);
+        if (!hasCachedFeed) {
+          setCategories([]);
+          setErrors((current) => ({ ...current, categories: t('home.no_categories_found') }));
+        }
+        setLoading((current) => ({ ...current, categories: false }));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          reportTaskDone();
+        }
+      });
+
+    const productsPromise = fetchFeaturedProducts(controller.signal)
+      .then((result) => {
+        if (controller.signal.aborted) return;
+        nextProducts = result;
+        setProducts(result);
+        setLoading((current) => ({ ...current, products: false }));
+        setErrors((current) => ({ ...current, products: undefined }));
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        console.error('Failed to fetch featured products:', error);
+        if (!hasCachedFeed) {
+          setProducts([]);
+          setErrors((current) => ({ ...current, products: t('home.no_featured_products') }));
+        }
+        setLoading((current) => ({ ...current, products: false }));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          reportTaskDone();
+        }
+      });
+
+    const sellersPromise = fetchTopSellers(controller.signal)
+      .then((result) => {
+        if (controller.signal.aborted) return;
+        nextSellers = result;
+        setSellers(result);
+        setLoading((current) => ({ ...current, sellers: false }));
+        setErrors((current) => ({ ...current, sellers: undefined }));
+      })
+      .catch((error) => {
+        if (controller.signal.aborted) return;
+        console.error('Failed to fetch top sellers:', error);
+        if (!hasCachedFeed) {
+          setSellers([]);
+          setErrors((current) => ({ ...current, sellers: t('home.no_top_sellers') }));
+        }
+        setLoading((current) => ({ ...current, sellers: false }));
+      })
+      .finally(() => {
+        if (!controller.signal.aborted) {
+          reportTaskDone();
+        }
+      });
+
+    void Promise.all([categoriesPromise, productsPromise, sellersPromise]).then(() => {
+      if (controller.signal.aborted || !nextCategories || !nextProducts || !nextSellers) return;
+
+      setScreenCache<HomeFeedCache>(HOME_CACHE_KEY, {
+        categories: nextCategories,
+        products: nextProducts,
+        sellers: nextSellers,
+      });
+      setScreenCache('home-feed:products', nextProducts);
+      setScreenCache('home-feed:categories', nextCategories);
+    });
 
     return () => controller.abort();
-  }, []);
+  }, [cachedFeed, t, welcomeLoader]);
 
   return (
     <AppLayout>

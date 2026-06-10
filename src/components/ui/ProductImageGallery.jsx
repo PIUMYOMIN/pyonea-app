@@ -1,8 +1,63 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useSwipeable } from "react-swipeable";
-import { XMarkIcon, ChevronLeftIcon, ChevronRightIcon } from "@heroicons/react/24/outline";
-import { getSrcSet, getWebPUrl } from "../../utils/imageHelpers";
-import { DEFAULT_PLACEHOLDER } from "../../config";
+
+import { DEFAULT_PRODUCT_IMAGE } from "@/config/native";
+import { getSrcSet, getWebPUrl } from "@/utils/image-optimization";
+
+const DEFAULT_PLACEHOLDER = DEFAULT_PRODUCT_IMAGE;
+
+function ChevronLeftIcon({ className = "h-6 w-6" }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M15.75 19.5 8.25 12l7.5-7.5" />
+    </svg>
+  );
+}
+
+function ChevronRightIcon({ className = "h-6 w-6" }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="m8.25 4.5 7.5 7.5-7.5 7.5" />
+    </svg>
+  );
+}
+
+function XMarkIcon({ className = "h-6 w-6" }) {
+  return (
+    <svg className={className} fill="none" viewBox="0 0 24 24" strokeWidth={1.5} stroke="currentColor" aria-hidden="true">
+      <path strokeLinecap="round" strokeLinejoin="round" d="M6 18 18 6M6 6l12 12" />
+    </svg>
+  );
+}
+
+function useTouchSwipe({ onSwipedLeft, onSwipedRight }) {
+  const touchStartRef = useRef(null);
+
+  return {
+    onTouchStart: (event) => {
+      const touch = event.touches[0];
+      if (!touch) return;
+      touchStartRef.current = { x: touch.clientX, y: touch.clientY };
+    },
+    onTouchEnd: (event) => {
+      const start = touchStartRef.current;
+      touchStartRef.current = null;
+      if (!start) return;
+
+      const touch = event.changedTouches[0];
+      if (!touch) return;
+
+      const deltaX = touch.clientX - start.x;
+      const deltaY = touch.clientY - start.y;
+      if (Math.abs(deltaX) < 40 || Math.abs(deltaX) < Math.abs(deltaY)) return;
+
+      if (deltaX < 0) {
+        onSwipedLeft?.();
+      } else {
+        onSwipedRight?.();
+      }
+    },
+  };
+}
 
 const normalizeImages = (images = []) =>
   (Array.isArray(images) ? images : [])
@@ -64,11 +119,9 @@ const ProductImageGallery = ({
   const next = useCallback(() => go(active + 1), [go, active]);
   const prev = useCallback(() => go(active - 1), [go, active]);
 
-  const swipeHandlers = useSwipeable({
+  const swipeHandlers = useTouchSwipe({
     onSwipedLeft: () => next(),
     onSwipedRight: () => prev(),
-    trackMouse: false,
-    preventScrollOnSwipe: true,
   });
 
   // Lightbox keyboard controls
@@ -139,11 +192,16 @@ const ProductImageGallery = ({
       `}</style>
       {/* Main image */}
       <div
-        {...swipeHandlers}
         onMouseEnter={() => setPauseAutoplay(true)}
         onMouseLeave={() => setPauseAutoplay(false)}
-        onTouchStart={() => setPauseAutoplay(true)}
-        onTouchEnd={() => setPauseAutoplay(false)}
+        onTouchStart={(event) => {
+          swipeHandlers.onTouchStart(event);
+          setPauseAutoplay(true);
+        }}
+        onTouchEnd={(event) => {
+          swipeHandlers.onTouchEnd(event);
+          setPauseAutoplay(false);
+        }}
         className="relative bg-gray-100 dark:bg-slate-800 rounded-xl overflow-hidden
                    aspect-square sm:aspect-[4/3] lg:aspect-[5/4]
                    select-none"

@@ -1,17 +1,24 @@
 import Feather from '@expo/vector-icons/Feather';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { Link, useRouter, type Href } from 'expo-router';
 import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
-import { Animated, Easing, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { SITE_CONTAINER_CLASS } from '@/constants/layout';
+import { ProductDetailGallery } from '@/components/product/product-detail-gallery';
+import { ProductDetailToast } from '@/components/product/product-detail-toast';
 import { ProductVariantPicker } from '@/components/product/product-variant-picker';
 import { SocialSharePanel } from '@/components/ui/social-share-panel';
 import { SITE_PUBLIC_URL } from '@/config/native';
 import { useNativeAuth } from '@/context/native-auth';
-import { useTheme } from '@/context/theme';
 import { useWishlist } from '@/context/wishlist-context';
 import { localizeBilingualName, useAppTranslation } from '@/i18n';
 import { hasUserRole } from '@/utils/auth-routing';
@@ -35,6 +42,13 @@ import {
   type ProductReview,
   type SellerDeliveryArea,
 } from '@/utils/native-api';
+import {
+  formatSpecKey,
+  getMaxValidQuantity,
+  resolveQuantityStep,
+  snapQuantityToStep,
+  toPositiveInt,
+} from '@/utils/product-detail-helpers';
 import { buildSocialSharePayload } from '@/utils/social-share';
 
 const ProductDetailSecondarySections = lazy(() =>
@@ -43,44 +57,33 @@ const ProductDetailSecondarySections = lazy(() =>
   })),
 );
 
-const placeholderProduct = require('@/../assets/images/placeholder-product.png');
-
 type DeliveryLabel = {
   region: string;
   city?: string;
   township?: string;
 };
 
-const toPositiveInt = (value: number, fallback = 1) => {
-  const number = Number.parseInt(String(value), 10);
-  return Number.isFinite(number) && number > 0 ? number : fallback;
-};
-
-const formatSpecKey = (key: string) =>
-  key
-    .replace(/_/g, ' ')
-    .replace(/([a-z])([A-Z])/g, '$1 $2')
-    .replace(/\b\w/g, (letter) => letter.toUpperCase());
-
-function Stars({ rating, count }: { rating: number; count?: number }) {
+function Stars({ rating, count, showCount = true }: { rating: number; count?: number; showCount?: boolean }) {
+  const { t } = useAppTranslation();
   const filled = Math.round(rating);
 
   return (
-    <View className="flex-row items-center gap-2">
-      <View className="flex-row">
+    <View className="flex-row flex-wrap items-center gap-y-1">
+      <View className="flex-row items-center">
         {[1, 2, 3, 4, 5].map((star) => (
           <FontAwesome
             key={star}
             name={star <= filled ? 'star' : 'star-o'}
-            color={star <= filled ? '#f59e0b' : '#cbd5e1'}
-            size={14}
+            color={star <= filled ? '#facc15' : '#d1d5db'}
+            size={18}
           />
         ))}
       </View>
-      <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">
-        {rating > 0 ? rating.toFixed(1) : '0.0'}
-        {Number(count) > 0 ? ` (${count})` : ''}
-      </Text>
+      {showCount ? (
+        <Text className="ml-2 font-sans text-sm text-gray-600 dark:text-slate-400 sm:text-base">
+          {rating > 0 ? rating.toFixed(1) : '0.0'} ({t('productDetail.reviews_count', { count: count || 0 })})
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -110,96 +113,32 @@ function DetailSkeleton() {
   );
 }
 
-function InfoChip({ label, value }: { label: string; value: string }) {
+function PillChip({
+  label,
+  tone = 'neutral',
+}: {
+  label: string;
+  tone?: 'neutral' | 'stock-in' | 'stock-out' | 'verified' | 'delivery';
+}) {
+  const classes = {
+    neutral:
+      'border-gray-200 bg-gray-100 text-gray-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200',
+    'stock-in':
+      'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300',
+    'stock-out':
+      'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300',
+    verified:
+      'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300',
+    delivery:
+      'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200',
+  }[tone];
+
   return (
-    <View className="rounded-lg border border-gray-200 bg-gray-50 px-3 py-2 dark:border-slate-700 dark:bg-slate-800">
-      <Text className="font-sans text-[11px] text-gray-500 dark:text-slate-400">{label}</Text>
-      <Text className="mt-0.5 font-sans text-sm font-semibold text-gray-900 dark:text-slate-100">
-        {value}
+    <View className={`max-w-full rounded-full border px-2.5 py-1 ${classes}`}>
+      <Text className="font-sans text-xs font-medium" numberOfLines={1}>
+        {label}
       </Text>
     </View>
-  );
-}
-
-function ActionMessage({
-  message,
-}: {
-  message: { type: 'success' | 'error' | 'info'; text: string } | null;
-}) {
-  const styles = {
-    success: {
-      box: 'border-green-200 bg-white dark:border-green-800 dark:bg-slate-900',
-      iconBox: 'bg-green-100 dark:bg-green-900/50',
-      icon: 'check-circle' as const,
-      iconColor: '#16a34a',
-      text: 'text-green-800 dark:text-green-200',
-    },
-    error: {
-      box: 'border-red-200 bg-white dark:border-red-800 dark:bg-slate-900',
-      iconBox: 'bg-red-100 dark:bg-red-900/50',
-      icon: 'alert-circle' as const,
-      iconColor: '#dc2626',
-      text: 'text-red-700 dark:text-red-200',
-    },
-    info: {
-      box: 'border-blue-200 bg-white dark:border-blue-800 dark:bg-slate-900',
-      iconBox: 'bg-blue-100 dark:bg-blue-900/50',
-      icon: 'info' as const,
-      iconColor: '#2563eb',
-      text: 'text-blue-700 dark:text-blue-200',
-    },
-  }[message?.type || 'info'];
-
-  return (
-    <Modal transparent visible={Boolean(message)} animationType="fade" statusBarTranslucent>
-      <View pointerEvents="box-none" className="flex-1 items-center px-4 pt-20">
-        <View
-          className={`w-full max-w-md flex-row items-center gap-3 rounded-xl border px-4 py-3 shadow-xl shadow-slate-950/15 ${styles.box}`}>
-          <View className={`h-9 w-9 items-center justify-center rounded-full ${styles.iconBox}`}>
-            <Feather name={styles.icon} color={styles.iconColor} size={19} />
-          </View>
-          <Text className={`min-w-0 flex-1 font-sans text-sm font-bold ${styles.text}`}>
-            {message?.text}
-          </Text>
-        </View>
-      </View>
-    </Modal>
-  );
-}
-
-function DeliveryWord({ value }: { value?: string }) {
-  const { isDark } = useTheme();
-  const [translateY] = useState(() => new Animated.Value(12));
-  const [opacity] = useState(() => new Animated.Value(0));
-
-  useEffect(() => {
-    translateY.setValue(12);
-    opacity.setValue(0);
-    Animated.parallel([
-      Animated.timing(translateY, {
-        toValue: 0,
-        duration: 420,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-      Animated.timing(opacity, {
-        toValue: 1,
-        duration: 300,
-        easing: Easing.out(Easing.cubic),
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, [opacity, translateY, value]);
-
-  if (!value) return null;
-
-  return (
-    <Animated.Text
-      className="max-w-[150px] font-sans text-sm font-semibold"
-      numberOfLines={1}
-      style={{ color: isDark ? '#f8fafc' : '#111827', opacity, transform: [{ translateY }] }}>
-      {value}
-    </Animated.Text>
   );
 }
 
@@ -211,7 +150,6 @@ function DeliveryTicker({
   loading: boolean;
 }) {
   const { t } = useAppTranslation();
-  const { isDark } = useTheme();
   const [activeIndex, setActiveIndex] = useState(0);
   const safeIndex = labels.length ? activeIndex % labels.length : 0;
   const activeLabel = labels[safeIndex];
@@ -228,7 +166,7 @@ function DeliveryTicker({
 
   if (loading) {
     return (
-      <Text className="font-sans text-sm leading-6 text-gray-700 dark:text-slate-200">
+      <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">
         {t('productDetail.delivery_loading')}
       </Text>
     );
@@ -236,45 +174,44 @@ function DeliveryTicker({
 
   if (!activeLabel) {
     return (
-      <Text className="font-sans text-sm leading-6 text-gray-700 dark:text-slate-200">
+      <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">
         {t('productDetail.delivery_not_set')}
       </Text>
     );
   }
 
   return (
-    <View className="rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-700/70 dark:bg-slate-800">
-      <View className="mb-2 flex-row items-center justify-between gap-3">
-        <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-200">
-          {t('productDetail.delivering_to')}
+    <View className="rounded-xl border border-gray-200 p-4 dark:border-slate-700">
+      <Text className="mb-2 font-sans text-xs text-gray-500 dark:text-slate-500">
+        {t('productDetail.delivering_to')}
+      </Text>
+      <View className="min-h-5 flex-row items-center gap-1 overflow-hidden">
+        <Text
+          className="max-w-[130px] font-sans text-xs font-semibold text-gray-900 dark:text-slate-100"
+          numberOfLines={1}
+        >
+          {activeLabel.region}
         </Text>
-        {labels.length > 1 ? (
-          <Text className="font-sans text-xs font-semibold text-green-700 dark:text-green-300">
-            {safeIndex + 1}/{labels.length}
-          </Text>
-        ) : null}
-      </View>
-
-      <View className="min-h-7 flex-row items-center gap-1.5 overflow-hidden">
-        <DeliveryWord value={activeLabel.region} />
         {activeLabel.city ? (
           <>
+            <Text className="font-sans text-xs text-gray-400 dark:text-slate-500">→</Text>
             <Text
-              className="font-sans text-sm"
-              style={{ color: isDark ? '#94a3b8' : '#9ca3af' }}>
-              {'>'}
+              className="max-w-[110px] font-sans text-xs font-semibold text-gray-900 dark:text-slate-100"
+              numberOfLines={1}
+            >
+              {activeLabel.city}
             </Text>
-            <DeliveryWord value={activeLabel.city} />
           </>
         ) : null}
         {activeLabel.township ? (
           <>
+            <Text className="font-sans text-xs text-gray-400 dark:text-slate-500">→</Text>
             <Text
-              className="font-sans text-sm"
-              style={{ color: isDark ? '#94a3b8' : '#9ca3af' }}>
-              {'>'}
+              className="max-w-[100px] font-sans text-xs font-semibold text-gray-900 dark:text-slate-100"
+              numberOfLines={1}
+            >
+              {activeLabel.township}
             </Text>
-            <DeliveryWord value={activeLabel.township} />
           </>
         ) : null}
       </View>
@@ -355,6 +292,7 @@ export function ProductDetailNative({
     text: string;
   } | null>(null);
   const messageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const variantSectionRef = useRef<View>(null);
   const hasInitialProduct = Boolean(initialProduct);
   const isBuyer = hasUserRole(user, 'buyer');
   const hasReviewedProduct = useMemo(
@@ -462,11 +400,26 @@ export function ProductDetailNative({
   }, [hasInitialProduct, initialProduct, slug, t]);
 
   const images = useMemo(() => product?.images ?? [], [product]);
-  const currentImage = images[activeImage];
   const deliveryLabels = useMemo(
     () => buildDeliveryLabels(deliveryAreas, t('productDetail.delivery_whole_myanmar')),
     [deliveryAreas, t]
   );
+  const currencyLabel = t('common.currency.mmk', 'MMK');
+  const productDisplayName = product
+    ? localizeBilingualName(language, product.nameEn || product.name, product.nameMm, product.name)
+    : '';
+  const productSecondaryName =
+    product?.nameEn && product?.nameMm
+      ? localizeBilingualName(language, product.nameMm, product.nameEn, product.nameMm)
+      : '';
+  const productDescription = product
+    ? localizeBilingualName(
+        language,
+        product.descriptionEn || product.description,
+        product.descriptionMm,
+        product.description
+      )
+    : '';
   const productUrl = product
     ? `${SITE_PUBLIC_URL}/products/${product.slug}?lang=${language}`
     : SITE_PUBLIC_URL;
@@ -494,44 +447,63 @@ export function ProductDetailNative({
       description: t('productDetail.share_description', { url: payload.url }),
     };
   }, [language, product, t]);
-  const hasVariants = Boolean(product?.hasVariants && product.options.length > 0);
+  const hasVariants = Boolean(product?.hasVariants && product?.options.length);
   const variantReady = !hasVariants || selectedVariant !== null;
   const availableStock = selectedVariant ? selectedVariant.quantity : (product?.stock ?? 0);
   const effectiveMoq = toPositiveInt(selectedVariant?.moq ?? product?.moq ?? 1, 1);
-  const effectiveStep = toPositiveInt(
-    selectedVariant?.quantityStep ?? product?.quantityStep ?? effectiveMoq,
+  const effectiveStep = resolveQuantityStep(
+    selectedVariant?.quantityStep ?? product?.quantityStep,
     effectiveMoq
   );
-  const maxQuantity =
-    product?.productType === 'physical' && variantReady && availableStock > 0
-      ? availableStock
-      : undefined;
-  const stockOut =
+  const maxValidQuantity = getMaxValidQuantity(
+    availableStock,
+    effectiveMoq,
+    effectiveStep,
+    product?.productType === 'physical'
+  );
+  const stockIsOut =
     product?.productType === 'physical' && variantReady && availableStock < effectiveMoq;
-  const displayPrice = selectedVariant ? selectedVariant.price : product?.price;
+  const stockText =
+    product?.productType === 'physical'
+      ? variantReady
+        ? availableStock > 0
+          ? t('productDetail.in_stock_count', { count: availableStock })
+          : t('productDetail.out_of_stock')
+        : t('productDetail.select_options_for_stock')
+      : t('productDetail.available');
+  const unitLabel = (product?.quantityUnit || 'piece').slice(0, 20);
   const activeTier = product?.wholesaleTiers.length
     ? [...product.wholesaleTiers]
         .sort((a, b) => b.minQty - a.minQty)
-        .find((tier) => quantity >= tier.minQty)
+        .find((tier) => quantity >= tier.minQty) ?? null
     : null;
   const nextTier = product?.wholesaleTiers.length
     ? [...product.wholesaleTiers]
         .sort((a, b) => a.minQty - b.minQty)
-        .find((tier) => quantity < tier.minQty)
+        .find((tier) => quantity < tier.minQty) ?? null
     : null;
+  const displayPrice =
+    activeTier?.price ?? selectedVariant?.price ?? product?.price ?? '';
+  const baseComparePrice = selectedVariant?.price || product?.originalPrice || product?.price || '';
+  const displayDiscountPct = activeTier
+    ? activeTier.discountPct
+    : !selectedVariant
+      ? product?.discountPct ?? 0
+      : 0;
+  const displayDiscountSaved =
+    !selectedVariant && product?.savedAmount
+      ? product.savedAmount.replace(/\s*MMK/i, '').trim()
+      : '';
   const sellerHref = product?.seller
     ? (`/sellers/${product.seller.slug || product.seller.id}` as Href)
     : '/sellers';
-
-  useEffect(() => {
-    if (images.length <= 1) return;
-
-    const interval = setInterval(() => {
-      setActiveImage((current) => (current + 1) % images.length);
-    }, 3500);
-
-    return () => clearInterval(interval);
-  }, [images.length]);
+  const primaryCtaLabel = addingToCart
+    ? t('productDetail.adding')
+    : stockIsOut
+      ? t('productDetail.out_of_stock')
+      : hasVariants && !selectedVariant
+        ? t('productDetail.select_options')
+        : t('productDetail.add_to_cart');
 
   const decrementQuantity = () => {
     setQuantity((current) => Math.max(effectiveMoq, current - effectiveStep));
@@ -540,18 +512,10 @@ export function ProductDetailNative({
   const incrementQuantity = () => {
     setQuantity((current) => {
       const next = current + effectiveStep;
-      return maxQuantity ? Math.min(next, maxQuantity) : next;
+      return maxValidQuantity !== undefined && maxValidQuantity > 0
+        ? Math.min(next, maxValidQuantity)
+        : next;
     });
-  };
-
-  const goToPreviousImage = () => {
-    if (images.length <= 1) return;
-    setActiveImage((current) => (current === 0 ? images.length - 1 : current - 1));
-  };
-
-  const goToNextImage = () => {
-    if (images.length <= 1) return;
-    setActiveImage((current) => (current + 1) % images.length);
   };
 
   const requireBuyer = () => {
@@ -581,7 +545,7 @@ export function ProductDetailNative({
   };
 
   const handleAddToCart = async () => {
-    if (!product || stockOut || addingToCart || !requireBuyer()) return false;
+    if (!product || stockIsOut || addingToCart || !requireBuyer()) return false;
 
     if (hasVariants && !selectedVariant) {
       const requiredOption = product.options.find((option) => option.isRequired);
@@ -613,7 +577,19 @@ export function ProductDetailNative({
     }
   };
 
+  const handlePrimaryCta = async () => {
+    if (hasVariants && !selectedVariant) {
+      setVariantError((prev) => prev || t('productDetail.select_options_before_continue'));
+      return;
+    }
+    await handleAddToCart();
+  };
+
   const handleBuyNow = async () => {
+    if (hasVariants && !selectedVariant) {
+      setVariantError((prev) => prev || t('productDetail.select_options_before_purchase'));
+      return;
+    }
     const added = await handleAddToCart();
     if (added) router.push('/cart');
   };
@@ -750,153 +726,145 @@ export function ProductDetailNative({
 
   return (
     <AppLayout>
-      <ActionMessage message={actionMessage} />
-      <View className="bg-gray-50 py-8 dark:bg-slate-950">
+      <ProductDetailToast
+        message={actionMessage}
+        onDismiss={() => setActionMessage(null)}
+      />
+      <View className="bg-gray-50 py-6 dark:bg-slate-950 sm:py-8 sm:pb-8 pb-24">
         <View className={SITE_CONTAINER_CLASS}>
-          <Pressable onPress={() => router.push('/products')} className="mb-5 flex-row items-center gap-2">
-            <Feather name="arrow-left" color="#16a34a" size={18} />
-            <Text className="font-sans text-sm font-semibold text-green-600 dark:text-green-400">
-              {t('productDetail.back_to_products')}
+          <Pressable
+            onPress={() => router.back()}
+            className="mb-6 min-h-10 flex-row items-center gap-2 rounded-md px-1"
+          >
+            <Feather name="arrow-left" color="#16a34a" size={20} />
+            <Text className="font-sans text-sm font-medium text-green-600 dark:text-green-400">
+              {t('productDetail.back')}
             </Text>
           </Pressable>
 
-          <View className="gap-8 rounded-2xl border border-gray-100 bg-white p-4 shadow-md shadow-gray-200/60 dark:border-slate-800 dark:bg-slate-900 dark:shadow-slate-950/50 sm:p-6 lg:flex-row lg:p-8">
+          <View className="gap-8 lg:flex-row lg:gap-12">
             <View className="min-w-0 flex-1 gap-4">
-              <View className="relative aspect-square overflow-hidden rounded-xl bg-gray-100 dark:bg-slate-800 sm:aspect-[4/3] lg:aspect-[5/4]">
-                <Image
-                  source={currentImage ? { uri: currentImage } : placeholderProduct}
-                  style={{ width: '100%', height: '100%' }}
-                  contentFit="contain"
-                  loading="eager"
-                  priority="high"
-                />
-                {product.discountPct > 0 ? (
-                  <View className="absolute left-4 top-4 rounded-full bg-red-500 px-3 py-1">
-                    <Text className="font-sans text-xs font-black text-white">
-                      {t('productDetail.discount_off', { percent: product.discountPct })}
-                    </Text>
-                  </View>
-                ) : null}
-                {images.length > 1 ? (
-                  <>
-                    <Pressable
-                      onPress={goToPreviousImage}
-                      className="absolute left-3 top-1/2 h-10 w-10 -translate-y-5 items-center justify-center rounded-full bg-white/90 shadow-sm dark:bg-slate-950/85">
-                      <Feather name="chevron-left" color="#16a34a" size={22} />
-                    </Pressable>
-                    <Pressable
-                      onPress={goToNextImage}
-                      className="absolute right-3 top-1/2 h-10 w-10 -translate-y-5 items-center justify-center rounded-full bg-white/90 shadow-sm dark:bg-slate-950/85">
-                      <Feather name="chevron-right" color="#16a34a" size={22} />
-                    </Pressable>
-                    <View className="absolute bottom-4 left-0 right-0 items-center">
-                      <View className="flex-row gap-1.5 rounded-full bg-slate-950/55 px-3 py-1.5">
-                        {images.map((image, index) => (
-                          <Pressable
-                            key={`dot-${image}-${index}`}
-                            onPress={() => setActiveImage(index)}
-                            className={`h-2 rounded-full ${
-                              activeImage === index ? 'w-5 bg-white' : 'w-2 bg-white/50'
-                            }`}
-                          />
-                        ))}
-                      </View>
-                    </View>
-                    <View className="absolute right-4 top-4 rounded-full bg-slate-950/60 px-3 py-1">
-                      <Text className="font-sans text-xs font-bold text-white">
-                        {activeImage + 1}/{images.length}
-                      </Text>
-                    </View>
-                  </>
-                ) : null}
-              </View>
-
-              {images.length > 1 ? (
-                <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-                  <View className="flex-row gap-3 pr-2">
-                    {images.map((image, index) => (
-                      <Pressable
-                        key={`${image}-${index}`}
-                        onPress={() => setActiveImage(index)}
-                        className={`h-20 w-20 overflow-hidden rounded-xl border-2 ${
-                          activeImage === index
-                            ? 'border-green-500'
-                            : 'border-gray-200 dark:border-slate-700'
-                        }`}>
-                        <Image
-                          source={{ uri: image }}
-                          style={{ width: '100%', height: '100%' }}
-                          contentFit="cover"
-                          priority={index === activeImage ? 'high' : 'low'}
-                        />
-                      </Pressable>
-                    ))}
-                  </View>
-                </ScrollView>
-              ) : null}
+              <ProductDetailGallery
+                images={images}
+                activeImage={activeImage}
+                onIndexChange={setActiveImage}
+                alt={productDisplayName}
+                discountPct={displayDiscountPct}
+                discountLabel={
+                  displayDiscountPct > 0
+                    ? t('productDetail.discount_off', { percent: Math.round(displayDiscountPct) })
+                    : undefined
+                }
+              />
             </View>
 
             <View className="min-w-0 flex-1 gap-6">
               <View>
-                {product.categoryName ? (
-                  <Text className="mb-2 font-sans text-xs font-semibold uppercase tracking-wider text-green-600 dark:text-green-400">
-                    {product.categoryName}
+                <Text className="break-words font-sans text-2xl font-bold text-gray-900 dark:text-slate-100 lg:text-3xl">
+                  {productDisplayName}
+                </Text>
+                {productSecondaryName ? (
+                  <Text className="mt-1 break-words font-sans text-base text-gray-600 dark:text-slate-400 sm:text-lg">
+                    {productSecondaryName}
                   </Text>
                 ) : null}
-                <Text className="font-sans text-2xl font-bold leading-tight text-gray-950 dark:text-slate-100 sm:text-3xl">
-                  {product.name}
-                </Text>
-                <View className="mt-3">
-                  <Stars rating={product.rating} count={product.reviewCount} />
-                </View>
               </View>
 
-              <View className="rounded-xl border border-gray-200 bg-gray-50 p-4 dark:border-slate-700 dark:bg-slate-800/70">
-                <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">
-                  {t('productDetail.price')}
-                </Text>
-                <View className="mt-1 flex-row flex-wrap items-end gap-2">
-                  <Text
-                    className={`font-sans text-3xl font-black ${
-                      product.discountPct > 0
-                        ? 'text-red-600 dark:text-red-400'
-                        : 'text-green-700 dark:text-green-300'
-                    }`}>
-                    {displayPrice || product.price}
-                  </Text>
-                  {!selectedVariant && product.originalPrice ? (
-                    <Text className="mb-1 font-sans text-base text-gray-400 line-through dark:text-slate-500">
-                      {product.originalPrice}
+              <Stars rating={product.rating} count={product.reviewCount} />
+
+              {product.productType === 'physical' && variantReady && availableStock === 0 ? (
+                <View className="flex-row items-start gap-3 rounded-xl border-2 border-red-400 bg-red-50 px-4 py-3.5 dark:border-red-600 dark:bg-red-900/30">
+                  <Text className="text-xl leading-none">🚫</Text>
+                  <View className="min-w-0 flex-1">
+                    <Text className="font-sans text-sm font-semibold text-red-700 dark:text-red-300 sm:text-base">
+                      {hasVariants && selectedVariant
+                        ? t('productDetail.variant_out_of_stock')
+                        : t('productDetail.product_out_of_stock')}
                     </Text>
-                  ) : null}
+                    <Text className="mt-0.5 font-sans text-xs text-red-500 dark:text-red-400">
+                      {t('productDetail.out_of_stock_hint')}
+                    </Text>
+                  </View>
                 </View>
-                {!selectedVariant && product.savedAmount ? (
-                  <Text className="mt-2 font-sans text-xs font-semibold text-amber-700 dark:text-amber-300">
-                    {t('productDetail.you_save', { amount: product.savedAmount.replace(' MMK', '') })}
-                  </Text>
-                ) : null}
+              ) : null}
+
+              <View>
+                {displayDiscountPct > 0 ? (
+                  <>
+                    <View className="mb-2 flex-row flex-wrap items-center gap-2">
+                      <View className="rounded-full bg-red-500 px-2 py-0.5">
+                        <Text className="font-sans text-xs font-bold text-white">
+                          {t('productDetail.discount_off', { percent: Math.round(displayDiscountPct) })}
+                        </Text>
+                      </View>
+                      {activeTier ? (
+                        <View className="rounded-full border border-green-200 bg-green-100 px-2.5 py-1 dark:border-green-700 dark:bg-green-900/40">
+                          <Text className="font-sans text-xs font-semibold text-green-700 dark:text-green-300">
+                            🎉 {t('productDetail.volume_price_active')}
+                          </Text>
+                        </View>
+                      ) : null}
+                    </View>
+                    <View className="flex-row flex-wrap items-baseline gap-x-3 gap-y-1">
+                      <Text className="min-w-0 break-words font-sans text-2xl font-bold text-red-600 dark:text-red-400">
+                        {displayPrice}
+                      </Text>
+                      {baseComparePrice ? (
+                        <Text className="font-sans text-base text-gray-400 line-through dark:text-slate-600 sm:text-lg">
+                          {baseComparePrice}
+                        </Text>
+                      ) : null}
+                    </View>
+                    {displayDiscountSaved ? (
+                      <Text className="mt-0.5 font-sans text-sm font-medium text-green-600 dark:text-green-400">
+                        {t('productDetail.you_save', { amount: displayDiscountSaved })}
+                      </Text>
+                    ) : null}
+                  </>
+                ) : (
+                  <View className="flex-row flex-wrap items-baseline gap-x-2 gap-y-1">
+                    <Text className="min-w-0 break-words font-sans text-2xl font-semibold text-green-600 dark:text-green-400">
+                      {displayPrice}
+                    </Text>
+                    {activeTier ? (
+                      <View className="rounded-full border border-green-200 bg-green-100 px-2.5 py-1 dark:border-green-700 dark:bg-green-900/40">
+                        <Text className="font-sans text-xs font-semibold text-green-700 dark:text-green-300">
+                          🎉 {t('productDetail.volume_price_active')}
+                        </Text>
+                      </View>
+                    ) : null}
+                    {hasVariants && !selectedVariant ? (
+                      <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">
+                        {t('productDetail.starting_price')}
+                      </Text>
+                    ) : null}
+                  </View>
+                )}
+                <Text className="mt-1 font-sans text-gray-500 dark:text-slate-500">
+                  {t('productDetail.tax_exclusive')}
+                </Text>
               </View>
 
-              <View className="flex-row flex-wrap gap-3">
-                {effectiveMoq > 1 ? (
-                  <InfoChip label={t('productDetail.moq')} value={`${effectiveMoq}`} />
-                ) : null}
-                <InfoChip label={t('productDetail.unit')} value={product.quantityUnit} />
-                <InfoChip
-                  label={t('productDetail.quantity')}
-                  value={
-                    product.productType === 'physical'
-                      ? variantReady
-                        ? t('productDetail.in_stock_count', { count: availableStock })
-                        : t('productDetail.select_options_for_stock')
-                      : t('productDetail.available')
-                  }
+              <View className="flex-row flex-wrap gap-2">
+                <PillChip label={`${t('productDetail.moq')}: ${effectiveMoq} ${unitLabel}`} />
+                <PillChip label={`${t('productDetail.unit')}: ${unitLabel}`} />
+                <PillChip
+                  label={stockText}
+                  tone={stockIsOut ? 'stock-out' : 'stock-in'}
                 />
-                {product.sku ? <InfoChip label="SKU" value={product.sku} /> : null}
+                {product.seller?.verified ? (
+                  <PillChip label={t('productDetail.verified_seller')} tone="verified" />
+                ) : null}
+                {!deliveryLoading && deliveryLabels.length > 0 ? (
+                  <PillChip label={t('productDetail.delivery_zones_available')} tone="delivery" />
+                ) : null}
               </View>
 
               {hasVariants ? (
-                <View className="min-w-0 rounded-xl border border-gray-200 p-3 dark:border-slate-700 sm:p-4">
+                <View
+                  ref={variantSectionRef}
+                  className="min-w-0 scroll-mt-24 rounded-xl border border-gray-200 p-3 dark:border-slate-700 sm:p-4"
+                >
                   <ProductVariantPicker
                     options={product.options}
                     variants={product.variants}
@@ -914,16 +882,14 @@ export function ProductDetailNative({
                 </View>
               ) : null}
 
-              {product.description ? (
-                <View>
-                  <Text className="mb-2 font-sans text-lg font-semibold text-gray-950 dark:text-slate-100">
-                    {t('productDetail.description')}
-                  </Text>
-                  <Text className="font-sans text-sm leading-6 text-gray-700 dark:text-slate-300">
-                    {product.description || t('productDetail.no_description')}
-                  </Text>
-                </View>
-              ) : null}
+              <View>
+                <Text className="mb-2 font-sans text-lg font-semibold text-gray-950 dark:text-slate-100">
+                  {t('productDetail.description')}
+                </Text>
+                <Text className="break-words font-sans text-sm leading-6 text-gray-700 dark:text-slate-300">
+                  {productDescription || t('productDetail.no_description')}
+                </Text>
+              </View>
 
               {Object.keys(product.specifications).length > 0 ? (
                 <View>
@@ -934,11 +900,12 @@ export function ProductDetailNative({
                     {Object.entries(product.specifications).map(([key, value]) => (
                       <View
                         key={key}
-                        className="border-t border-gray-200 pt-2 dark:border-slate-700 sm:w-[48%]">
+                        className="border-t border-gray-200 pt-2 dark:border-slate-700 sm:w-[48%]"
+                      >
                         <Text className="font-sans text-sm font-semibold text-gray-900 dark:text-slate-100">
                           {formatSpecKey(key)}
                         </Text>
-                        <Text className="font-sans text-sm text-gray-700 dark:text-slate-300">
+                        <Text className="break-words font-sans text-sm text-gray-700 dark:text-slate-300">
                           {value}
                         </Text>
                       </View>
@@ -948,78 +915,109 @@ export function ProductDetailNative({
               ) : null}
 
               {product.wholesaleTiers.length > 0 ? (
-                <View className="rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
-                  <Text className="mb-3 font-sans text-base font-semibold text-amber-900 dark:text-amber-200">
+                <View className="min-w-0 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20 sm:p-4">
+                  <Text className="mb-2 font-sans text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
                     {t('productDetail.volume_pricing')}
                   </Text>
-                  <View className="gap-2">
-                    {product.wholesaleTiers.map((tier) => (
-                      <View
-                        key={`${tier.minQty}-${tier.price}`}
-                        className={`flex-row items-center justify-between gap-3 rounded-md border px-3 py-2 ${
-                          activeTier?.minQty === tier.minQty
-                            ? 'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/25'
-                            : 'border-white bg-white dark:border-slate-800 dark:bg-slate-900'
-                        }`}>
-                        <Text className="font-sans text-sm text-gray-700 dark:text-slate-300">
-                          {t('productDetail.min_qty')}: {tier.minQty}
+                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                    <View className="min-w-[520px] gap-2">
+                      <View className="flex-row border-b border-amber-200 pb-1 dark:border-amber-800">
+                        <Text className="w-[30%] font-sans text-xs font-medium text-gray-500 dark:text-slate-400">
+                          {t('productDetail.min_qty')}
                         </Text>
-                        <View className="items-end">
-                          <Text className="font-sans text-sm font-bold text-green-700 dark:text-green-300">
-                            {tier.price}
-                          </Text>
-                          {activeTier?.minQty === tier.minQty ? (
-                            <Text className="font-sans text-[10px] font-bold uppercase text-green-600 dark:text-green-300">
-                              {t('productDetail.applied')}
-                            </Text>
-                          ) : null}
-                        </View>
+                        <Text className="w-[30%] font-sans text-xs font-medium text-gray-500 dark:text-slate-400">
+                          {t('productDetail.price_per_unit', { unit: product.quantityUnit })}
+                        </Text>
+                        <Text className="w-[20%] font-sans text-xs font-medium text-gray-500 dark:text-slate-400">
+                          {t('productDetail.discount')}
+                        </Text>
+                        <Text className="w-[20%] font-sans text-xs font-medium text-gray-500 dark:text-slate-400" />
                       </View>
-                    ))}
-                  </View>
+                      {product.wholesaleTiers.map((tier) => {
+                        const isActive = activeTier?.minQty === tier.minQty;
+                        return (
+                          <View
+                            key={`${tier.minQty}-${tier.price}`}
+                            className={`flex-row border-b border-amber-100 py-1 dark:border-amber-900 ${
+                              isActive ? 'bg-amber-100 dark:bg-amber-800/30' : ''
+                            }`}
+                          >
+                            <Text className="w-[30%] font-sans text-sm text-gray-700 dark:text-slate-300">
+                              ≥ {tier.minQty} {product.quantityUnit}
+                            </Text>
+                            <Text className="w-[30%] font-sans text-sm font-semibold text-green-700 dark:text-green-400">
+                              {tier.price}
+                            </Text>
+                            <Text className="w-[20%] font-sans text-sm text-red-600 dark:text-red-400">
+                              {tier.discountPct > 0 ? `-${tier.discountPct}%` : '—'}
+                            </Text>
+                            <View className="w-[20%]">
+                              {isActive ? (
+                                <Text className="rounded bg-green-100 px-1.5 py-0.5 font-sans text-[10px] text-green-700 dark:bg-green-900/40 dark:text-green-300">
+                                  {t('productDetail.applied')}
+                                </Text>
+                              ) : null}
+                            </View>
+                          </View>
+                        );
+                      })}
+                    </View>
+                  </ScrollView>
                   {nextTier ? (
-                    <Text className="mt-3 font-sans text-xs text-amber-700 dark:text-amber-300">
+                    <Text className="mt-2 font-sans text-xs font-medium text-amber-700 dark:text-amber-300">
+                      💡{' '}
                       {t('productDetail.add_more_for_tier', {
                         count: nextTier.minQty - quantity,
                         unit: product.quantityUnit,
-                        discount: nextTier.discountPct ? `${nextTier.discountPct}%` : t('productDetail.better_price'),
+                        discount: nextTier.discountPct
+                          ? `-${nextTier.discountPct}%`
+                          : t('productDetail.better_price'),
                       })}
-                    </Text>
-                  ) : activeTier ? (
-                    <Text className="mt-3 font-sans text-xs font-semibold text-green-700 dark:text-green-300">
-                      {t('productDetail.volume_price_active')}
                     </Text>
                   ) : null}
                 </View>
               ) : null}
 
-              <View className="gap-4 border-t border-gray-200 pt-6 dark:border-slate-700">
+              <View className="gap-2">
                 <View className="flex-row flex-wrap items-center gap-3">
-                  <Text className="font-sans font-semibold text-gray-800 dark:text-slate-200">
+                  <Text className="font-sans font-medium text-gray-800 dark:text-slate-200">
                     {t('productDetail.quantity')}
                   </Text>
                   <Pressable
                     onPress={decrementQuantity}
                     disabled={quantity <= effectiveMoq}
-                    className="h-9 w-9 items-center justify-center rounded border border-gray-300 bg-white dark:border-slate-600 dark:bg-slate-800">
-                    <Text className="font-sans text-xl text-gray-700 dark:text-slate-200">-</Text>
+                    className="h-8 w-8 items-center justify-center rounded border border-gray-300 bg-white dark:border-slate-600 dark:bg-slate-800"
+                  >
+                    <Text className="font-sans text-xl text-gray-700 dark:text-slate-200">−</Text>
                   </Pressable>
-                  <View className="h-9 min-w-16 items-center justify-center rounded-md border border-gray-300 bg-white px-4 dark:border-slate-600 dark:bg-slate-800">
-                    <Text className="font-sans text-base font-semibold text-gray-900 dark:text-slate-100">
-                      {quantity}
-                    </Text>
-                  </View>
+                  <TextInput
+                    value={String(quantity)}
+                    onChangeText={(value) => {
+                      const snapped = snapQuantityToStep(value, effectiveMoq, effectiveStep);
+                      setQuantity(
+                        maxValidQuantity !== undefined && maxValidQuantity > 0
+                          ? Math.min(snapped, maxValidQuantity)
+                          : snapped
+                      );
+                    }}
+                    keyboardType="number-pad"
+                    className="h-8 min-w-[80px] rounded-md border border-gray-300 bg-white px-2 text-center font-sans text-base font-semibold text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+                  />
                   <Pressable
                     onPress={incrementQuantity}
-                    disabled={maxQuantity !== undefined && quantity + effectiveStep > maxQuantity}
-                    className="h-9 w-9 items-center justify-center rounded border border-gray-300 bg-white dark:border-slate-600 dark:bg-slate-800">
+                    disabled={
+                      maxValidQuantity !== undefined &&
+                      maxValidQuantity > 0 &&
+                      quantity + effectiveStep > maxValidQuantity
+                    }
+                    className="h-8 w-8 items-center justify-center rounded border border-gray-300 bg-white dark:border-slate-600 dark:bg-slate-800"
+                  >
                     <Text className="font-sans text-xl text-gray-700 dark:text-slate-200">+</Text>
                   </Pressable>
                   <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">
                     {product.quantityUnit}
                   </Text>
                 </View>
-
                 {effectiveStep > 1 ? (
                   <Text className="font-sans text-xs text-amber-600 dark:text-amber-400">
                     {t('productDetail.order_multiples', {
@@ -1030,108 +1028,123 @@ export function ProductDetailNative({
                     })}
                   </Text>
                 ) : null}
+              </View>
 
-                <View className="gap-3 sm:flex-row">
+              <View className="gap-3 pt-4 sm:grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-stretch">
+                {stockIsOut ? (
                   <Pressable
-                    onPress={handleAddToCart}
-                    disabled={(variantReady && stockOut) || addingToCart}
-                    className={`min-h-12 flex-1 flex-row items-center justify-center gap-2 rounded-lg px-5 py-3 ${
-                      stockOut || addingToCart
-                        ? 'bg-gray-300 dark:bg-slate-700'
-                        : !variantReady
-                          ? 'bg-amber-500'
-                          : 'bg-green-600'
-                    }`}>
-                    <Feather name="shopping-cart" color="#ffffff" size={18} />
-                    <Text className="font-sans text-sm font-semibold text-white">
-                      {addingToCart
-                        ? t('productDetail.adding')
-                        : !variantReady
-                          ? t('productDetail.select_options')
-                          : stockOut
-                          ? t('productDetail.out_of_stock')
-                          : t('productDetail.add_to_cart')}
+                    disabled
+                    className="min-h-12 items-center justify-center rounded-md bg-gray-300 px-4 py-3 dark:bg-slate-700 sm:col-span-2"
+                  >
+                    <Text className="font-sans text-sm font-semibold text-gray-500 dark:text-slate-400">
+                      🚫 {t('productDetail.out_of_stock')}
                     </Text>
                   </Pressable>
-                  <Pressable
-                    onPress={handleBuyNow}
-                    disabled={(variantReady && stockOut) || addingToCart}
-                    className="min-h-12 flex-1 items-center justify-center rounded-lg border border-green-600 px-5 py-3">
-                    <Text className="font-sans text-sm font-semibold text-green-700 dark:text-green-300">
-                      {t('productDetail.buy_now')}
-                    </Text>
-                  </Pressable>
-                </View>
+                ) : (
+                  <>
+                    <Pressable
+                      onPress={() => void handlePrimaryCta()}
+                      disabled={addingToCart}
+                      className={`min-h-12 flex-row items-center justify-center rounded-md px-4 py-3 sm:col-span-1 ${
+                        variantReady ? 'bg-green-600' : 'bg-amber-500'
+                      } ${addingToCart ? 'opacity-50' : ''}`}
+                    >
+                      {addingToCart ? (
+                        <ActivityIndicator color="#ffffff" />
+                      ) : (
+                        <Feather
+                          name={variantReady ? 'shopping-cart' : 'sliders'}
+                          color="#ffffff"
+                          size={18}
+                        />
+                      )}
+                      <Text className="ml-2 font-sans text-sm font-semibold text-white">
+                        {primaryCtaLabel}
+                      </Text>
+                    </Pressable>
+                    <Pressable
+                      onPress={() => void handleBuyNow()}
+                      disabled={addingToCart}
+                      className={`min-h-12 items-center justify-center rounded-md bg-gray-800 px-4 py-3 sm:col-span-1 ${
+                        addingToCart ? 'opacity-50' : ''
+                      }`}
+                    >
+                      <Text className="font-sans text-sm font-semibold text-white">
+                        {t('productDetail.buy_now')}
+                      </Text>
+                    </Pressable>
+                  </>
+                )}
 
-                <View className="flex-row gap-3">
+                <View className="flex-row gap-2 sm:col-span-1 sm:items-stretch">
                   <Pressable
-                    onPress={handleToggleWishlist}
+                    onPress={() => void handleToggleWishlist()}
                     disabled={wishlistLoading}
-                    className={`min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-md border px-3 ${
+                    className={`h-12 min-w-0 flex-1 items-center justify-center rounded-md border sm:w-12 sm:flex-none ${
                       savedToWishlist
                         ? 'border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
                         : 'border-gray-300 dark:border-slate-600'
-                    }`}>
-                    <Feather name="heart" color={savedToWishlist ? '#ef4444' : '#64748b'} size={16} />
-                    <Text className="font-sans text-xs font-semibold text-gray-600 dark:text-slate-400">
-                      {wishlistLoading
-                        ? t('productDetail.adding')
-                        : savedToWishlist
-                          ? t('productDetail.remove_from_wishlist')
-                          : t('productDetail.add_to_wishlist')}
-                    </Text>
+                    }`}
+                  >
+                    {wishlistLoading ? (
+                      <ActivityIndicator color="#16a34a" />
+                    ) : (
+                      <Feather
+                        name="heart"
+                        color={savedToWishlist ? '#ef4444' : '#64748b'}
+                        size={20}
+                      />
+                    )}
                   </Pressable>
-                  <Pressable
-                    onPress={handleShare}
-                    className={`min-h-11 flex-1 flex-row items-center justify-center gap-2 rounded-md border px-3 ${
-                      shareOpen
-                        ? 'border-green-300 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
-                        : 'border-gray-300 dark:border-slate-600'
-                    }`}>
-                    <Feather name="share-2" color={shareOpen ? '#16a34a' : '#64748b'} size={16} />
-                    <Text
-                      className={`font-sans text-xs font-semibold ${
+
+                  <View className="relative min-w-0 flex-1 sm:w-12 sm:flex-none">
+                    <Pressable
+                      onPress={handleShare}
+                      className={`h-12 w-full items-center justify-center rounded-md border ${
                         shareOpen
-                          ? 'text-green-700 dark:text-green-300'
-                          : 'text-gray-600 dark:text-slate-400'
-                      }`}>
-                      {t('productDetail.share_product')}
-                    </Text>
-                  </Pressable>
+                          ? 'border-green-500 bg-green-50 dark:border-green-600 dark:bg-green-900/30'
+                          : 'border-gray-300 dark:border-slate-600'
+                      }`}
+                    >
+                      <Feather name="share-2" color={shareOpen ? '#16a34a' : '#64748b'} size={20} />
+                    </Pressable>
+                    {shareOpen && sharePayload ? (
+                      <View className="absolute right-0 top-full z-50 mt-2 w-56">
+                        <SocialSharePanel
+                          payload={sharePayload}
+                          heading={t('productDetail.share_product')}
+                          shareOnLabel={t('productDetail.share_on')}
+                          copyLinkLabel={t('productDetail.copy_link')}
+                          copiedLabel={t('productDetail.copied')}
+                          platformLabels={{
+                            facebook: t('productDetail.share_facebook'),
+                            whatsapp: t('productDetail.share_whatsapp'),
+                            viber: t('productDetail.share_viber'),
+                            telegram: t('productDetail.share_telegram'),
+                            x: t('productDetail.share_x'),
+                          }}
+                        />
+                      </View>
+                    ) : null}
+                  </View>
+
                   <Pressable
                     onPress={handleToggleCompare}
-                    className={`min-h-11 flex-1 items-center justify-center rounded-md border px-3 ${
+                    className={`h-12 min-w-[72px] items-center justify-center rounded-md border px-3 sm:min-w-24 ${
                       compared
-                        ? 'border-indigo-300 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-900/20'
+                        ? 'border-indigo-400 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-900/30'
                         : 'border-gray-300 dark:border-slate-600'
-                    }`}>
-                    <Text className="font-sans text-xs font-semibold text-gray-600 dark:text-slate-400">
+                    }`}
+                  >
+                    <Text className="font-sans text-xs font-semibold text-gray-600 dark:text-slate-400 sm:text-sm">
                       {compared ? t('productDetail.compared') : t('productDetail.compare')}
                     </Text>
                   </Pressable>
                 </View>
-
-                {shareOpen && sharePayload ? (
-                  <SocialSharePanel
-                    payload={sharePayload}
-                    heading={t('productDetail.share_product')}
-                    shareOnLabel={t('productDetail.share_on')}
-                    copyLinkLabel={t('productDetail.copy_link')}
-                    copiedLabel={t('productDetail.copied')}
-                    platformLabels={{
-                      facebook: t('productDetail.share_facebook'),
-                      whatsapp: t('productDetail.share_whatsapp'),
-                      viber: t('productDetail.share_viber'),
-                      telegram: t('productDetail.share_telegram'),
-                      x: t('productDetail.share_x'),
-                    }}
-                    className="mt-4"
-                  />
-                ) : null}
               </View>
 
               {product.seller ? (
-                <View className="border-t border-gray-200 pt-5 dark:border-slate-700">
+                <View className="border-t border-gray-200 pt-2 dark:border-slate-700">
                   <DeliveryTicker labels={deliveryLabels} loading={deliveryLoading} />
                 </View>
               ) : null}
@@ -1142,23 +1155,18 @@ export function ProductDetailNative({
                     {t('productDetail.seller_info')}
                   </Text>
                   <Link href={sellerHref} asChild>
-                    <Pressable className="flex-row items-center gap-4 rounded-lg p-2">
-                      <View className="h-12 w-12 items-center justify-center rounded-full border-2 border-dashed border-gray-300 bg-gray-100 dark:border-slate-600 dark:bg-slate-700">
+                    <Pressable className="flex-row items-center rounded-lg p-2 active:bg-gray-50 dark:active:bg-slate-800">
+                      <View className="h-12 w-12 items-center justify-center rounded-full border-2 border-dashed border-gray-300 bg-gray-200 dark:border-slate-600 dark:bg-slate-700">
                         <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">
                           {t('productDetail.shop')}
                         </Text>
                       </View>
-                      <View className="min-w-0 flex-1">
-                        <View className="flex-row items-center gap-2">
-                          <Text className="min-w-0 font-sans font-medium text-green-600 dark:text-green-400">
-                            {product.seller.name}
-                          </Text>
-                          {product.seller.verified ? (
-                            <Feather name="check-circle" color="#22c55e" size={15} />
-                          ) : null}
-                        </View>
+                      <View className="ml-4 min-w-0 flex-1">
+                        <Text className="font-sans font-medium text-green-600 dark:text-green-400">
+                          {product.seller.name}
+                        </Text>
                         <Text className="font-sans text-sm text-gray-600 dark:text-slate-400">
-                          {t('productDetail.seller_rating', { rating: product.seller.rating })}
+                          {product.seller.rating} ★
                         </Text>
                       </View>
                     </Pressable>
@@ -1185,37 +1193,43 @@ export function ProductDetailNative({
         </View>
       </View>
 
-      <View className="sticky bottom-0 z-40 border-t border-gray-200 bg-white/95 py-3 dark:border-slate-800 dark:bg-slate-900/95 sm:hidden">
+      <View className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 py-3 dark:border-slate-800 dark:bg-slate-900/95 sm:hidden">
         <View className={`${SITE_CONTAINER_CLASS} flex-row items-center gap-3`}>
           <View className="min-w-0 flex-1">
             <Text className="font-sans text-xs text-gray-500 dark:text-slate-500" numberOfLines={1}>
               {t('productDetail.price')}
             </Text>
             <Text className="font-sans text-sm font-bold text-gray-900 dark:text-slate-100" numberOfLines={1}>
-              {activeTier?.price || displayPrice || product.price}
+              {displayPrice}
             </Text>
           </View>
-          <Pressable
-            onPress={handleAddToCart}
-            disabled={(variantReady && stockOut) || addingToCart}
-            className={`min-h-11 max-w-[58%] flex-row items-center justify-center gap-2 rounded-xl px-4 py-2.5 ${
-              stockOut || addingToCart
-                ? 'bg-gray-300 dark:bg-slate-700'
-                : !variantReady
-                  ? 'bg-amber-500'
-                  : 'bg-green-600'
-            }`}>
-            <Feather name="shopping-cart" color="#ffffff" size={16} />
-            <Text className="font-sans text-sm font-semibold text-white" numberOfLines={1}>
-              {addingToCart
-                ? t('productDetail.adding')
-                : !variantReady
-                  ? t('productDetail.select_options')
-                  : stockOut
-                  ? t('productDetail.out_of_stock')
-                  : t('productDetail.add_to_cart')}
-            </Text>
-          </Pressable>
+          {stockIsOut ? (
+            <Pressable
+              disabled
+              className="ml-auto min-h-11 max-w-[52%] items-center justify-center rounded-xl bg-gray-300 px-4 py-2.5 dark:bg-slate-700"
+            >
+              <Text className="font-sans text-sm font-semibold text-gray-500 dark:text-slate-400">
+                🚫 {t('productDetail.out_of_stock')}
+              </Text>
+            </Pressable>
+          ) : (
+            <Pressable
+              onPress={() => void handlePrimaryCta()}
+              disabled={addingToCart}
+              className={`ml-auto min-h-11 max-w-[52%] flex-row items-center justify-center rounded-xl px-4 py-2.5 ${
+                variantReady ? 'bg-green-600' : 'bg-amber-500'
+              } ${addingToCart ? 'opacity-50' : ''}`}
+            >
+              <Feather
+                name={variantReady ? 'shopping-cart' : 'sliders'}
+                color="#ffffff"
+                size={16}
+              />
+              <Text className="ml-1.5 font-sans text-sm font-semibold text-white" numberOfLines={1}>
+                {primaryCtaLabel}
+              </Text>
+            </Pressable>
+          )}
         </View>
       </View>
     </AppLayout>

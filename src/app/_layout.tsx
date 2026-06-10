@@ -14,6 +14,7 @@ import { CartCountProvider } from '@/context/cart-count-context';
 import { NativeAuthProvider } from '@/context/native-auth';
 import { AppThemeProvider, useTheme } from '@/context/theme';
 import { WishlistProvider } from '@/context/wishlist-context';
+import { WelcomeLoaderProvider } from '@/context/welcome-loader';
 import '@/i18n';
 import '../global.css';
 
@@ -59,7 +60,9 @@ export default function RootLayout() {
         <CartCountProvider>
           <WishlistProvider>
             <CookieProvider>
-              <RootStack />
+              <WelcomeLoaderProvider>
+                <RootStack />
+              </WelcomeLoaderProvider>
             </CookieProvider>
           </WishlistProvider>
         </CartCountProvider>

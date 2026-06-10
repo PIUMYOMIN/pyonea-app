@@ -31,32 +31,34 @@ function Stars({ rating, count }: { rating: number; count?: number }) {
 }
 
 function ReviewItem({ review }: { review: ProductReview }) {
+  const { t } = useAppTranslation();
+
   return (
-    <View className="rounded-xl border border-gray-100 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
+    <View className="border-b border-gray-200 pb-6 dark:border-slate-700">
       <View className="flex-row gap-4">
-        <View className="h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-          <Text className="font-sans text-sm font-bold text-green-700 dark:text-green-300">
-            {review.author.charAt(0).toUpperCase()}
+        <View className="h-10 w-10 items-center justify-center rounded-full border-2 border-dashed border-gray-300 bg-gray-200 dark:border-slate-600 dark:bg-slate-700">
+          <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">
+            {t('productDetail.user')}
           </Text>
         </View>
         <View className="min-w-0 flex-1">
-          <Text className="font-sans font-semibold text-gray-900 dark:text-slate-100">
+          <Text className="break-words font-sans font-medium text-gray-900 dark:text-slate-100">
             {review.author}
           </Text>
           {review.company ? (
-            <Text className="font-sans text-xs text-gray-500 dark:text-slate-500">
+            <Text className="mt-0.5 font-sans text-xs text-gray-500 dark:text-slate-500">
               {review.company}
             </Text>
           ) : null}
-          <View className="mt-2 flex-row items-center gap-2">
-            <Stars rating={review.rating} />
+          <View className="mt-1 flex-row flex-wrap items-center gap-y-1">
+            <Stars rating={review.rating} showCount={false} />
             {review.createdAt ? (
-              <Text className="font-sans text-xs text-gray-400 dark:text-slate-500">
+              <Text className="ml-2 font-sans text-sm text-gray-500 dark:text-slate-500">
                 {review.createdAt}
               </Text>
             ) : null}
           </View>
-          <Text className="mt-3 font-sans text-sm leading-6 text-gray-600 dark:text-slate-400">
+          <Text className="mt-3 break-words font-sans text-sm leading-6 text-gray-700 dark:text-slate-300">
             {review.comment}
           </Text>
         </View>
