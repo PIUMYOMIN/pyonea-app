@@ -293,6 +293,10 @@ export function NativeSeo({
       <meta name="application-name" content="Pyonea" />
       <meta name="apple-mobile-web-app-title" content="Pyonea" />
       <meta name="format-detection" content="telephone=no" />
+      <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1, viewport-fit=cover"
+      />
       <link rel="icon" href="/favicon.ico" />
       <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       <link rel="manifest" href="/manifest.json" />

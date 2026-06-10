@@ -2,31 +2,59 @@
   RewriteEngine On
   RewriteBase /
 
+  # 0) Force HTTPS (Namecheap / production).
+  RewriteCond %{HTTPS} !=on
+  RewriteRule ^ https://%{HTTP_HOST}%{REQUEST_URI} [L,R=301]
+
   # 1) Serve existing files and directories as-is (JS, CSS, images, pre-rendered HTML).
   RewriteCond %{REQUEST_FILENAME} -f [OR]
   RewriteCond %{REQUEST_FILENAME} -d
   RewriteRule ^ - [L]
 
   # 2) Expo static export: /products/slug -> /products/slug.html
-  RewriteCond %{DOCUMENT_ROOT}/$1.html -f
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME}.html -f
   RewriteRule ^(.+?)/?$ $1.html [L]
 
-  # 3) Directory-style static export fallback: /products/slug -> /products/slug/index.html
-  RewriteCond %{DOCUMENT_ROOT}/$1/index.html -f
+  # 3) Directory-style static export fallback: /path -> /path/index.html
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
+  RewriteCond %{REQUEST_FILENAME}/index.html -f
   RewriteRule ^(.+?)/?$ $1/index.html [L]
 
-  # 4) Social/search crawlers without a static HTML file — OG proxy fetches server-rendered meta.
+  # 4) Crawlers without a static HTML match — OG proxy fetches server-rendered meta.
+  RewriteCond %{REQUEST_URI} !^/_expo/ [NC]
+  RewriteCond %{REQUEST_URI} !^/assets/ [NC]
+  RewriteCond %{REQUEST_URI} !^/fonts/ [NC]
+  RewriteCond %{REQUEST_URI} !\.(js|css|png|jpg|jpeg|gif|ico|svg|webp|woff|woff2|xml|txt|json|map|php)$ [NC]
   RewriteCond %{HTTP_USER_AGENT} (facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Slackbot|Discordbot|Googlebot|bingbot|Snapchat|Pinterest|viber|vkShare) [NC]
   RewriteRule ^ og-proxy.php [L]
 
   # 5) SPA fallback for client-side routes.
+  RewriteCond %{REQUEST_FILENAME} !-f
+  RewriteCond %{REQUEST_FILENAME} !-d
   RewriteRule ^ index.html [L]
 </IfModule>
 
 <IfModule mod_headers.c>
+  # Long cache for static assets (Expo hashed bundles live under /_expo/static/).
   <FilesMatch "\.(js|css|png|jpg|jpeg|gif|ico|svg|webp|woff|woff2)$">
     Header set Cache-Control "public, max-age=31536000, immutable"
   </FilesMatch>
+
+  # Revalidate HTML shell after each deploy.
+  <FilesMatch "\.(html|php)$">
+    Header set Cache-Control "no-cache, no-store, must-revalidate"
+    Header set Pragma "no-cache"
+    Header set Expires "0"
+  </FilesMatch>
+</IfModule>
+
+<IfModule mod_mime.c>
+  AddType font/woff2 .woff2
+  AddType font/woff .woff
 </IfModule>
 
 Options -Indexes
+DirectoryIndex index.html

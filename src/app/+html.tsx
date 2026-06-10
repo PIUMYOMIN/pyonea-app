@@ -28,7 +28,10 @@ html.dark {
 html,
 body {
   min-height: 100%;
+  width: 100%;
+  max-width: 100%;
   margin: 0;
+  overflow-x: hidden;
   background: var(--app-bg);
 }
 
@@ -75,10 +78,13 @@ body {
 
 const loaderScript = `
 (function () {
+  var HALF_MS = 1200;
   var loader = document.getElementById('pyonea-web-loader');
   if (!loader) return;
 
   var fillText = loader.querySelector('.pyonea-fill-text');
+  var startedAt = Date.now();
+  var bootstrapRaf = 0;
 
   function applyProgress(progress) {
     var clamped = Math.max(0, Math.min(100, Number(progress) || 0));
@@ -94,6 +100,10 @@ const loaderScript = `
   }
 
   function hideLoader() {
+    if (bootstrapRaf) {
+      cancelAnimationFrame(bootstrapRaf);
+      bootstrapRaf = 0;
+    }
     loader.classList.add('is-hidden');
     window.setTimeout(function () {
       if (loader && loader.parentNode) {
@@ -103,9 +113,25 @@ const loaderScript = `
     }, 280);
   }
 
+  function bootstrapHalfFill() {
+    var elapsed = Date.now() - startedAt;
+    var halfProgress = Math.min(50, (elapsed / HALF_MS) * 50);
+    applyProgress(halfProgress);
+    if (halfProgress < 50) {
+      bootstrapRaf = requestAnimationFrame(bootstrapHalfFill);
+    }
+  }
+
   window.__pyoneaWelcome = {
-    setProgress: applyProgress,
+    setProgress: function (progress) {
+      if (bootstrapRaf) {
+        cancelAnimationFrame(bootstrapRaf);
+        bootstrapRaf = 0;
+      }
+      applyProgress(progress);
+    },
     hide: hideLoader,
+    startedAt: startedAt,
   };
 
   try {
@@ -116,6 +142,7 @@ const loaderScript = `
   } catch (e) {}
 
   applyProgress(0);
+  bootstrapRaf = requestAnimationFrame(bootstrapHalfFill);
 
   window.setTimeout(function () {
     if (window.__pyoneaWelcome) {
@@ -154,8 +181,14 @@ export default function RootHtml({ children }: PropsWithChildren) {
   const preconnectOrigins = getPreconnectOrigins();
 
   return (
-    <html {...htmlAttributes}>
+    <html {...htmlAttributes} lang="en">
       <head>
+        <meta charSet="utf-8" />
+        <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+        <meta
+          name="viewport"
+          content="width=device-width, initial-scale=1, viewport-fit=cover"
+        />
         <ScrollViewStyleReset />
         {preconnectOrigins.map((origin) => (
           <link key={origin} rel="preconnect" href={origin} crossOrigin="anonymous" />

@@ -35,6 +35,17 @@ body {
   color-scheme: light;
   scrollbar-color: var(--scrollbar-thumb) var(--scrollbar-track);
   scrollbar-width: thin;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
+}
+
+html #root,
+html #__expo,
+html [data-expo-root] {
+  width: 100%;
+  max-width: 100%;
+  min-height: 100%;
 }
 
 @media (min-width: 1280px) {

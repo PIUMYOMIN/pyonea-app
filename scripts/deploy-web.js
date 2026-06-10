@@ -60,6 +60,24 @@ function copyIfExists(from, to) {
   console.log(`  copied ${path.relative(root, from)} → ${path.relative(root, to)}`);
 }
 
+function copyDirIfExists(from, to) {
+  if (!fs.existsSync(from)) {
+    console.warn(`  skip missing ${path.relative(root, from)}`);
+    return;
+  }
+  fs.mkdirSync(to, { recursive: true });
+  for (const entry of fs.readdirSync(from, { withFileTypes: true })) {
+    const src = path.join(from, entry.name);
+    const dest = path.join(to, entry.name);
+    if (entry.isDirectory()) {
+      copyDirIfExists(src, dest);
+    } else {
+      fs.copyFileSync(src, dest);
+    }
+  }
+  console.log(`  copied ${path.relative(root, from)}/ → ${path.relative(root, to)}/`);
+}
+
 function copyPublicDeployFiles(distDir) {
   console.log('\n▶ Copying public deploy files into dist/');
   const publicDir = path.join(root, 'public');
@@ -76,6 +94,8 @@ function copyPublicDeployFiles(distDir) {
   for (const file of files) {
     copyIfExists(path.join(publicDir, file), path.join(distDir, file));
   }
+
+  copyDirIfExists(path.join(publicDir, 'fonts'), path.join(distDir, 'fonts'));
 }
 
 function summarize(distDir) {
