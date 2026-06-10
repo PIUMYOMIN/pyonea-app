@@ -16,7 +16,8 @@ import {
   type TrackedOrderItem,
 } from '@/utils/native-api';
 
-const receiptLogo = require('@/assets/images/Logo_on_payslip.png');
+import { BRAND_LOGO, BRAND_LOGO_PUBLIC_URL } from '@/constants/brand';
+
 const placeholderProduct = require('@/assets/images/placeholder-product.png');
 
 const escapeHtml = (value: string | number | undefined | null) =>
@@ -336,7 +337,7 @@ export function PaymentSuccessNative() {
           <main class="receipt">
             <section class="header">
               <div class="brand">
-                <img src="/logo.png" alt="Pyonea" />
+                <img src="${BRAND_LOGO_PUBLIC_URL}" alt="Pyonea" />
                 <div>
                   <h1>${escapeHtml(t('payment_success.platform_name'))}</h1>
                   <p>${escapeHtml(t('payment_success.platform_address'))}</p>
@@ -530,7 +531,7 @@ export function PaymentSuccessNative() {
 
               <View className="p-5 sm:p-6">
                 <View className="items-center border-b border-gray-100 pb-6 dark:border-slate-800">
-                  <Image source={receiptLogo} className="h-20 w-20" contentFit="contain" />
+                  <Image source={BRAND_LOGO} className="h-20 w-20" contentFit="contain" />
                   <Text className="mt-2 font-brand text-2xl text-gray-950 dark:text-slate-100">
                     {t('payment_success.platform_name')}
                   </Text>

@@ -111,8 +111,8 @@ function SectionShell({
         : 'bg-white dark:bg-gray-900';
 
   return (
-    <View className={`${toneClass} py-10 sm:py-12`}>
-      <View className={SITE_CONTAINER_CLASS}>{children}</View>
+    <View className={`${toneClass} min-w-0 py-10 sm:py-12`}>
+      <View className={`${SITE_CONTAINER_CLASS} min-w-0`}>{children}</View>
     </View>
   );
 }

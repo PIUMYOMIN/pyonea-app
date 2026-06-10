@@ -7,7 +7,15 @@ import { ProductListCard, PRODUCT_CARD_CAROUSEL_CLASS } from '@/components/marke
 import { useAppTranslation } from '@/i18n';
 import type { HomeProduct, ProductDetail, ProductReview } from '@/utils/native-api';
 
-function Stars({ rating, count }: { rating: number; count?: number }) {
+function Stars({
+  rating,
+  count,
+  showCount = true,
+}: {
+  rating: number;
+  count?: number;
+  showCount?: boolean;
+}) {
   const filled = Math.round(rating || 0);
   return (
     <View className="flex-row items-center gap-1">
@@ -21,7 +29,7 @@ function Stars({ rating, count }: { rating: number; count?: number }) {
           />
         ))}
       </View>
-      {count !== undefined ? (
+      {showCount && count !== undefined ? (
         <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">
           ({count})
         </Text>
@@ -46,14 +54,14 @@ function ReviewItem({ review }: { review: ProductReview }) {
             {review.author}
           </Text>
           {review.company ? (
-            <Text className="mt-0.5 font-sans text-xs text-gray-500 dark:text-slate-500">
+            <Text className="mt-0.5 font-sans text-xs text-gray-500 dark:text-slate-400">
               {review.company}
             </Text>
           ) : null}
           <View className="mt-1 flex-row flex-wrap items-center gap-y-1">
             <Stars rating={review.rating} showCount={false} />
             {review.createdAt ? (
-              <Text className="ml-2 font-sans text-sm text-gray-500 dark:text-slate-500">
+              <Text className="ml-2 font-sans text-sm text-gray-500 dark:text-slate-400">
                 {review.createdAt}
               </Text>
             ) : null}
@@ -67,9 +75,30 @@ function ReviewItem({ review }: { review: ProductReview }) {
   );
 }
 
+function MoreFromSellerSkeleton() {
+  return (
+    <View className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
+      {Array.from({ length: 8 }, (_, index) => (
+        <View
+          key={index}
+          className="min-w-0 overflow-hidden rounded-2xl border border-gray-100 bg-white dark:border-slate-800 dark:bg-slate-800"
+        >
+          <View className="aspect-square animate-pulse bg-gray-200 dark:bg-slate-700" />
+          <View className="gap-2 p-3">
+            <View className="h-4 w-3/4 animate-pulse rounded bg-gray-200 dark:bg-slate-700" />
+            <View className="h-3 w-1/2 animate-pulse rounded bg-gray-200 dark:bg-slate-700" />
+            <View className="mt-3 h-8 animate-pulse rounded-xl bg-gray-200 dark:bg-slate-700" />
+          </View>
+        </View>
+      ))}
+    </View>
+  );
+}
+
 export function ProductDetailSecondarySections({
   product,
   moreProducts,
+  moreProductsLoading = false,
   reviews,
   sellerHref,
   canReview,
@@ -81,6 +110,7 @@ export function ProductDetailSecondarySections({
 }: {
   product: ProductDetail;
   moreProducts: HomeProduct[];
+  moreProductsLoading?: boolean;
   reviews: ProductReview[];
   sellerHref: Href;
   canReview: boolean;
@@ -105,21 +135,21 @@ export function ProductDetailSecondarySections({
   };
 
   return (
-    <>
-      {moreProducts.length > 0 ? (
-        <View className="mt-14">
+    <View className="min-w-0">
+      {moreProductsLoading || moreProducts.length > 0 ? (
+        <View className="mt-14 min-w-0">
           <View className="mb-5 gap-3 sm:flex-row sm:items-end sm:justify-between">
-            <View className="min-w-0">
+            <View className="min-w-0 flex-1">
               <Text className="font-sans text-xl font-bold text-gray-900 dark:text-slate-100">
                 {t('productDetail.more_from_seller')}
               </Text>
-              <Text className="font-sans text-sm text-gray-500 dark:text-slate-500">
+              <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">
                 {t('productDetail.more_from_seller_subtitle')}
               </Text>
             </View>
             {product.seller ? (
               <Link href={sellerHref} asChild>
-                <Pressable>
+                <Pressable className="self-start">
                   <Text className="font-sans text-sm font-medium text-green-600 dark:text-green-400">
                     {t('productDetail.view_store')}
                   </Text>
@@ -127,23 +157,30 @@ export function ProductDetailSecondarySections({
               </Link>
             ) : null}
           </View>
-          <ScrollView
-            horizontal
-            showsHorizontalScrollIndicator={false}
-            className="-mx-4 sm:-mx-6 lg:-mx-0"
-            contentContainerClassName="gap-3 px-4 sm:gap-4 sm:px-6 lg:px-0">
-            {moreProducts.map((item) => (
-              <ProductListCard
-                key={String(item.id)}
-                product={item}
-                className={PRODUCT_CARD_CAROUSEL_CLASS}
-              />
-            ))}
-          </ScrollView>
+          {moreProductsLoading ? (
+            <MoreFromSellerSkeleton />
+          ) : (
+            <View className="min-w-0 w-full">
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                showsVerticalScrollIndicator={false}
+                className="scroll-x-only w-full max-w-full"
+                contentContainerClassName="gap-3 sm:gap-4">
+                {moreProducts.map((item) => (
+                  <ProductListCard
+                    key={String(item.id)}
+                    product={item}
+                    className={PRODUCT_CARD_CAROUSEL_CLASS}
+                  />
+                ))}
+              </ScrollView>
+            </View>
+          )}
         </View>
       ) : null}
 
-      <View className="mt-16">
+      <View className="mt-16 min-w-0">
         <View className="mb-6 gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Text className="font-sans text-xl font-bold text-gray-900 dark:text-slate-100 sm:text-2xl">
             {t('productDetail.customer_reviews')} ({product.reviewCount || reviews.length})
@@ -267,15 +304,15 @@ export function ProductDetailSecondarySections({
           </View>
         ) : (
           <View className="items-center py-8">
-            <Text className="font-sans text-lg text-gray-500 dark:text-slate-500">
+            <Text className="font-sans text-lg text-gray-500 dark:text-slate-400">
               {t('productDetail.no_reviews_title')}
             </Text>
-            <Text className="mt-1 text-center font-sans text-sm text-gray-400 dark:text-slate-600">
+            <Text className="mt-1 text-center font-sans text-sm text-gray-400 dark:text-slate-400">
               {t('productDetail.no_reviews_subtitle')}
             </Text>
           </View>
         )}
       </View>
-    </>
+    </View>
   );
 }

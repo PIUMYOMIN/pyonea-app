@@ -2,6 +2,7 @@ import { useGlobalSearchParams, useLoaderData } from 'expo-router';
 
 import { NativeSeo } from '@/components/SEO/native-seo';
 import { SITE_PUBLIC_URL } from '@/config/native';
+import { BRAND_LOGO_PUBLIC_URL } from '@/constants/brand';
 import { BlogDetailNative } from '@/pages/blog-detail-native';
 import { fetchBlogDetail, type BlogPost } from '@/utils/native-api';
 import {
@@ -48,7 +49,7 @@ const buildBlogSchema = (post: BlogPost, language: ReturnType<typeof resolveSeoL
       name: 'Pyonea',
       logo: {
         '@type': 'ImageObject',
-        url: `${SITE_PUBLIC_URL}/logo.png`,
+        url: `${SITE_PUBLIC_URL}${BRAND_LOGO_PUBLIC_URL}`,
       },
     },
     mainEntityOfPage: `${SITE_PUBLIC_URL}/blog/${post.slug}`,

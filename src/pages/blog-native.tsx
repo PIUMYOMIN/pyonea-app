@@ -9,7 +9,7 @@ import { BLOG_POST_GRID_CLASS, SITE_CONTAINER_CLASS } from '@/constants/layout';
 import { useAppTranslation } from '@/i18n';
 import { fetchBlogPagePosts, type BlogPost } from '@/utils/native-api';
 
-const fallbackImage = require('@/assets/images/logo.png');
+import { BRAND_LOGO } from '@/constants/brand';
 
 function BlogSkeleton() {
   return (
@@ -37,7 +37,7 @@ function BlogCard({ post }: { post: BlogPost }) {
       <Pressable className="w-full min-w-0 overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm shadow-gray-200/70 dark:border-slate-800 dark:bg-slate-900 dark:shadow-slate-950/40">
         <View className="aspect-[16/9] overflow-hidden bg-gray-100 dark:bg-slate-800">
           <Image
-            source={post.imageUrl ? { uri: post.imageUrl } : fallbackImage}
+            source={post.imageUrl ? { uri: post.imageUrl } : BRAND_LOGO}
             className="h-full w-full"
             contentFit={post.imageUrl ? 'cover' : 'contain'}
           />
@@ -90,7 +90,7 @@ function FeaturedPost({ post }: { post: BlogPost }) {
       <Pressable className="overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm shadow-gray-200/70 dark:border-slate-800 dark:bg-slate-900 dark:shadow-slate-950/40 lg:flex-row">
         <View className="aspect-[16/10] bg-gray-100 dark:bg-slate-800 lg:aspect-auto lg:flex-1">
           <Image
-            source={post.imageUrl ? { uri: post.imageUrl } : fallbackImage}
+            source={post.imageUrl ? { uri: post.imageUrl } : BRAND_LOGO}
             className="h-full w-full"
             contentFit={post.imageUrl ? 'cover' : 'contain'}
           />

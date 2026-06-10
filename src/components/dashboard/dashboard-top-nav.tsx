@@ -5,6 +5,7 @@ import { useState, type ReactNode } from "react";
 import { Pressable, Text, TextInput, View } from "react-native";
 
 import { NativeNotificationBell } from "@/components/notifications/native-notification-bell";
+import { BRAND_LOGO } from "@/constants/brand";
 import { useNativeAuth } from "@/context/native-auth";
 import { useTheme } from "@/context/theme";
 import {
@@ -24,7 +25,6 @@ type DashboardTopNavProps = {
   showBrand?: boolean;
 };
 
-const logo = require("@/assets/images/logo.png");
 const languages: SupportedLanguage[] = ["en", "my"];
 
 const languageLabels: Record<SupportedLanguage, string> = {
@@ -79,10 +79,10 @@ export function DashboardTopNav({
             {leadingAction}
             {showBrand ? (
               <Link href="/" asChild>
-                <Pressable className="h-10 w-10 items-center justify-center rounded-xl border border-gray-100 bg-white shadow-sm shadow-gray-200/70 dark:border-slate-700 dark:bg-slate-950 dark:shadow-none">
+                <Pressable className="h-10 w-10 items-center justify-center overflow-hidden rounded-full border border-gray-100 bg-white shadow-sm shadow-gray-200/70 dark:border-slate-700 dark:bg-slate-950 dark:shadow-none">
                   <Image
-                    source={logo}
-                    style={{ width: 30, height: 30, borderRadius: 8 }}
+                    source={BRAND_LOGO}
+                    style={{ width: 30, height: 30 }}
                     contentFit="contain"
                   />
                 </Pressable>

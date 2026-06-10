@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Link, useRouter, type Href } from 'expo-router';
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Pressable,
@@ -15,6 +15,7 @@ import { AppLayout } from '@/components/layout/app-layout';
 import { SITE_CONTAINER_CLASS } from '@/constants/layout';
 import { ProductDetailGallery } from '@/components/product/product-detail-gallery';
 import { ProductDetailToast } from '@/components/product/product-detail-toast';
+import { ProductDetailSecondarySections } from '@/components/product/product-detail-secondary-sections';
 import { ProductVariantPicker } from '@/components/product/product-variant-picker';
 import { SocialSharePanel } from '@/components/ui/social-share-panel';
 import { SITE_PUBLIC_URL } from '@/config/native';
@@ -51,12 +52,6 @@ import {
 } from '@/utils/product-detail-helpers';
 import { buildSocialSharePayload } from '@/utils/social-share';
 
-const ProductDetailSecondarySections = lazy(() =>
-  import('@/components/product/product-detail-secondary-sections').then((module) => ({
-    default: module.ProductDetailSecondarySections,
-  })),
-);
-
 type DeliveryLabel = {
   region: string;
   city?: string;
@@ -92,8 +87,9 @@ function DetailSkeleton() {
   return (
     <AppLayout>
       <View className="bg-gray-50 py-8 dark:bg-slate-950">
-        <View className={`${SITE_CONTAINER_CLASS} gap-8 lg:flex-row`}>
-          <View className="min-w-0 flex-1 gap-4">
+        <View className={`${SITE_CONTAINER_CLASS} min-w-0`}>
+          <View className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
+          <View className="min-w-0 gap-4">
             <View className="aspect-square rounded-2xl bg-gray-200 dark:bg-slate-800" />
             <View className="flex-row gap-3">
               {[1, 2, 3].map((item) => (
@@ -101,11 +97,12 @@ function DetailSkeleton() {
               ))}
             </View>
           </View>
-          <View className="min-w-0 flex-1 gap-4">
+          <View className="min-w-0 gap-4">
             <View className="h-8 w-3/4 rounded bg-gray-200 dark:bg-slate-800" />
             <View className="h-5 w-1/2 rounded bg-gray-200 dark:bg-slate-800" />
             <View className="h-16 rounded bg-gray-200 dark:bg-slate-800" />
             <View className="h-56 rounded-2xl bg-gray-200 dark:bg-slate-800" />
+          </View>
           </View>
         </View>
       </View>
@@ -182,7 +179,7 @@ function DeliveryTicker({
 
   return (
     <View className="rounded-xl border border-gray-200 p-4 dark:border-slate-700">
-      <Text className="mb-2 font-sans text-xs text-gray-500 dark:text-slate-500">
+      <Text className="mb-2 font-sans text-xs text-gray-500 dark:text-slate-400">
         {t('productDetail.delivering_to')}
       </Text>
       <View className="min-h-5 flex-row items-center gap-1 overflow-hidden">
@@ -194,7 +191,7 @@ function DeliveryTicker({
         </Text>
         {activeLabel.city ? (
           <>
-            <Text className="font-sans text-xs text-gray-400 dark:text-slate-500">→</Text>
+            <Text className="font-sans text-xs text-gray-400 dark:text-slate-400">→</Text>
             <Text
               className="max-w-[110px] font-sans text-xs font-semibold text-gray-900 dark:text-slate-100"
               numberOfLines={1}
@@ -205,7 +202,7 @@ function DeliveryTicker({
         ) : null}
         {activeLabel.township ? (
           <>
-            <Text className="font-sans text-xs text-gray-400 dark:text-slate-500">→</Text>
+            <Text className="font-sans text-xs text-gray-400 dark:text-slate-400">→</Text>
             <Text
               className="max-w-[100px] font-sans text-xs font-semibold text-gray-900 dark:text-slate-100"
               numberOfLines={1}
@@ -267,6 +264,7 @@ export function ProductDetailNative({
   const [product, setProduct] = useState<ProductDetail | null>(initialProduct || null);
   const [reviews, setReviews] = useState<ProductReview[]>(initialProduct?.reviews || []);
   const [moreProducts, setMoreProducts] = useState<HomeProduct[]>([]);
+  const [moreProductsLoading, setMoreProductsLoading] = useState(false);
   const [deliveryAreas, setDeliveryAreas] = useState<SellerDeliveryArea[]>([]);
   const [deliveryLoading, setDeliveryLoading] = useState(false);
   const [selectedVariant, setSelectedVariant] = useState<ProductVariant | null>(null);
@@ -333,6 +331,8 @@ export function ProductDetailNative({
     const loadProduct = async () => {
       if (!hasInitialProduct) setLoading(true);
       setError('');
+      setMoreProducts([]);
+      setMoreProductsLoading(false);
 
       try {
         const nextProduct =
@@ -355,25 +355,30 @@ export function ProductDetailNative({
             : await fetchProductReviews(nextProduct.id, controller.signal).catch(() => []);
         setReviews(reviewList);
 
-        if (nextProduct.seller?.id) {
-          if (!controller.signal.aborted) setDeliveryLoading(true);
-          const sellerKey = nextProduct.seller.slug || String(nextProduct.seller.id);
+        const sellerId = nextProduct.seller?.id || nextProduct.sellerId;
+        if (sellerId) {
+          if (!controller.signal.aborted) {
+            setMoreProductsLoading(true);
+            setDeliveryLoading(true);
+          }
+          const sellerKey =
+            nextProduct.seller?.slug || String(nextProduct.seller?.id || sellerId);
           const [sellerProducts, areas] = await Promise.all([
-            fetchMoreProductsFromSeller(
-              nextProduct.seller.id,
-              nextProduct.id,
-              controller.signal
-            ).catch(() => []),
+            fetchMoreProductsFromSeller(sellerId, nextProduct.id, controller.signal).catch(
+              () => []
+            ),
             fetchSellerDeliveryAreas(sellerKey, controller.signal).catch(() => []),
           ]);
 
           if (!controller.signal.aborted) {
             setMoreProducts(sellerProducts);
             setDeliveryAreas(areas);
+            setMoreProductsLoading(false);
             setDeliveryLoading(false);
           }
         } else {
           setMoreProducts([]);
+          setMoreProductsLoading(false);
           setDeliveryAreas([]);
         }
       } catch (err) {
@@ -389,8 +394,11 @@ export function ProductDetailNative({
           }
         }
       } finally {
-        if (!controller.signal.aborted) setDeliveryLoading(false);
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) {
+          setDeliveryLoading(false);
+          setMoreProductsLoading(false);
+          setLoading(false);
+        }
       }
     };
 
@@ -731,7 +739,7 @@ export function ProductDetailNative({
         onDismiss={() => setActionMessage(null)}
       />
       <View className="bg-gray-50 py-6 dark:bg-slate-950 sm:py-8 sm:pb-8 pb-24">
-        <View className={SITE_CONTAINER_CLASS}>
+        <View className={`${SITE_CONTAINER_CLASS} min-w-0`}>
           <Pressable
             onPress={() => router.back()}
             className="mb-6 min-h-10 flex-row items-center gap-2 rounded-md px-1"
@@ -742,8 +750,8 @@ export function ProductDetailNative({
             </Text>
           </Pressable>
 
-          <View className="gap-8 lg:flex-row lg:gap-12">
-            <View className="min-w-0 flex-1 gap-4">
+          <View className="grid min-w-0 grid-cols-1 gap-8 lg:grid-cols-2 lg:gap-12">
+            <View className="min-w-0 gap-4">
               <ProductDetailGallery
                 images={images}
                 activeImage={activeImage}
@@ -758,7 +766,7 @@ export function ProductDetailNative({
               />
             </View>
 
-            <View className="min-w-0 flex-1 gap-6">
+            <View className="min-w-0 gap-6">
               <View>
                 <Text className="break-words font-sans text-2xl font-bold text-gray-900 dark:text-slate-100 lg:text-3xl">
                   {productDisplayName}
@@ -810,7 +818,7 @@ export function ProductDetailNative({
                         {displayPrice}
                       </Text>
                       {baseComparePrice ? (
-                        <Text className="font-sans text-base text-gray-400 line-through dark:text-slate-600 sm:text-lg">
+                        <Text className="font-sans text-base text-gray-400 line-through dark:text-slate-500 sm:text-lg">
                           {baseComparePrice}
                         </Text>
                       ) : null}
@@ -840,7 +848,7 @@ export function ProductDetailNative({
                     ) : null}
                   </View>
                 )}
-                <Text className="mt-1 font-sans text-gray-500 dark:text-slate-500">
+                <Text className="mt-1 font-sans text-gray-500 dark:text-slate-400">
                   {t('productDetail.tax_exclusive')}
                 </Text>
               </View>
@@ -915,11 +923,16 @@ export function ProductDetailNative({
               ) : null}
 
               {product.wholesaleTiers.length > 0 ? (
-                <View className="min-w-0 rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20 sm:p-4">
+                <View className="min-w-0 max-w-full rounded-lg border border-amber-200 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-900/20 sm:p-4">
                   <Text className="mb-2 font-sans text-xs font-semibold uppercase tracking-wide text-amber-700 dark:text-amber-300">
                     {t('productDetail.volume_pricing')}
                   </Text>
-                  <ScrollView horizontal showsHorizontalScrollIndicator={false}>
+                  <ScrollView
+                    horizontal
+                    showsHorizontalScrollIndicator={false}
+                    showsVerticalScrollIndicator={false}
+                    className="scroll-x-only max-w-full"
+                  >
                     <View className="min-w-[520px] gap-2">
                       <View className="flex-row border-b border-amber-200 pb-1 dark:border-amber-800">
                         <Text className="w-[30%] font-sans text-xs font-medium text-gray-500 dark:text-slate-400">
@@ -1030,11 +1043,11 @@ export function ProductDetailNative({
                 ) : null}
               </View>
 
-              <View className="gap-3 pt-4 sm:grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-stretch">
+              <View className="grid grid-cols-2 gap-3 pt-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-stretch">
                 {stockIsOut ? (
                   <Pressable
                     disabled
-                    className="min-h-12 items-center justify-center rounded-md bg-gray-300 px-4 py-3 dark:bg-slate-700 sm:col-span-2"
+                    className="col-span-2 min-h-12 items-center justify-center rounded-md bg-gray-300 px-4 py-3 dark:bg-slate-700"
                   >
                     <Text className="font-sans text-sm font-semibold text-gray-500 dark:text-slate-400">
                       🚫 {t('productDetail.out_of_stock')}
@@ -1045,7 +1058,7 @@ export function ProductDetailNative({
                     <Pressable
                       onPress={() => void handlePrimaryCta()}
                       disabled={addingToCart}
-                      className={`min-h-12 flex-row items-center justify-center rounded-md px-4 py-3 sm:col-span-1 ${
+                      className={`col-span-2 min-h-12 flex-row items-center justify-center rounded-md px-4 py-3 sm:col-span-1 ${
                         variantReady ? 'bg-green-600' : 'bg-amber-500'
                       } ${addingToCart ? 'opacity-50' : ''}`}
                     >
@@ -1058,29 +1071,29 @@ export function ProductDetailNative({
                           size={18}
                         />
                       )}
-                      <Text className="ml-2 font-sans text-sm font-semibold text-white">
+                      <Text className="ml-2 font-sans text-sm font-semibold text-white" numberOfLines={1}>
                         {primaryCtaLabel}
                       </Text>
                     </Pressable>
                     <Pressable
                       onPress={() => void handleBuyNow()}
                       disabled={addingToCart}
-                      className={`min-h-12 items-center justify-center rounded-md bg-gray-800 px-4 py-3 sm:col-span-1 ${
+                      className={`col-span-2 min-h-12 items-center justify-center rounded-md bg-gray-800 px-4 py-3 sm:col-span-1 ${
                         addingToCart ? 'opacity-50' : ''
                       }`}
                     >
-                      <Text className="font-sans text-sm font-semibold text-white">
+                      <Text className="font-sans text-sm font-semibold text-white" numberOfLines={1}>
                         {t('productDetail.buy_now')}
                       </Text>
                     </Pressable>
                   </>
                 )}
 
-                <View className="flex-row gap-2 sm:col-span-1 sm:items-stretch">
+                <View className="col-span-2 grid grid-cols-3 gap-3 sm:col-span-1 sm:flex sm:items-stretch sm:gap-2">
                   <Pressable
                     onPress={() => void handleToggleWishlist()}
                     disabled={wishlistLoading}
-                    className={`h-12 min-w-0 flex-1 items-center justify-center rounded-md border sm:w-12 sm:flex-none ${
+                    className={`h-12 min-w-0 items-center justify-center rounded-md border sm:w-12 sm:flex-none ${
                       savedToWishlist
                         ? 'border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
                         : 'border-gray-300 dark:border-slate-600'
@@ -1097,7 +1110,7 @@ export function ProductDetailNative({
                     )}
                   </Pressable>
 
-                  <View className="relative min-w-0 flex-1 sm:w-12 sm:flex-none">
+                  <View className="relative min-w-0 sm:w-12 sm:flex-none">
                     <Pressable
                       onPress={handleShare}
                       className={`h-12 w-full items-center justify-center rounded-md border ${
@@ -1130,13 +1143,16 @@ export function ProductDetailNative({
 
                   <Pressable
                     onPress={handleToggleCompare}
-                    className={`h-12 min-w-[72px] items-center justify-center rounded-md border px-3 sm:min-w-24 ${
+                    className={`h-12 min-w-0 items-center justify-center rounded-md border px-2 sm:min-w-24 sm:px-3 ${
                       compared
                         ? 'border-indigo-400 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-900/30'
                         : 'border-gray-300 dark:border-slate-600'
                     }`}
                   >
-                    <Text className="font-sans text-xs font-semibold text-gray-600 dark:text-slate-400 sm:text-sm">
+                    <Text
+                      className="font-sans text-xs font-semibold text-gray-600 dark:text-slate-400 sm:text-sm"
+                      numberOfLines={1}
+                    >
                       {compared ? t('productDetail.compared') : t('productDetail.compare')}
                     </Text>
                   </Pressable>
@@ -1176,27 +1192,26 @@ export function ProductDetailNative({
             </View>
           </View>
 
-          <Suspense fallback={null}>
-            <ProductDetailSecondarySections
-              product={product}
-              moreProducts={moreProducts}
-              reviews={reviews}
-              sellerHref={sellerHref}
-              canReview={canReview}
-              hasReviewed={hasReviewedProduct}
-              submittingReview={submittingReview}
-              reviewMessage={reviewMessage}
-              onSubmitReview={handleSubmitReview}
-              onWriteReviewPress={handleWriteReviewPress}
-            />
-          </Suspense>
+          <ProductDetailSecondarySections
+            product={product}
+            moreProducts={moreProducts}
+            moreProductsLoading={moreProductsLoading}
+            reviews={reviews}
+            sellerHref={sellerHref}
+            canReview={canReview}
+            hasReviewed={hasReviewedProduct}
+            submittingReview={submittingReview}
+            reviewMessage={reviewMessage}
+            onSubmitReview={handleSubmitReview}
+            onWriteReviewPress={handleWriteReviewPress}
+          />
         </View>
       </View>
 
       <View className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 py-3 dark:border-slate-800 dark:bg-slate-900/95 sm:hidden">
-        <View className={`${SITE_CONTAINER_CLASS} flex-row items-center gap-3`}>
+        <View className={`${SITE_CONTAINER_CLASS} min-w-0 flex-row items-center gap-3`}>
           <View className="min-w-0 flex-1">
-            <Text className="font-sans text-xs text-gray-500 dark:text-slate-500" numberOfLines={1}>
+            <Text className="font-sans text-xs text-gray-500 dark:text-slate-400" numberOfLines={1}>
               {t('productDetail.price')}
             </Text>
             <Text className="font-sans text-sm font-bold text-gray-900 dark:text-slate-100" numberOfLines={1}>

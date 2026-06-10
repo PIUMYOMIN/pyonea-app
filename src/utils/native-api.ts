@@ -179,6 +179,7 @@ export type ProductDetail = {
     discountPct: number;
   }[];
   categoryName?: string;
+  sellerId?: string | number;
   seller?: {
     id: string | number;
     name: string;
@@ -4430,9 +4431,10 @@ async function fetchProductDetailUncached(
       discountPct: getNumber(tier.discount_pct || tier.discount_percentage),
     })),
     categoryName: getString(category?.name_en || category?.name_mm),
+    sellerId: getString(product.seller_id || seller?.id, ''),
     seller: seller
       ? {
-          id: getString(seller.id, 'seller'),
+          id: getString(seller.id || product.seller_id, 'seller'),
           name: getString(seller.store_name || seller.business_name || seller.name, 'Pyonea seller'),
           slug: getString(seller.store_slug || seller.slug || seller.id, 'seller'),
           rating: getString(seller.average_rating || seller.reviews_avg_rating || seller.rating, '0'),

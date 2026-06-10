@@ -458,8 +458,8 @@ export function ProductListNative() {
 
   return (
     <AppLayout onEndReached={loadMore}>
-      <View className="bg-gray-50 py-6 dark:bg-slate-950 sm:py-8">
-        <View className={SITE_CONTAINER_CLASS}>
+      <View className="min-w-0 bg-gray-50 py-6 dark:bg-slate-950 sm:py-8">
+        <View className={`${SITE_CONTAINER_CLASS} min-w-0`}>
           <View className="mb-6">
             <ProductSearchBar
               key={searchQuery}

@@ -13,6 +13,7 @@ import {
 } from "react-native";
 
 import { AppLayout } from "@/components/layout/app-layout";
+import { BRAND_LOGO } from "@/constants/brand";
 import { useNativeAuth } from "@/context/native-auth";
 import { useAppTranslation } from "@/i18n";
 import {
@@ -43,8 +44,6 @@ type FeatherName = ComponentProps<typeof Feather>["name"];
 type AuthMode = "login" | "register" | "forgot" | "reset";
 type MessageTone = "error" | "success" | "info";
 type RegisterUserType = "buyer" | "seller";
-
-const logo = require("@/assets/images/logo.png");
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
@@ -132,7 +131,7 @@ function AuthLayout({
               <Link href="/" asChild>
                 <Pressable className="mx-auto mb-3 h-12 w-12 items-center justify-center overflow-hidden rounded-full bg-white shadow-sm dark:bg-slate-900 sm:mb-4 sm:h-14 sm:w-14">
                   <Image
-                    source={logo}
+                    source={BRAND_LOGO}
                     style={{
                       width: Platform.OS !== "web" ? 52 : 60,
                       height: Platform.OS !== "web" ? 52 : 60,

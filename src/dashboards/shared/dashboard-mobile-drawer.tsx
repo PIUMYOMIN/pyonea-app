@@ -3,6 +3,8 @@ import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import type { ReactNode } from 'react';
 import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 
+import { BRAND_LOGO } from '@/constants/brand';
+
 import { useTheme } from '@/context/theme';
 
 import type { DashboardNavItem, DashboardNavVariant } from './types';
@@ -56,11 +58,13 @@ export function DashboardMobileDrawer({
             <View className="border-b border-gray-100 px-4 py-5 dark:border-slate-800">
               <View className="flex-row items-center justify-between">
                 <View className="flex-row items-center gap-3">
-                  <Image
-                    source={require('@/assets/images/logo.png')}
-                    style={{ width: 38, height: 38, borderRadius: 10 }}
-                    contentFit="contain"
-                  />
+                  <View className="h-10 w-10 shrink-0 overflow-hidden rounded-full">
+                    <Image
+                      source={BRAND_LOGO}
+                      style={{ width: 38, height: 38 }}
+                      contentFit="contain"
+                    />
+                  </View>
                   <View>
                     <Text
                       className="text-lg text-green-800 dark:text-green-300"

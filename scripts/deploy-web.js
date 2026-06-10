@@ -96,6 +96,11 @@ function copyPublicDeployFiles(distDir) {
   }
 
   copyDirIfExists(path.join(publicDir, 'fonts'), path.join(distDir, 'fonts'));
+
+  copyIfExists(
+    path.join(root, 'assets/images/Logo_on_payslip.png'),
+    path.join(distDir, 'logo.png')
+  );
 }
 
 function summarize(distDir) {

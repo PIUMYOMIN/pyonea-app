@@ -4,6 +4,8 @@ import { Link } from 'expo-router';
 import type { ReactNode } from 'react';
 import { Pressable, ScrollView, Text, View } from 'react-native';
 
+import { BRAND_LOGO } from '@/constants/brand';
+
 import { useTheme } from '@/context/theme';
 
 import type { DashboardNavItem, DashboardNavVariant } from './types';
@@ -42,11 +44,13 @@ export function DashboardSidebar({
         <View className="border-b border-gray-100 px-5 py-5 dark:border-slate-800">
           <Link href="/" asChild>
             <Pressable className="flex-row items-center gap-3">
-              <Image
-                source={require('@/assets/images/logo.png')}
-                style={{ width: 40, height: 40, borderRadius: 10 }}
-                contentFit="contain"
-              />
+              <View className="h-10 w-10 shrink-0 overflow-hidden rounded-full">
+                <Image
+                  source={BRAND_LOGO}
+                  style={{ width: 40, height: 40 }}
+                  contentFit="contain"
+                />
+              </View>
               <View>
                 <Text
                   className="text-lg text-green-800 dark:text-green-300"

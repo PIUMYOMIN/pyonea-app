@@ -43,3 +43,7 @@ export const BLOG_POST_GRID_CLASS = 'grid gap-6 md:grid-cols-2 lg:grid-cols-3';
 
 /** Local deals — match pyonea LocalDeals.jsx. */
 export const LOCAL_DEALS_GRID_CLASS = 'grid grid-cols-1 gap-4 md:grid-cols-2';
+
+/** Footer link columns — match pyonea Footer.jsx. */
+export const FOOTER_LINK_GRID_CLASS =
+  'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-x-8 gap-y-10';

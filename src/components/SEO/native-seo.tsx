@@ -4,7 +4,7 @@ import { Platform } from 'react-native';
 
 import { SITE_PUBLIC_URL, GOOGLE_SITE_VERIFICATION } from '@/config/native';
 import { staticRouteSeoMy } from '@/utils/seo-localization';
-import { BRAND_LOGO_BACKGROUND } from '@/constants/brand';
+import { BRAND_LOGO_BACKGROUND, BRAND_LOGO_PUBLIC_URL } from '@/constants/brand';
 import { normalizeLanguage, useAppTranslation, type SupportedLanguage } from '@/i18n';
 
 type SeoSchema = Record<string, unknown>;
@@ -201,7 +201,7 @@ function buildBaseSchema() {
         name: 'Pyonea Marketplace',
         alternateName: ['Pyonea', 'Myanmar B2B Wholesale Marketplace'],
         url: SITE_PUBLIC_URL,
-        logo: `${SITE_PUBLIC_URL}/logo.png`,
+        logo: `${SITE_PUBLIC_URL}${BRAND_LOGO_PUBLIC_URL}`,
       },
       {
         '@type': 'WebSite',

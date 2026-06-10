@@ -1,8 +1,11 @@
-import { ScrollViewStyleReset, useServerDocumentContext } from 'expo-router/html';
-import type { PropsWithChildren } from 'react';
+import {
+  ScrollViewStyleReset,
+  useServerDocumentContext,
+} from "expo-router/html";
+import type { PropsWithChildren } from "react";
 
-import { BRAND_LOGO_BACKGROUND } from '@/constants/brand';
-import { getPreconnectOrigins } from '@/utils/image-optimization';
+import { BRAND_LOGO_BACKGROUND } from "@/constants/brand";
+import { getPreconnectOrigins } from "@/utils/image-optimization";
 
 const loaderStyles = `
 :root {
@@ -52,37 +55,66 @@ body {
   pointer-events: none;
 }
 
+.pyonea-fill-wrap {
+  position: relative;
+  display: inline-block;
+  line-height: 1;
+}
+
+.pyonea-fill-outline,
 .pyonea-fill-text {
   font-family: 'Torus-SemiBold', ui-sans-serif, system-ui, sans-serif;
   font-size: clamp(3rem, 12vw, 8rem);
   font-weight: 600;
   line-height: 1;
   letter-spacing: -0.02em;
-  position: relative;
-  display: inline-block;
+  user-select: none;
+}
+
+.pyonea-fill-outline {
+  display: block;
   color: transparent;
+  -webkit-text-fill-color: transparent;
   -webkit-text-stroke: 2px var(--welcome-stroke);
+}
+
+.pyonea-fill-outline.is-complete {
+  -webkit-text-stroke: 2px var(--welcome-fill);
+}
+
+.pyonea-fill-text {
+  position: absolute;
+  inset: 0;
+  display: block;
+  color: transparent;
+  -webkit-text-fill-color: transparent;
+  -webkit-text-stroke: 0;
   background: linear-gradient(to right, var(--welcome-fill) 50%, transparent 50%);
   background-size: 200% 100%;
   background-position: 100% 0;
   -webkit-background-clip: text;
   background-clip: text;
   transition: background-position 450ms ease-out;
-  user-select: none;
 }
 
 .pyonea-fill-text.is-complete {
-  -webkit-text-stroke: 2px var(--welcome-fill);
+  color: var(--welcome-fill);
+  -webkit-text-fill-color: var(--welcome-fill);
+  background: none;
+  -webkit-background-clip: border-box;
+  background-clip: border-box;
 }
 `;
 
 const loaderScript = `
 (function () {
   var HALF_MS = 1200;
+  var FIRST_TARGET = 80;
   var loader = document.getElementById('pyonea-web-loader');
   if (!loader) return;
 
   var fillText = loader.querySelector('.pyonea-fill-text');
+  var outlineText = loader.querySelector('.pyonea-fill-outline');
   var startedAt = Date.now();
   var bootstrapRaf = 0;
 
@@ -94,8 +126,10 @@ const loaderScript = `
 
     if (clamped >= 100) {
       fillText.classList.add('is-complete');
+      if (outlineText) outlineText.classList.add('is-complete');
     } else {
       fillText.classList.remove('is-complete');
+      if (outlineText) outlineText.classList.remove('is-complete');
     }
   }
 
@@ -115,9 +149,9 @@ const loaderScript = `
 
   function bootstrapHalfFill() {
     var elapsed = Date.now() - startedAt;
-    var halfProgress = Math.min(50, (elapsed / HALF_MS) * 50);
-    applyProgress(halfProgress);
-    if (halfProgress < 50) {
+    var firstProgress = Math.min(FIRST_TARGET, (elapsed / HALF_MS) * FIRST_TARGET);
+    applyProgress(firstProgress);
+    if (firstProgress < FIRST_TARGET) {
       bootstrapRaf = requestAnimationFrame(bootstrapHalfFill);
     }
   }
@@ -177,7 +211,8 @@ const themeBootstrapScript = `
 `;
 
 export default function RootHtml({ children }: PropsWithChildren) {
-  const { htmlAttributes, bodyAttributes, headNodes, bodyNodes } = useServerDocumentContext();
+  const { htmlAttributes, bodyAttributes, headNodes, bodyNodes } =
+    useServerDocumentContext();
   const preconnectOrigins = getPreconnectOrigins();
 
   return (
@@ -191,7 +226,12 @@ export default function RootHtml({ children }: PropsWithChildren) {
         />
         <ScrollViewStyleReset />
         {preconnectOrigins.map((origin) => (
-          <link key={origin} rel="preconnect" href={origin} crossOrigin="anonymous" />
+          <link
+            key={origin}
+            rel="preconnect"
+            href={origin}
+            crossOrigin="anonymous"
+          />
         ))}
         {preconnectOrigins.map((origin) => (
           <link key={`${origin}-dns`} rel="dns-prefetch" href={origin} />
@@ -208,8 +248,20 @@ export default function RootHtml({ children }: PropsWithChildren) {
         <style dangerouslySetInnerHTML={{ __html: loaderStyles }} />
       </head>
       <body {...bodyAttributes}>
-        <div id="pyonea-web-loader" role="status" aria-live="polite" aria-label="Loading Pyonea">
-          <div className="pyonea-fill-text">Pyonea</div>
+        <div
+          id="pyonea-web-loader"
+          role="status"
+          aria-live="polite"
+          aria-label="Loading Pyonea"
+        >
+          <div className="pyonea-fill-wrap">
+            <span className="pyonea-fill-outline" aria-hidden="true">
+              Pyonea
+            </span>
+            <span className="pyonea-fill-text" aria-hidden="true">
+              Pyonea
+            </span>
+          </div>
         </div>
         {children}
         {bodyNodes}

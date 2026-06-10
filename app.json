@@ -4,7 +4,7 @@
     "slug": "pyonea-app",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/images/logo.png",
+    "icon": "./assets/images/Logo_on_payslip.png",
     "scheme": "pyoneaapp",
     "userInterfaceStyle": "automatic",
     "ios": {
@@ -13,7 +13,7 @@
     "android": {
       "adaptiveIcon": {
         "backgroundColor": "#3b8950",
-        "foregroundImage": "./assets/images/logo.png"
+        "foregroundImage": "./assets/images/Logo_on_payslip.png"
       },
       "predictiveBackGestureEnabled": false,
       "package": "com.anonymous.pyoneaapp"
@@ -39,7 +39,7 @@
         {
           "backgroundColor": "#3b8950",
           "android": {
-            "image": "./assets/images/logo.png",
+            "image": "./assets/images/Logo_on_payslip.png",
             "imageWidth": 120
           }
         }

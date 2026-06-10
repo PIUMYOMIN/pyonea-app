@@ -1,5 +1,4 @@
 import Feather from "@expo/vector-icons/Feather";
-import { OptimizedImage as Image } from "@/components/ui/optimized-image";
 import {
   Link,
   useGlobalSearchParams,
@@ -30,8 +29,9 @@ import { SafeAreaView } from "react-native-safe-area-context";
 
 import { NativeNotificationBell } from "@/components/notifications/native-notification-bell";
 import { AnnouncementNative } from "@/components/ui/announcement-native";
+import { BrandLogo } from "@/components/ui/brand-logo";
 import { footerGroups, mainRoutes } from "@/constants/routes";
-import { SITE_CONTAINER_CLASS } from "@/constants/layout";
+import { FOOTER_LINK_GRID_CLASS, SITE_CONTAINER_CLASS } from "@/constants/layout";
 import { useCookies } from "@/context/cookies";
 import { useNativeAuth } from "@/context/native-auth";
 import { useTheme } from "@/context/theme";
@@ -218,15 +218,11 @@ export function Header() {
       edges={["top"]}
       className="sticky top-0 z-50 border-b border-gray-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900"
     >
-      <View className={SITE_CONTAINER_CLASS}>
-        <View className="h-16 flex-row items-center justify-between gap-3">
+      <View className={`${SITE_CONTAINER_CLASS} min-w-0`}>
+        <View className="h-16 min-w-0 flex-row items-center justify-between gap-2 sm:gap-3">
           <Link href="/" asChild>
-            <Pressable className="flex-shrink-0 flex-row items-center gap-2">
-              <Image
-                source={require("@/assets/images/logo.png")}
-                style={{ width: 36, height: 36, borderRadius: 9 }}
-                contentFit="contain"
-              />
+            <Pressable className="shrink-0 flex-row items-center gap-2">
+              <BrandLogo size={36} />
               <Text
                 className="hidden text-xl text-green-800 dark:text-green-300 sm:flex"
                 style={{ fontFamily: "Torus-SemiBold" }}
@@ -264,7 +260,7 @@ export function Header() {
             />
           </View>
 
-          <View className="flex-row items-center gap-1 sm:gap-2">
+          <View className="min-w-0 shrink flex-row items-center gap-0.5 sm:gap-2">
             <Pressable
               onPress={toggleTheme}
               accessibilityLabel={
@@ -585,9 +581,65 @@ export function Header() {
 export function Footer() {
   const { t } = useAppTranslation();
   const { openBanner } = useCookies();
+  const footerRef = useRef<View>(null);
   const [newsletterEmail, setNewsletterEmail] = useState("");
   const [newsletterStatus, setNewsletterStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
   const [newsletterMessage, setNewsletterMessage] = useState("");
+
+  useEffect(() => {
+    if (Platform.OS !== "web") return;
+
+    const timer = window.setTimeout(() => {
+      const root = footerRef.current as unknown as HTMLElement | null;
+      if (!root) return;
+
+      const nestedScrollers: Array<{
+        tag: string;
+        overflowY: string;
+        scrollHeight: number;
+        clientHeight: number;
+      }> = [];
+
+      root.querySelectorAll("*").forEach((node) => {
+        const el = node as HTMLElement;
+        const style = window.getComputedStyle(el);
+        if (
+          (style.overflowY === "auto" || style.overflowY === "scroll") &&
+          el.scrollHeight > el.clientHeight + 2
+        ) {
+          nestedScrollers.push({
+            tag: el.tagName,
+            overflowY: style.overflowY,
+            scrollHeight: el.scrollHeight,
+            clientHeight: el.clientHeight,
+          });
+        }
+      });
+
+      // #region agent log
+      fetch("http://127.0.0.1:7881/ingest/2abef94f-5c12-4a0b-a31b-9ad0887d232d", {
+        method: "POST",
+        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "763aef" },
+        body: JSON.stringify({
+          sessionId: "763aef",
+          runId: "pre-fix",
+          hypothesisId: "H4",
+          location: "app-layout.tsx:Footer",
+          message: "Footer nested vertical scroll scan",
+          data: {
+            offenderCount: nestedScrollers.length,
+            offenders: nestedScrollers.slice(0, 5),
+            footerScrollHeight: root.scrollHeight,
+            footerClientHeight: root.clientHeight,
+          },
+          timestamp: Date.now(),
+        }),
+      }).catch(() => {});
+      // #endregion
+    }, 1500);
+
+    return () => window.clearTimeout(timer);
+  }, []);
 
   const handleNewsletterSubmit = useCallback(async () => {
     const email = newsletterEmail.trim();
@@ -615,65 +667,77 @@ export function Footer() {
   }, [newsletterEmail, t]);
 
   return (
-    <View className="border-t border-white/5 bg-gray-950 pb-8 pt-12">
-      <View className={SITE_CONTAINER_CLASS}>
+    <View
+      ref={footerRef}
+      className="min-w-0 border-t border-white/5 bg-gray-900 pb-8 pt-12 dark:bg-slate-950"
+    >
+      <View className={`${SITE_CONTAINER_CLASS} min-w-0`}>
         <View className="gap-4 border-b border-white/10 pb-10 sm:flex-row sm:items-center sm:justify-between">
-          <View className="w-fit flex-row items-center gap-2.5">
-            <Image
-              source={require("@/assets/images/logo.png")}
-              style={{ width: 36, height: 36, borderRadius: 9 }}
-              contentFit="contain"
-            />
-            <View className="flex-1">
-              <Text
-                className="text-lg text-white"
-                style={{ fontFamily: "Torus-SemiBold" }}
-              >
-                {t("header.logo_text")}
-              </Text>
-              <Text className="mt-0.5 max-w-md font-sans text-sm leading-5 text-gray-500">
-                {t("footer.tagline")}
-              </Text>
-            </View>
-          </View>
+          <Link href="/" asChild>
+            <Pressable className="min-w-0 flex-row items-center gap-2.5 self-start">
+              <BrandLogo size={36} opacity={0.9} />
+              <View className="min-w-0 flex-1">
+                <Text
+                  className="text-lg text-white"
+                  style={{ fontFamily: "Torus-SemiBold" }}
+                >
+                  {t("header.logo_text")}
+                </Text>
+                <Text className="mt-0.5 max-w-md font-sans text-sm leading-5 text-gray-500 dark:text-slate-400">
+                  {t("footer.tagline")}
+                </Text>
+              </View>
+            </Pressable>
+          </Link>
         </View>
 
-        <View className="gap-x-8 gap-y-10 pt-10 sm:flex-row sm:flex-wrap xl:flex-nowrap">
+        <View className={`${FOOTER_LINK_GRID_CLASS} pt-10`}>
           {footerGroups.map((group) => (
-            <View key={group.title} className="min-w-40 flex-1 gap-1.5">
-              <Text className="mb-2 font-sans text-xs font-bold uppercase tracking-wider text-gray-500">
+            <View key={group.title} className="min-w-0 gap-1.5">
+              <Text className="mb-2 font-sans text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-500">
                 {t(footerGroupKeys[group.title] || group.title)}
               </Text>
               {group.routes.map((route) => (
                 <Link key={String(route.href)} href={route.href} asChild>
-                  <Text className="py-0.5 font-sans text-sm text-gray-400">
+                  <Text className="py-0.5 font-sans text-sm text-gray-400 dark:text-slate-400">
                     {t(footerRouteKeys[String(route.href)] || route.label)}
                   </Text>
                 </Link>
               ))}
+              {group.title === "Legal" ? (
+                <Pressable onPress={openBanner} className="self-start py-0.5">
+                  <Text className="font-sans text-sm text-gray-400 dark:text-slate-400">
+                    {t("footer.cookie_settings")}
+                  </Text>
+                </Pressable>
+              ) : null}
             </View>
           ))}
         </View>
 
-        <View className="mt-12 gap-10 border-t border-white/10 pt-10 lg:flex-row lg:items-start">
-          <View className="flex-1 gap-8">
+        <View className="mt-12 grid gap-10 border-t border-white/10 pt-10 lg:grid-cols-2 lg:items-start lg:gap-16">
+          <View className="order-2 gap-8 lg:order-1">
             <View>
-              <Text className="mb-3 font-sans text-xs font-bold uppercase tracking-wider text-gray-500">
+              <Text className="mb-3 font-sans text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-500">
                 {t("footer.contact_info")}
               </Text>
-              <Text className="font-sans text-sm text-gray-400">
-                {t("footer.phone")}
-              </Text>
-              <Text className="mt-2 font-sans text-sm text-gray-400">
-                {t("footer.email")}
-              </Text>
-              <Text className="mt-2 max-w-sm font-sans text-sm leading-6 text-gray-500">
+              <Pressable onPress={() => void Linking.openURL("tel:+959792115547")}>
+                <Text className="font-sans text-sm text-gray-400 dark:text-slate-400">
+                  {t("footer.phone")}
+                </Text>
+              </Pressable>
+              <Pressable onPress={() => void Linking.openURL("mailto:contact@pyonea.com")} className="mt-2">
+                <Text className="font-sans text-sm text-gray-400 dark:text-slate-400">
+                  {t("footer.email")}
+                </Text>
+              </Pressable>
+              <Text className="mt-2 max-w-sm font-sans text-sm leading-6 text-gray-500 dark:text-slate-500">
                 {t("footer.address")}
               </Text>
             </View>
 
             <View>
-              <Text className="mb-3 font-sans text-xs font-bold uppercase tracking-wider text-gray-500">
+              <Text className="mb-3 font-sans text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-500">
                 {t("footer.follow_us")}
               </Text>
               <View className="flex-row flex-wrap gap-x-5 gap-y-2">
@@ -683,7 +747,7 @@ export function Footer() {
                     onPress={() => void Linking.openURL(link.url)}
                     accessibilityRole="link"
                   >
-                    <Text className="font-sans text-sm text-gray-400">
+                    <Text className="font-sans text-sm text-gray-400 dark:text-slate-400">
                       {t(`footer.${link.key}`)}
                     </Text>
                   </Pressable>
@@ -692,18 +756,18 @@ export function Footer() {
             </View>
           </View>
 
-          <View className="w-full max-w-lg gap-2">
+          <View className="order-1 w-full max-w-lg gap-2 lg:order-2 lg:justify-self-end">
             <Text className="font-sans text-sm font-semibold text-white">
               {t("footer.newsletter_title")}
             </Text>
             <Text className="font-sans text-xs leading-5 text-green-200">
               {t("footer.newsletter_subtitle")}
             </Text>
-            <View className="mt-1 flex-row gap-2">
+            <View className="mt-1 flex-col gap-2 sm:flex-row">
               <TextInput
                 value={newsletterEmail}
                 onChangeText={setNewsletterEmail}
-                className="min-w-0 flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 font-sans text-sm text-white"
+                className="min-w-0 w-full flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 font-sans text-sm text-white"
                 placeholder={t("footer.newsletter_email_placeholder")}
                 placeholderTextColor="#bbf7d0"
                 keyboardType="email-address"
@@ -712,7 +776,7 @@ export function Footer() {
               <Pressable
                 disabled={newsletterStatus === "loading"}
                 onPress={handleNewsletterSubmit}
-                className="rounded-lg bg-white px-4 py-2 disabled:opacity-60">
+                className="shrink-0 items-center justify-center rounded-lg bg-white px-4 py-2 disabled:opacity-60 sm:self-stretch">
                 <Text className="font-sans text-sm font-semibold text-green-700">
                   {newsletterStatus === "loading" ? t("footer.newsletter_subscribing") : t("footer.newsletter_subscribe")}
                 </Text>
@@ -730,23 +794,22 @@ export function Footer() {
         </View>
 
         <View className="mt-10 gap-3 border-t border-white/10 pt-8 sm:flex-row sm:items-center sm:justify-between">
-          <Text className="font-sans text-sm text-gray-500">
-            {t("footer.copyright_label", { year: new Date().getFullYear() })}{" "}
-            <Text
-              className="text-gray-400"
-              style={{ fontFamily: "Torus-SemiBold" }}
-            >
-              {t("header.logo_text")}
+          <View className="min-w-0 flex-1">
+            <Text className="font-sans text-sm leading-6 text-gray-500 dark:text-slate-500">
+              {t("footer.copyright_label", { year: new Date().getFullYear() })}{" "}
+              <Text
+                className="text-gray-400 dark:text-slate-400"
+                style={{ fontFamily: "Torus-SemiBold" }}
+              >
+                {t("header.logo_text")}
+              </Text>
+              {" · "}
+              {t("footer.rights_reserved")}
             </Text>
-          </Text>
-          <Text className="max-w-md font-sans text-sm text-gray-500 sm:text-right">
+          </View>
+          <Text className="max-w-md font-sans text-sm text-gray-500 dark:text-slate-500 sm:text-right">
             {t("footer.copyright")}
           </Text>
-          <Pressable onPress={openBanner} className="self-start sm:self-auto">
-            <Text className="font-sans text-sm font-semibold text-gray-400">
-              {t("footer.cookie_settings")}
-            </Text>
-          </Pressable>
         </View>
       </View>
     </View>
@@ -887,7 +950,7 @@ export function AppLayout({
 
   if (!scrollEnabled) {
     return (
-      <View className="flex-1 bg-gray-50 dark:bg-slate-950">
+      <View className="min-w-0 flex-1 bg-gray-50 dark:bg-slate-950">
         {!isNative ? <Header /> : null}
         {isNative ? (
           <SafeAreaView edges={["top"]} className="flex-1 bg-gray-50 dark:bg-slate-950">
@@ -903,11 +966,11 @@ export function AppLayout({
 
   if (isNative) {
     return (
-      <View className="flex-1 bg-gray-50 dark:bg-slate-950">
-        <SafeAreaView edges={["top"]} className="flex-1 bg-gray-50 dark:bg-slate-950">
+      <View className="min-w-0 flex-1 bg-gray-50 dark:bg-slate-950">
+        <SafeAreaView edges={["top"]} className="min-w-0 flex-1 bg-gray-50 dark:bg-slate-950">
           <ScrollView
-            className="flex-1"
-            contentContainerClassName={showNativeBottomTabs ? "grow pb-24" : "grow"}
+            className="min-w-0 flex-1"
+            contentContainerClassName={showNativeBottomTabs ? "min-w-0 grow pb-24" : "min-w-0 grow"}
             keyboardDismissMode="on-drag"
             keyboardShouldPersistTaps="handled"
             nestedScrollEnabled
@@ -925,11 +988,11 @@ export function AppLayout({
   }
 
   return (
-    <View className="flex-1 bg-gray-50 dark:bg-slate-950">
+    <View className="min-w-0 flex-1 bg-gray-50 dark:bg-slate-950">
       <Header />
       <ScrollView
-        className="flex-1"
-        contentContainerClassName="grow"
+        className="min-w-0 flex-1"
+        contentContainerClassName="min-w-0 grow"
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         nestedScrollEnabled
