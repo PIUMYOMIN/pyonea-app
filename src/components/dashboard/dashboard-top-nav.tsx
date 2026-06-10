@@ -1,14 +1,15 @@
 import Feather from "@expo/vector-icons/Feather";
 import { OptimizedImage as Image } from "@/components/ui/optimized-image";
-import { Link, useRouter, type Href } from "expo-router";
+import { Link, useGlobalSearchParams, usePathname, useRouter, type Href } from "expo-router";
 import { useState, type ReactNode } from "react";
-import { Pressable, Text, TextInput, View } from "react-native";
+import { Platform, Pressable, Text, TextInput, View } from "react-native";
 
 import { NativeNotificationBell } from "@/components/notifications/native-notification-bell";
 import { BRAND_LOGO } from "@/constants/brand";
 import { useNativeAuth } from "@/context/native-auth";
 import { useTheme } from "@/context/theme";
 import {
+  mergeRouteLang,
   normalizeLanguage,
   useAppTranslation,
   type SupportedLanguage,
@@ -52,6 +53,8 @@ export function DashboardTopNav({
   showBrand = true,
 }: DashboardTopNavProps) {
   const router = useRouter();
+  const pathname = usePathname() || "/";
+  const params = useGlobalSearchParams<Record<string, string | string[] | undefined>>();
   const { user, logout } = useNativeAuth();
   const { isDark, toggleTheme } = useTheme();
   const { i18n, language, t } = useAppTranslation();
@@ -68,6 +71,11 @@ export function DashboardTopNav({
 
   const changeLanguage = (nextLanguage: SupportedLanguage) => {
     void i18n.changeLanguage(nextLanguage);
+    if (Platform.OS === "web") {
+      router.replace(
+        mergeRouteLang(pathname, params, nextLanguage) as Href,
+      );
+    }
     setLanguageOpen(false);
   };
 

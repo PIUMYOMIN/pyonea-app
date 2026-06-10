@@ -15,6 +15,7 @@ import { NativeAuthProvider } from '@/context/native-auth';
 import { AppThemeProvider, useTheme } from '@/context/theme';
 import { WishlistProvider } from '@/context/wishlist-context';
 import { WelcomeLoaderProvider } from '@/context/welcome-loader';
+import { RouteLanguageSync } from '@/i18n';
 import '@/i18n';
 import '../global.css';
 
@@ -25,6 +26,7 @@ function RootStack() {
 
   return (
     <ExpoThemeProvider value={isDark ? DarkTheme : DefaultTheme}>
+      <RouteLanguageSync />
       <NativeSeo />
       <AnalyticsPageTracker />
       <AuthDeepLinkHandler />

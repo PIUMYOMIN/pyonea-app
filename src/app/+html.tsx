@@ -190,13 +190,23 @@ const loaderScript = `
 const themeBootstrapScript = `
 (function () {
   try {
+    var root = document.documentElement;
+    var urlLang = new URLSearchParams(window.location.search).get('lang');
+    var storedLang = localStorage.getItem('pyonea_language') || localStorage.getItem('i18nextLng');
+    var langSource = urlLang || storedLang || '';
+    var normalizedLang = String(langSource).toLowerCase();
+    if (normalizedLang.indexOf('en') === 0) {
+      root.lang = 'en';
+    } else if (normalizedLang.indexOf('my') === 0 || normalizedLang.indexOf('mm') === 0) {
+      root.lang = 'my';
+    }
+
     var storageKey = 'pyonea-theme';
     var theme = localStorage.getItem(storageKey);
     if (theme !== 'dark' && theme !== 'light') {
       theme = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
     }
     var isDark = theme === 'dark';
-    var root = document.documentElement;
     if (isDark) {
       root.classList.add('dark');
     } else {

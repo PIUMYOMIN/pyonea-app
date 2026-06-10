@@ -277,6 +277,7 @@ export function ProductListNative() {
     max_price?: string;
     sort_by?: string;
     sort_order?: string;
+    lang?: string;
   }>();
   const searchQuery = typeof params.search === 'string' ? params.search : '';
   const selectedCategory = typeof params.category === 'string' ? params.category : '';
@@ -327,11 +328,13 @@ export function ProductListNative() {
       else next.delete(key);
     });
 
+    next.set('lang', activeLanguage);
+
     const search = next.toString();
-    router.push(search ? `/products?${search}` : '/products');
+    router.push(`/products?${search}`);
   };
 
-  const clearFilters = () => router.push('/products');
+  const clearFilters = () => router.push(`/products?lang=${activeLanguage}`);
 
   useEffect(() => {
     if (isDesktop && sidebarOpen) setSidebarOpen(false);

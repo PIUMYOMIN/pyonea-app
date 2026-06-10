@@ -38,6 +38,7 @@ import { useTheme } from "@/context/theme";
 import { useCartCount } from "@/context/cart-count-context";
 import { useWishlist } from "@/context/wishlist-context";
 import {
+  mergeRouteLang,
   normalizeLanguage,
   useAppTranslation,
   type SupportedLanguage,
@@ -156,15 +157,6 @@ export function Header() {
     setSearchTerm(routeSearch);
   }, [routeSearch]);
 
-  useEffect(() => {
-    const routeLanguage = typeof params.lang === "string" ? params.lang : null;
-    if (!routeLanguage) return;
-    const normalized = normalizeLanguage(routeLanguage);
-    if (normalizeLanguage(i18n.resolvedLanguage || i18n.language) !== normalized) {
-      void i18n.changeLanguage(normalized);
-    }
-  }, [i18n, params.lang]);
-
   const navItems = useMemo(
     () =>
       mainRoutes.map((route) => ({
@@ -181,9 +173,13 @@ export function Header() {
   const submitSearch = () => {
     const term = searchTerm.trim();
     const href = term
-      ? (`/products?search=${encodeURIComponent(term)}` as Href)
-      : "/products";
-    router.push(href);
+      ? mergeRouteLang(
+          '/products',
+          { search: term },
+          activeLanguage,
+        )
+      : mergeRouteLang('/products', {}, activeLanguage);
+    router.push(href as Href);
     setMobileOpen(false);
     setMobileSearch(false);
   };
@@ -194,15 +190,21 @@ export function Header() {
     if (!pathname.startsWith("/products")) return;
 
     const href = value.trim()
-      ? (`/products?search=${encodeURIComponent(value.trim())}` as Href)
-      : "/products";
-    router.replace(href);
+      ? mergeRouteLang('/products', { search: value.trim() }, activeLanguage)
+      : mergeRouteLang('/products', {}, activeLanguage);
+    router.replace(href as Href);
   };
 
   const changeLanguage = (nextLanguage: SupportedLanguage) => {
     void i18n.changeLanguage(nextLanguage);
     if (Platform.OS === "web") {
-      router.replace(`${pathname}?lang=${nextLanguage}` as Href);
+      router.replace(
+        mergeRouteLang(
+          pathname,
+          params as Record<string, string | string[] | undefined>,
+          nextLanguage,
+        ) as Href,
+      );
     }
   };
 
