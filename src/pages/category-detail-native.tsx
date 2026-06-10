@@ -1,16 +1,15 @@
 import Feather from '@expo/vector-icons/Feather';
 import { Link, useRouter, type Href } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { FlatList, Platform, Pressable, Text, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { PRODUCT_LIST_GRID_CLASS, SITE_CONTAINER_CLASS } from '@/constants/layout';
 import {
   CardSkeleton,
-  ProductListCard,
-  PRODUCT_CARD_ROW_CLASS,
+  ProductListRow,
+  ProductListRowSkeleton,
 } from '@/components/marketplace-list-screen';
-import { LazyMountWhenVisible } from '@/components/ui/lazy-mount-when-visible';
 import {
   CategoryCardFromBrowser,
   getCategoryDisplayName,
@@ -41,6 +40,7 @@ export function CategoryDetailNative({ slug, initialCategory = null }: CategoryD
   const [page, setPage] = useState(1);
   const [hasMore, setHasMore] = useState(true);
   const [error, setError] = useState('');
+  const loadMoreLockRef = useRef(false);
   const mutedIconColor = isDark ? '#94a3b8' : '#64748b';
   const displayName = category ? getCategoryDisplayName(category, language) : '';
   const description =
@@ -116,8 +116,9 @@ export function CategoryDetailNative({ slug, initialCategory = null }: CategoryD
   }, [category, t]);
 
   const loadMore = async () => {
-    if (!category || loadingProducts || loadingMore || !hasMore) return;
+    if (!category || loadMoreLockRef.current || loadingProducts || loadingMore || !hasMore) return;
 
+    loadMoreLockRef.current = true;
     const nextPage = page + 1;
     setLoadingMore(true);
 
@@ -140,6 +141,7 @@ export function CategoryDetailNative({ slug, initialCategory = null }: CategoryD
       setError(t('products.fetch_error'));
     } finally {
       setLoadingMore(false);
+      loadMoreLockRef.current = false;
     }
   };
 
@@ -224,60 +226,41 @@ export function CategoryDetailNative({ slug, initialCategory = null }: CategoryD
               ))}
             </View>
           ) : products.length > 0 ? (
-            <FlatList
-              data={productRows}
-              keyExtractor={(_, index) => `category-product-row-${index}`}
-              scrollEnabled={false}
-              renderItem={({ item: row, index: rowIndex }) => {
-                const emptySlots = Math.max(0, productColumns - row.length);
-                const eagerRow = rowIndex < 2;
-                const rowContent = (
-                  <View className="product-list-row mb-3 flex-row items-stretch gap-3 sm:mb-4 sm:gap-4">
-                    {row.map((product) => (
-                      <ProductListCard
-                        key={String(product.id)}
-                        product={product}
-                        className={PRODUCT_CARD_ROW_CLASS}
-                        imagePriority={eagerRow}
-                      />
-                    ))}
-                    {Array.from({ length: emptySlots }).map((_, index) => (
-                      <View
-                        key={`category-row-filler-${index}`}
-                        className={`${PRODUCT_CARD_ROW_CLASS} opacity-0`}
-                        pointerEvents="none"
-                      />
-                    ))}
-                  </View>
-                );
-
-                if (Platform.OS === 'web' && !eagerRow) {
-                  return (
-                    <LazyMountWhenVisible
-                      placeholder={
-                        <View className="product-list-row mb-3 flex-row items-stretch gap-3 sm:mb-4 sm:gap-4">
-                          {Array.from({ length: productColumns }).map((_, index) => (
-                            <CardSkeleton key={`category-row-placeholder-${index}`} className={PRODUCT_CARD_ROW_CLASS} />
-                          ))}
-                        </View>
-                      }>
-                      {rowContent}
-                    </LazyMountWhenVisible>
-                  );
+            Platform.OS === 'web' ? (
+              <View>
+                {productRows.map((row, rowIndex) => (
+                  <ProductListRow
+                    key={`category-product-row-${rowIndex}`}
+                    row={row}
+                    productColumns={productColumns}
+                    rowIndex={rowIndex}
+                  />
+                ))}
+                {loadingMore ? <ProductListRowSkeleton productColumns={productColumns} /> : null}
+              </View>
+            ) : (
+              <FlatList
+                data={productRows}
+                keyExtractor={(_, index) => `category-product-row-${index}`}
+                scrollEnabled={false}
+                renderItem={({ item: row, index: rowIndex }) => (
+                  <ProductListRow
+                    row={row}
+                    productColumns={productColumns}
+                    rowIndex={rowIndex}
+                  />
+                )}
+                initialNumToRender={6}
+                maxToRenderPerBatch={4}
+                windowSize={9}
+                removeClippedSubviews
+                ListFooterComponent={
+                  loadingMore ? (
+                    <ProductListRowSkeleton productColumns={productColumns} />
+                  ) : null
                 }
-
-                return rowContent;
-              }}
-              ListFooterComponent={
-                loadingMore ? (
-                  <View className="mb-3 flex-row items-stretch gap-3 sm:mb-4 sm:gap-4">
-                    {Array.from({ length: productColumns }).map((_, index) => (
-                      <CardSkeleton key={`category-more-skeleton-${index}`} className={PRODUCT_CARD_ROW_CLASS} />
-                    ))}
-                  </View>
-                ) : null
-              }
-            />
+              />
+            )
           ) : (
             <View className="items-center py-12">
               <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">

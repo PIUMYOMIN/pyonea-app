@@ -20,15 +20,16 @@ import { ProductVariantPicker } from '@/components/product/product-variant-picke
 import { SocialSharePanel } from '@/components/ui/social-share-panel';
 import { SITE_PUBLIC_URL } from '@/config/native';
 import { useNativeAuth } from '@/context/native-auth';
+import { useTheme } from '@/context/theme';
 import { useWishlist } from '@/context/wishlist-context';
 import { localizeBilingualName, useAppTranslation } from '@/i18n';
 import { hasUserRole } from '@/utils/auth-routing';
 import { emitCartCountChanged } from '@/utils/native-cart-events';
 import {
+  addToCompare,
   isProductCompared,
-  loadCompareItems,
-  saveCompareItems,
-  type NativeCompareItem,
+  removeCompareItem,
+  subscribeCompareChanged,
 } from '@/utils/compare-native';
 import {
   addProductToCart,
@@ -60,7 +61,9 @@ type DeliveryLabel = {
 
 function Stars({ rating, count, showCount = true }: { rating: number; count?: number; showCount?: boolean }) {
   const { t } = useAppTranslation();
+  const { isDark } = useTheme();
   const filled = Math.round(rating);
+  const emptyStarColor = isDark ? '#64748b' : '#d1d5db';
 
   return (
     <View className="flex-row flex-wrap items-center gap-y-1">
@@ -69,7 +72,7 @@ function Stars({ rating, count, showCount = true }: { rating: number; count?: nu
           <FontAwesome
             key={star}
             name={star <= filled ? 'star' : 'star-o'}
-            color={star <= filled ? '#facc15' : '#d1d5db'}
+            color={star <= filled ? '#facc15' : emptyStarColor}
             size={18}
           />
         ))}
@@ -117,22 +120,30 @@ function PillChip({
   label: string;
   tone?: 'neutral' | 'stock-in' | 'stock-out' | 'verified' | 'delivery';
 }) {
-  const classes = {
+  const textClasses = {
+    neutral: 'text-gray-700 dark:text-slate-200',
+    'stock-in': 'text-green-700 dark:text-green-300',
+    'stock-out': 'text-red-700 dark:text-red-300',
+    verified: 'text-blue-700 dark:text-blue-300',
+    delivery: 'text-amber-800 dark:text-amber-200',
+  }[tone];
+
+  const containerClasses = {
     neutral:
-      'border-gray-200 bg-gray-100 text-gray-700 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-200',
+      'border-gray-200 bg-gray-100 dark:border-slate-700 dark:bg-slate-800',
     'stock-in':
-      'border-green-200 bg-green-50 text-green-700 dark:border-green-800 dark:bg-green-900/20 dark:text-green-300',
+      'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20',
     'stock-out':
-      'border-red-200 bg-red-50 text-red-700 dark:border-red-800 dark:bg-red-900/20 dark:text-red-300',
+      'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20',
     verified:
-      'border-blue-200 bg-blue-50 text-blue-700 dark:border-blue-800 dark:bg-blue-900/20 dark:text-blue-300',
+      'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20',
     delivery:
-      'border-amber-200 bg-amber-50 text-amber-800 dark:border-amber-800 dark:bg-amber-900/20 dark:text-amber-200',
+      'border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20',
   }[tone];
 
   return (
-    <View className={`max-w-full rounded-full border px-2.5 py-1 ${classes}`}>
-      <Text className="font-sans text-xs font-medium" numberOfLines={1}>
+    <View className={`max-w-full rounded-full border px-2.5 py-1 ${containerClasses}`}>
+      <Text className={`font-sans text-xs font-medium ${textClasses}`} numberOfLines={1}>
         {label}
       </Text>
     </View>
@@ -178,7 +189,7 @@ function DeliveryTicker({
   }
 
   return (
-    <View className="rounded-xl border border-gray-200 p-4 dark:border-slate-700">
+    <View className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900/50">
       <Text className="mb-2 font-sans text-xs text-gray-500 dark:text-slate-400">
         {t('productDetail.delivering_to')}
       </Text>
@@ -215,19 +226,6 @@ function DeliveryTicker({
     </View>
   );
 }
-
-const productToCompareItem = (product: ProductDetail): NativeCompareItem => ({
-  id: product.id,
-  slug: product.slug,
-  name: product.name,
-  price: product.price,
-  rating: String(product.rating || 0),
-  reviewCount: product.reviewCount || 0,
-  moq: product.moq || 1,
-  inStock: product.productType !== 'physical' || product.stock > 0,
-  seller: product.seller?.name || 'Pyonea seller',
-  category: product.categoryName || '',
-});
 
 const buildDeliveryLabels = (
   areas: SellerDeliveryArea[],
@@ -324,6 +322,13 @@ export function ProductDetailNative({
     },
     []
   );
+
+  useEffect(() => {
+    if (!product?.id) return;
+    return subscribeCompareChanged(() => {
+      setCompared(isProductCompared(product.id));
+    });
+  }, [product?.id]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -528,7 +533,9 @@ export function ProductDetailNative({
 
   const requireBuyer = () => {
     if (!isAuthenticated) {
-      router.push(`/login?returnTo=/products/${product?.slug || slug}` as Href);
+      router.push(
+        `/login?returnTo=${encodeURIComponent(`/products/${product?.slug || slug}`)}` as Href
+      );
       return false;
     }
 
@@ -625,17 +632,32 @@ export function ProductDetailNative({
   const handleToggleCompare = () => {
     if (!product) return;
 
-    const items = loadCompareItems();
-    const exists = items.some((item) => String(item.id) === String(product.id));
-    const nextItems = exists
-      ? items.filter((item) => String(item.id) !== String(product.id))
-      : [...items, productToCompareItem(product)].slice(0, 4);
+    if (compared) {
+      removeCompareItem(product.id);
+      setCompared(false);
+      showMessage('success', t('productDetail.remove_from_compare'));
+      return;
+    }
 
-    saveCompareItems(nextItems);
-    setCompared(!exists);
+    const result = addToCompare(product);
+    setCompared(result.compared);
+
+    if (!result.success) {
+      const message =
+        result.messageKey === 'max_items'
+          ? t('compare.max_items', { count: 4 })
+          : result.messageKey === 'same_category'
+            ? t('compare.same_category')
+            : t('compare.same_category');
+      showMessage('error', message);
+      return;
+    }
+
     showMessage(
       'success',
-      exists ? t('productDetail.remove_from_compare') : t('productDetail.add_to_compare')
+      result.messageKey === 'already_added'
+        ? t('compare.already_added')
+        : t('productDetail.add_to_compare')
     );
   };
 
@@ -643,7 +665,9 @@ export function ProductDetailNative({
 
   const handleWriteReviewPress = () => {
     if (!isAuthenticated) {
-      router.push(`/login?returnTo=/products/${product?.slug || slug}` as Href);
+      router.push(
+        `/login?returnTo=${encodeURIComponent(`/products/${product?.slug || slug}`)}` as Href
+      );
       return false;
     }
 
@@ -818,7 +842,7 @@ export function ProductDetailNative({
                         {displayPrice}
                       </Text>
                       {baseComparePrice ? (
-                        <Text className="font-sans text-base text-gray-400 line-through dark:text-slate-500 sm:text-lg">
+                        <Text className="font-sans text-base text-gray-400 line-through dark:text-slate-400 sm:text-lg">
                           {baseComparePrice}
                         </Text>
                       ) : null}
@@ -871,7 +895,7 @@ export function ProductDetailNative({
               {hasVariants ? (
                 <View
                   ref={variantSectionRef}
-                  className="min-w-0 scroll-mt-24 rounded-xl border border-gray-200 p-3 dark:border-slate-700 sm:p-4"
+                  className="min-w-0 scroll-mt-24 rounded-xl border border-gray-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-900/50 sm:p-4"
                 >
                   <ProductVariantPicker
                     options={product.options}
@@ -1043,120 +1067,145 @@ export function ProductDetailNative({
                 ) : null}
               </View>
 
-              <View className="grid grid-cols-2 gap-3 pt-4 sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-stretch">
+              <View className="gap-2 pt-4">
                 {stockIsOut ? (
                   <Pressable
                     disabled
-                    className="col-span-2 min-h-12 items-center justify-center rounded-md bg-gray-300 px-4 py-3 dark:bg-slate-700"
+                    className="min-h-9 items-center justify-center rounded-md bg-gray-300 px-3 py-1.5 dark:bg-slate-700"
                   >
-                    <Text className="font-sans text-sm font-semibold text-gray-500 dark:text-slate-400">
+                    <Text className="font-sans text-xs font-semibold text-gray-500 dark:text-slate-400 sm:text-sm">
                       🚫 {t('productDetail.out_of_stock')}
                     </Text>
                   </Pressable>
                 ) : (
                   <>
-                    <Pressable
-                      onPress={() => void handlePrimaryCta()}
-                      disabled={addingToCart}
-                      className={`col-span-2 min-h-12 flex-row items-center justify-center rounded-md px-4 py-3 sm:col-span-1 ${
-                        variantReady ? 'bg-green-600' : 'bg-amber-500'
-                      } ${addingToCart ? 'opacity-50' : ''}`}
-                    >
-                      {addingToCart ? (
-                        <ActivityIndicator color="#ffffff" />
-                      ) : (
-                        <Feather
-                          name={variantReady ? 'shopping-cart' : 'sliders'}
-                          color="#ffffff"
-                          size={18}
-                        />
-                      )}
-                      <Text className="ml-2 font-sans text-sm font-semibold text-white" numberOfLines={1}>
-                        {primaryCtaLabel}
-                      </Text>
-                    </Pressable>
-                    <Pressable
-                      onPress={() => void handleBuyNow()}
-                      disabled={addingToCart}
-                      className={`col-span-2 min-h-12 items-center justify-center rounded-md bg-gray-800 px-4 py-3 sm:col-span-1 ${
-                        addingToCart ? 'opacity-50' : ''
-                      }`}
-                    >
-                      <Text className="font-sans text-sm font-semibold text-white" numberOfLines={1}>
-                        {t('productDetail.buy_now')}
-                      </Text>
-                    </Pressable>
+                    <View className="flex-col gap-2 sm:grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-stretch sm:gap-2">
+                      <Pressable
+                        onPress={() => void handlePrimaryCta()}
+                        disabled={addingToCart}
+                        className={`min-h-9 flex-row items-center justify-center rounded-md px-3 py-1.5 sm:min-h-10 sm:px-4 ${
+                          variantReady ? 'bg-green-600' : 'bg-amber-500'
+                        } ${addingToCart ? 'opacity-50' : ''}`}
+                      >
+                        {addingToCart ? (
+                          <ActivityIndicator color="#ffffff" size="small" />
+                        ) : (
+                          <Feather
+                            name={variantReady ? 'shopping-cart' : 'sliders'}
+                            color="#ffffff"
+                            size={14}
+                          />
+                        )}
+                        <Text
+                          className="ml-1.5 font-sans text-xs font-semibold text-white sm:text-sm"
+                          numberOfLines={1}>
+                          {primaryCtaLabel}
+                        </Text>
+                      </Pressable>
+
+                      <Pressable
+                        onPress={() => void handleBuyNow()}
+                        disabled={addingToCart}
+                        className={`min-h-9 items-center justify-center rounded-md bg-gray-800 px-3 py-1.5 dark:bg-slate-700 sm:min-h-10 sm:px-4 ${
+                          addingToCart ? 'opacity-50' : ''
+                        }`}
+                      >
+                        <Text
+                          className="font-sans text-xs font-semibold text-white sm:text-sm"
+                          numberOfLines={1}>
+                          {t('productDetail.buy_now')}
+                        </Text>
+                      </Pressable>
+
+                      <View className="flex-row items-center gap-1.5 sm:gap-2">
+                        <Pressable
+                          onPress={() => void handleToggleWishlist()}
+                          disabled={wishlistLoading}
+                          accessibilityLabel={
+                            savedToWishlist
+                              ? t('productDetail.remove_from_wishlist')
+                              : t('productDetail.add_to_wishlist')
+                          }
+                          className={`h-8 w-8 items-center justify-center rounded-md border sm:h-9 sm:w-9 ${
+                            savedToWishlist
+                              ? 'border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
+                              : 'border-gray-300 bg-white dark:border-slate-600 dark:bg-slate-800'
+                          }`}
+                        >
+                          {wishlistLoading ? (
+                            <ActivityIndicator color="#16a34a" size="small" />
+                          ) : (
+                            <Feather
+                              name="heart"
+                              color={savedToWishlist ? '#ef4444' : '#64748b'}
+                              size={16}
+                            />
+                          )}
+                        </Pressable>
+
+                        <View className="relative">
+                          <Pressable
+                            onPress={handleShare}
+                            accessibilityLabel={t('productDetail.share_product')}
+                            className={`h-8 w-8 items-center justify-center rounded-md border sm:h-9 sm:w-9 ${
+                              shareOpen
+                                ? 'border-green-500 bg-green-50 dark:border-green-600 dark:bg-green-900/30'
+                                : 'border-gray-300 bg-white dark:border-slate-600 dark:bg-slate-800'
+                            }`}
+                          >
+                            <Feather
+                              name="share-2"
+                              color={shareOpen ? '#16a34a' : '#64748b'}
+                              size={16}
+                            />
+                          </Pressable>
+                          {shareOpen && sharePayload ? (
+                            <View className="absolute right-0 top-full z-50 mt-2 w-56">
+                              <SocialSharePanel
+                                payload={sharePayload}
+                                heading={t('productDetail.share_product')}
+                                shareOnLabel={t('productDetail.share_on')}
+                                copyLinkLabel={t('productDetail.copy_link')}
+                                copiedLabel={t('productDetail.copied')}
+                                platformLabels={{
+                                  facebook: t('productDetail.share_facebook'),
+                                  whatsapp: t('productDetail.share_whatsapp'),
+                                  viber: t('productDetail.share_viber'),
+                                  telegram: t('productDetail.share_telegram'),
+                                  x: t('productDetail.share_x'),
+                                }}
+                              />
+                            </View>
+                          ) : null}
+                        </View>
+
+                        <Pressable
+                          onPress={handleToggleCompare}
+                          accessibilityLabel={
+                            compared
+                              ? t('productDetail.remove_from_compare')
+                              : t('productDetail.add_to_compare')
+                          }
+                          className={`h-8 items-center justify-center rounded-md border px-2 sm:h-9 sm:min-w-[5.5rem] sm:px-2.5 ${
+                            compared
+                              ? 'border-indigo-400 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-900/30'
+                              : 'border-gray-300 bg-white dark:border-slate-600 dark:bg-slate-800'
+                          }`}
+                        >
+                          <Text
+                            className={`font-sans text-[11px] font-semibold sm:text-xs ${
+                              compared
+                                ? 'text-indigo-700 dark:text-indigo-300'
+                                : 'text-gray-700 dark:text-slate-300'
+                            }`}
+                            numberOfLines={1}>
+                            {compared ? t('productDetail.compared') : t('productDetail.compare')}
+                          </Text>
+                        </Pressable>
+                      </View>
+                    </View>
                   </>
                 )}
-
-                <View className="col-span-2 grid grid-cols-3 gap-3 sm:col-span-1 sm:flex sm:items-stretch sm:gap-2">
-                  <Pressable
-                    onPress={() => void handleToggleWishlist()}
-                    disabled={wishlistLoading}
-                    className={`h-12 min-w-0 items-center justify-center rounded-md border sm:w-12 sm:flex-none ${
-                      savedToWishlist
-                        ? 'border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
-                        : 'border-gray-300 dark:border-slate-600'
-                    }`}
-                  >
-                    {wishlistLoading ? (
-                      <ActivityIndicator color="#16a34a" />
-                    ) : (
-                      <Feather
-                        name="heart"
-                        color={savedToWishlist ? '#ef4444' : '#64748b'}
-                        size={20}
-                      />
-                    )}
-                  </Pressable>
-
-                  <View className="relative min-w-0 sm:w-12 sm:flex-none">
-                    <Pressable
-                      onPress={handleShare}
-                      className={`h-12 w-full items-center justify-center rounded-md border ${
-                        shareOpen
-                          ? 'border-green-500 bg-green-50 dark:border-green-600 dark:bg-green-900/30'
-                          : 'border-gray-300 dark:border-slate-600'
-                      }`}
-                    >
-                      <Feather name="share-2" color={shareOpen ? '#16a34a' : '#64748b'} size={20} />
-                    </Pressable>
-                    {shareOpen && sharePayload ? (
-                      <View className="absolute right-0 top-full z-50 mt-2 w-56">
-                        <SocialSharePanel
-                          payload={sharePayload}
-                          heading={t('productDetail.share_product')}
-                          shareOnLabel={t('productDetail.share_on')}
-                          copyLinkLabel={t('productDetail.copy_link')}
-                          copiedLabel={t('productDetail.copied')}
-                          platformLabels={{
-                            facebook: t('productDetail.share_facebook'),
-                            whatsapp: t('productDetail.share_whatsapp'),
-                            viber: t('productDetail.share_viber'),
-                            telegram: t('productDetail.share_telegram'),
-                            x: t('productDetail.share_x'),
-                          }}
-                        />
-                      </View>
-                    ) : null}
-                  </View>
-
-                  <Pressable
-                    onPress={handleToggleCompare}
-                    className={`h-12 min-w-0 items-center justify-center rounded-md border px-2 sm:min-w-24 sm:px-3 ${
-                      compared
-                        ? 'border-indigo-400 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-900/30'
-                        : 'border-gray-300 dark:border-slate-600'
-                    }`}
-                  >
-                    <Text
-                      className="font-sans text-xs font-semibold text-gray-600 dark:text-slate-400 sm:text-sm"
-                      numberOfLines={1}
-                    >
-                      {compared ? t('productDetail.compared') : t('productDetail.compare')}
-                    </Text>
-                  </Pressable>
-                </View>
               </View>
 
               {product.seller ? (
@@ -1221,7 +1270,7 @@ export function ProductDetailNative({
           {stockIsOut ? (
             <Pressable
               disabled
-              className="ml-auto min-h-11 max-w-[52%] items-center justify-center rounded-xl bg-gray-300 px-4 py-2.5 dark:bg-slate-700"
+              className="ml-auto min-h-10 max-w-[52%] items-center justify-center rounded-lg bg-gray-300 px-3 py-2 dark:bg-slate-700"
             >
               <Text className="font-sans text-sm font-semibold text-gray-500 dark:text-slate-400">
                 🚫 {t('productDetail.out_of_stock')}
@@ -1231,7 +1280,7 @@ export function ProductDetailNative({
             <Pressable
               onPress={() => void handlePrimaryCta()}
               disabled={addingToCart}
-              className={`ml-auto min-h-11 max-w-[52%] flex-row items-center justify-center rounded-xl px-4 py-2.5 ${
+              className={`ml-auto min-h-10 max-w-[52%] flex-row items-center justify-center rounded-lg px-3 py-2 ${
                 variantReady ? 'bg-green-600' : 'bg-amber-500'
               } ${addingToCart ? 'opacity-50' : ''}`}
             >

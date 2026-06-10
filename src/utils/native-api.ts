@@ -46,6 +46,7 @@ export type HomeProduct = {
   nameMm: string;
   seller: string;
   price: string;
+  priceValue?: number;
   rating: string;
   imageUrl?: string;
   isNew?: boolean;
@@ -53,9 +54,12 @@ export type HomeProduct = {
   discountPct?: number;
   reviewCount?: number;
   moq?: number;
+  categoryId?: string | number;
   categoryName?: string;
   categoryNameEn?: string;
   categoryNameMm?: string;
+  inStock?: boolean;
+  isActive?: boolean;
   hasVariants?: boolean;
 };
 
@@ -179,6 +183,11 @@ export type ProductDetail = {
     discountPct: number;
   }[];
   categoryName?: string;
+  categoryNameEn?: string;
+  categoryNameMm?: string;
+  categoryId?: string | number;
+  isActive?: boolean;
+  inStock?: boolean;
   sellerId?: string | number;
   seller?: {
     id: string | number;
@@ -3899,6 +3908,8 @@ export const mapHomeProduct = (product: UnknownRecord, index = 0): HomeProduct =
   const categoryNameEn = getString(category?.name_en || category?.name);
   const categoryNameMm = getString(category?.name_mm);
 
+  const stock = getNumber(product.total_stock ?? product.quantity ?? product.stock);
+
   return {
     id: routeId,
     productId: numericId,
@@ -3911,6 +3922,7 @@ export const mapHomeProduct = (product: UnknownRecord, index = 0): HomeProduct =
       'Pyonea seller'
     ),
     price: formatMMK(effectivePrice),
+    priceValue: effectivePrice,
     rating: getString(product.average_rating || product.rating, '0'),
     imageUrl: getNativeImageUrl(product.images || product.image),
     isNew: product.is_new === true || product.is_new === 1,
@@ -3918,9 +3930,12 @@ export const mapHomeProduct = (product: UnknownRecord, index = 0): HomeProduct =
     discountPct,
     reviewCount: getNumber(product.review_count),
     moq: getNumber(product.moq || product.minimum_order_quantity || product.min_order, 1),
+    categoryId: getString(product.category_id || category?.id),
     categoryName: categoryNameEn || categoryNameMm,
     categoryNameEn,
     categoryNameMm,
+    inStock: product.in_stock !== false && stock > 0,
+    isActive: product.is_active !== false,
     hasVariants: product.has_variants === true || product.has_variants === 1,
   };
 };
@@ -4431,6 +4446,13 @@ async function fetchProductDetailUncached(
       discountPct: getNumber(tier.discount_pct || tier.discount_percentage),
     })),
     categoryName: getString(category?.name_en || category?.name_mm),
+    categoryNameEn: getString(category?.name_en || category?.name),
+    categoryNameMm: getString(category?.name_mm),
+    categoryId: getString(product.category_id || category?.id),
+    isActive: product.is_active !== false,
+    inStock:
+      product.in_stock !== false &&
+      getNumber(product.total_stock || product.quantity || product.stock) > 0,
     sellerId: getString(product.seller_id || seller?.id, ''),
     seller: seller
       ? {

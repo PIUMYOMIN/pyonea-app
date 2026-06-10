@@ -1,4 +1,7 @@
-import { OptimizedImage as Image, productGridImageTransition } from "@/components/ui/optimized-image";
+import {
+  OptimizedImage as Image,
+  productGridImageTransition,
+} from "@/components/ui/optimized-image";
 import Feather from "@expo/vector-icons/Feather";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { Link, useRouter, type Href } from "expo-router";
@@ -6,17 +9,23 @@ import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 
 import { AppLayout } from "@/components/layout/app-layout";
-import { SiteSection } from '@/components/layout/site-container';
-import { PRODUCT_LIST_GRID_CLASS } from '@/constants/layout';
+import { SiteSection } from "@/components/layout/site-container";
 import { CategoryCardFromHome } from "@/components/ui/category-card";
+import { PRODUCT_LIST_GRID_CLASS } from "@/constants/layout";
 import { useNativeAuth } from "@/context/native-auth";
 import { useWishlistProductState } from "@/context/wishlist-context";
 import { localizeBilingualName, useAppTranslation } from "@/i18n";
 import { hasUserRole } from "@/utils/auth-routing";
 import {
   isProductCompared,
+  subscribeCompareChanged,
   toggleCompareProduct,
 } from "@/utils/compare-native";
+import {
+  PRODUCT_LIST_IMAGE_SIZES,
+  getProductListImageSource,
+  getProductListImageSources,
+} from "@/utils/image-optimization";
 import {
   addProductToCart,
   getProductApiId,
@@ -28,10 +37,6 @@ import {
   type SubscriptionPlan,
 } from "@/utils/native-api";
 import { emitCartCountChanged } from "@/utils/native-cart-events";
-import {
-  getProductListImageSource,
-  getProductListImageSources,
-} from "@/utils/image-optimization";
 
 const placeholderProduct = require("@/assets/images/placeholder-product.png");
 
@@ -40,8 +45,59 @@ export const PRODUCT_CARD_GRID_CLASS = "w-full min-w-0";
 
 export const PRODUCT_CARD_ROW_CLASS = "min-w-0 flex-1 self-stretch";
 
-export const PRODUCT_CARD_CAROUSEL_CLASS =
-  "w-44 flex-shrink-0 sm:w-48 lg:w-52";
+export const EAGER_PRODUCT_ROWS = 3;
+
+export function ProductListRow({
+  row,
+  productColumns,
+  rowIndex,
+}: {
+  row: HomeProduct[];
+  productColumns: number;
+  rowIndex: number;
+}) {
+  const emptySlots = Math.max(0, productColumns - row.length);
+  const eagerRow = rowIndex < EAGER_PRODUCT_ROWS;
+
+  return (
+    <View className="product-list-row mb-3 flex-row items-stretch gap-3 sm:mb-4 sm:gap-4">
+      {row.map((product) => (
+        <ProductListCard
+          key={String(product.id)}
+          product={product}
+          className={PRODUCT_CARD_ROW_CLASS}
+          imagePriority={eagerRow}
+        />
+      ))}
+      {Array.from({ length: emptySlots }).map((_, index) => (
+        <View
+          key={`product-row-filler-${index}`}
+          className={`${PRODUCT_CARD_ROW_CLASS} opacity-0`}
+          pointerEvents="none"
+        />
+      ))}
+    </View>
+  );
+}
+
+export function ProductListRowSkeleton({
+  productColumns,
+}: {
+  productColumns: number;
+}) {
+  return (
+    <View className="product-list-row mb-3 flex-row items-stretch gap-3 sm:mb-4 sm:gap-4">
+      {Array.from({ length: productColumns }).map((_, index) => (
+        <CardSkeleton
+          key={`product-row-skeleton-${index}`}
+          className={PRODUCT_CARD_ROW_CLASS}
+        />
+      ))}
+    </View>
+  );
+}
+
+export const PRODUCT_CARD_CAROUSEL_CLASS = "w-44 flex-shrink-0 sm:w-48 lg:w-52";
 
 function Stars({ rating, count }: { rating: string; count?: number }) {
   const numericRating = Number(rating) || 0;
@@ -122,30 +178,30 @@ export function MarketplaceListScreen<T>({
   return (
     <AppLayout>
       <SiteSection className="bg-gray-50 py-10 dark:bg-slate-950">
-          <View className="mb-8">
-            <Text className="font-sans text-3xl font-black text-gray-950 dark:text-slate-100 sm:text-4xl">
-              {title}
-            </Text>
-            <Text className="mt-3 max-w-3xl font-sans text-base leading-7 text-gray-600 dark:text-slate-400">
-              {description}
-            </Text>
-          </View>
+        <View className="mb-8">
+          <Text className="font-sans text-3xl font-black text-gray-950 dark:text-slate-100 sm:text-4xl">
+            {title}
+          </Text>
+          <Text className="mt-3 max-w-3xl font-sans text-base leading-7 text-gray-600 dark:text-slate-400">
+            {description}
+          </Text>
+        </View>
 
-          <View className={PRODUCT_LIST_GRID_CLASS}>
-            {loading ? (
-              Array.from({ length: skeletonCount }).map((_, index) => (
-                <CardSkeleton key={`skeleton-${index}`} />
-              ))
-            ) : items.length > 0 ? (
-              items.map(renderItem)
-            ) : (
-              <View className="w-full rounded-2xl border border-gray-100 bg-white p-8 dark:border-slate-800 dark:bg-slate-900">
-                <Text className="text-center font-sans text-base text-gray-500 dark:text-slate-400">
-                  {error || emptyMessage}
-                </Text>
-              </View>
-            )}
-          </View>
+        <View className={PRODUCT_LIST_GRID_CLASS}>
+          {loading ? (
+            Array.from({ length: skeletonCount }).map((_, index) => (
+              <CardSkeleton key={`skeleton-${index}`} />
+            ))
+          ) : items.length > 0 ? (
+            items.map(renderItem)
+          ) : (
+            <View className="w-full rounded-2xl border border-gray-100 bg-white p-8 dark:border-slate-800 dark:bg-slate-900">
+              <Text className="text-center font-sans text-base text-gray-500 dark:text-slate-400">
+                {error || emptyMessage}
+              </Text>
+            </View>
+          )}
+        </View>
       </SiteSection>
     </AppLayout>
   );
@@ -193,7 +249,15 @@ function ProductListCardComponent({
   const [wishlistBusy, setWishlistBusy] = useState(false);
   const [cartBusy, setCartBusy] = useState(false);
   const productHref = `/products/${product.slug || product.id}` as Href;
-  const [compared, setCompared] = useState(() => isProductCompared(product.id));
+  const [compared, setCompared] = useState(() =>
+    isProductCompared(getProductApiId(product)),
+  );
+
+  useEffect(() => {
+    return subscribeCompareChanged(() => {
+      setCompared(isProductCompared(getProductApiId(product)));
+    });
+  }, [product.id, product.productId]);
   const productName = localizeBilingualName(
     language,
     product.nameEn,
@@ -288,6 +352,9 @@ function ProductListCardComponent({
               loading={imagePriority ? "eager" : "lazy"}
               priority={imagePriority ? "high" : "normal"}
               recyclingKey={String(product.productId ?? product.id)}
+              sizes={
+                Platform.OS === "web" ? PRODUCT_LIST_IMAGE_SIZES : undefined
+              }
               transition={productGridImageTransition(imagePriority)}
             />
             <View className="absolute left-2 top-2 z-10 gap-1">
@@ -328,7 +395,11 @@ function ProductListCardComponent({
           }
           className="absolute right-2 top-2 z-20 h-7 w-7 items-center justify-center rounded-full bg-white/90 shadow-sm dark:bg-gray-900/85"
         >
-          <Feather name="heart" color={saved ? "#ef4444" : "#9ca3af"} size={16} />
+          <Feather
+            name="heart"
+            color={saved ? "#ef4444" : "#9ca3af"}
+            size={16}
+          />
         </Pressable>
       </View>
       <View className="mt-1.5 flex-1 flex-col px-2.5 pb-2.5 pt-1.5 sm:px-3">
@@ -399,7 +470,10 @@ function ProductListCardComponent({
           </View>
           <View className="mt-1.5 flex-row gap-1.5">
             <Pressable
-              onPress={() => setCompared(toggleCompareProduct(product).compared)}
+              onPress={() => {
+                const result = toggleCompareProduct(product);
+                setCompared(result.compared);
+              }}
               className={`h-8 min-w-0 flex-1 items-center justify-center rounded-lg border px-1 ${
                 compared
                   ? "border-indigo-500 bg-indigo-50 dark:border-indigo-700 dark:bg-indigo-900/30"
@@ -442,7 +516,9 @@ function ProductListCardComponent({
                 numberOfLines={1}
               >
                 {cartBusy
-                  ? t("productCard.adding_to_cart", { defaultValue: "Adding..." })
+                  ? t("productCard.adding_to_cart", {
+                      defaultValue: "Adding...",
+                    })
                   : product.hasVariants
                     ? t("productCard.select_options")
                     : t("productCard.add_to_cart")}

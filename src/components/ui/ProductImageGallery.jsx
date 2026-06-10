@@ -214,7 +214,7 @@ const ProductImageGallery = ({
             srcSet={mainSrcSet}
             sizes="(min-width: 1024px) 50vw, 100vw"
             alt={alt}
-            className={`absolute inset-0 w-full h-full object-contain bg-white/30 dark:bg-black/10 transition-opacity duration-300 ease-out ${
+            className={`absolute inset-0 w-full h-full object-contain bg-gray-50 dark:bg-slate-800 transition-opacity duration-300 ease-out ${
               mainLoaded ? "opacity-100" : "opacity-0"
             }`}
             style={{ animation: "pdFadeSlideIn 450ms ease-out" }}

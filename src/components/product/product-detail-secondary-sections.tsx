@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 
 import { useState } from 'react';
 
 import { ProductListCard, PRODUCT_CARD_CAROUSEL_CLASS } from '@/components/marketplace-list-screen';
+import { useTheme } from '@/context/theme';
 import { useAppTranslation } from '@/i18n';
 import type { HomeProduct, ProductDetail, ProductReview } from '@/utils/native-api';
 
@@ -16,6 +17,8 @@ function Stars({
   count?: number;
   showCount?: boolean;
 }) {
+  const { isDark } = useTheme();
+  const emptyStarColor = isDark ? '#64748b' : '#d1d5db';
   const filled = Math.round(rating || 0);
   return (
     <View className="flex-row items-center gap-1">
@@ -24,7 +27,7 @@ function Stars({
           <Feather
             key={star}
             name="star"
-            color={star <= filled ? '#f59e0b' : '#d1d5db'}
+            color={star <= filled ? '#f59e0b' : emptyStarColor}
             size={14}
           />
         ))}
@@ -121,6 +124,8 @@ export function ProductDetailSecondarySections({
   onWriteReviewPress?: () => boolean;
 }) {
   const { t } = useAppTranslation();
+  const { isDark } = useTheme();
+  const emptyStarColor = isDark ? '#64748b' : '#d1d5db';
   const [formOpen, setFormOpen] = useState(false);
   const [rating, setRating] = useState(0);
   const [comment, setComment] = useState('');
@@ -185,7 +190,7 @@ export function ProductDetailSecondarySections({
           <Text className="font-sans text-xl font-bold text-gray-900 dark:text-slate-100 sm:text-2xl">
             {t('productDetail.customer_reviews')} ({product.reviewCount || reviews.length})
           </Text>
-          {canReview ? (
+          {!hasReviewed ? (
             <Pressable
               onPress={() => {
                 if (onWriteReviewPress && !onWriteReviewPress()) return;
@@ -197,11 +202,11 @@ export function ProductDetailSecondarySections({
                 {t('productDetail.write_review')}
               </Text>
             </Pressable>
-          ) : hasReviewed ? (
+          ) : (
             <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">
               {t('productDetail.already_reviewed')}
             </Text>
-          ) : null}
+          )}
         </View>
 
         {formOpen ? (
@@ -231,10 +236,10 @@ export function ProductDetailSecondarySections({
             <Text className="mt-3 font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">
               {t('productDetail.your_rating')}
             </Text>
-            <View className="mt-2 flex-row gap-2">
+            <View className="mt-2 flex-row gap-1">
               {[1, 2, 3, 4, 5].map((star) => (
-                <Pressable key={star} onPress={() => setRating(star)} className="h-10 w-10 items-center justify-center">
-                  <Feather name="star" color={star <= rating ? '#f59e0b' : '#d1d5db'} size={28} />
+                <Pressable key={star} onPress={() => setRating(star)} className="h-9 w-9 items-center justify-center">
+                  <Feather name="star" color={star <= rating ? '#f59e0b' : emptyStarColor} size={24} />
                 </Pressable>
               ))}
             </View>
@@ -258,7 +263,7 @@ export function ProductDetailSecondarySections({
             <View className="mt-4 flex-row gap-3">
               <Pressable
                 onPress={() => setFormOpen(false)}
-                className="flex-1 rounded-xl border border-gray-200 px-4 py-3 dark:border-slate-700"
+                className="flex-1 rounded-xl border border-gray-200 bg-white px-4 py-2.5 dark:border-slate-600 dark:bg-slate-800"
               >
                 <Text className="text-center font-sans text-sm font-bold text-gray-600 dark:text-slate-300">
                   {t('common.cancel', { defaultValue: 'Cancel' })}

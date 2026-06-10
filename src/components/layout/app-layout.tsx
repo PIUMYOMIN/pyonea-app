@@ -30,6 +30,7 @@ import { SafeAreaView } from "react-native-safe-area-context";
 import { NativeNotificationBell } from "@/components/notifications/native-notification-bell";
 import { AnnouncementNative } from "@/components/ui/announcement-native";
 import { BrandLogo } from "@/components/ui/brand-logo";
+import { FloatingCompareButtonNative } from "@/components/ui/floating-compare-button-native";
 import { footerGroups, mainRoutes } from "@/constants/routes";
 import { FOOTER_LINK_GRID_CLASS, SITE_CONTAINER_CLASS } from "@/constants/layout";
 import { useCookies } from "@/context/cookies";
@@ -985,6 +986,7 @@ export function AppLayout({
           </ScrollView>
         </SafeAreaView>
         {showNativeBottomTabs ? <NativeBottomTabs /> : null}
+        <FloatingCompareButtonNative />
       </View>
     );
   }
@@ -1006,6 +1008,7 @@ export function AppLayout({
         {children}
         <Footer />
       </ScrollView>
+      <FloatingCompareButtonNative />
     </View>
   );
 }

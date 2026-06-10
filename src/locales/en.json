@@ -713,6 +713,15 @@
     "clear_all": "Clear all",
     "feature": "Feature",
     "remove": "Remove",
+    "floating_button": "Compare ({{count}})",
+    "floating_label": "Compare {{count}} products",
+    "added": "Added to comparison.",
+    "already_added": "Product already in comparison list.",
+    "max_items": "You can compare up to {{count}} products only.",
+    "same_category": "Please compare products from the same category.",
+    "loading": "Refreshing product data…",
+    "refresh_failed": "Could not refresh live product data. Showing your last saved comparison.",
+    "removed_unavailable": "{{count}} unavailable product(s) were removed from your comparison.",
     "in_stock": "In stock",
     "out_of_stock": "Out of stock",
     "not_available": "N/A",
@@ -722,7 +731,7 @@
       "moq": "MOQ",
       "stock": "Stock",
       "seller": "Seller",
-      "category_id": "Category ID"
+      "category": "Category"
     }
   },
   "seller": {

@@ -18,10 +18,9 @@ import { AppLayout } from '@/components/layout/app-layout';
 import { SITE_CONTAINER_CLASS, PRODUCT_LIST_GRID_CLASS } from '@/constants/layout';
 import {
   CardSkeleton,
-  ProductListCard,
-  PRODUCT_CARD_ROW_CLASS,
+  ProductListRow,
+  ProductListRowSkeleton,
 } from '@/components/marketplace-list-screen';
-import { LazyMountWhenVisible } from '@/components/ui/lazy-mount-when-visible';
 import { useTheme } from '@/context/theme';
 import { useAppTranslation } from '@/i18n';
 import {
@@ -304,6 +303,7 @@ export function ProductListNative() {
     minPrice || maxPrice,
   ].filter(Boolean).length;
   const mutedIconColor = isDark ? '#94a3b8' : '#64748b';
+  const loadMoreLockRef = useRef(false);
   const queryKey = `${searchQuery}|${selectedCategory}|${minPrice}|${maxPrice}|${sortBy}|${sortOrder}`;
   const productColumns = width >= 1280 ? 4 : width >= 640 ? 3 : 2;
   const productRows = useMemo(() => {
@@ -408,7 +408,9 @@ export function ProductListNative() {
   }, [maxPrice, minPrice, queryKey, searchQuery, selectedCategory, sortBy, sortOrder, t]);
 
   const loadMore = async () => {
-    if (loading || loadingMore || !hasMore) return;
+    if (loadMoreLockRef.current || loading || loadingMore || !hasMore) return;
+
+    loadMoreLockRef.current = true;
     const nextPage = page + 1;
     setLoadingMore(true);
     setError('');
@@ -433,6 +435,7 @@ export function ProductListNative() {
       setError(t('products.fetch_error'));
     } finally {
       setLoadingMore(false);
+      loadMoreLockRef.current = false;
     }
   };
 
@@ -661,71 +664,42 @@ export function ProductListNative() {
                   ))}
                 </View>
               ) : products.length > 0 ? (
-                <FlatList
-                  data={productRows}
-                  keyExtractor={(_, index) => `product-row-${index}`}
-                  renderItem={({ item: row, index: rowIndex }) => {
-                    const emptySlots = Math.max(0, productColumns - row.length);
-                    const eagerRow = rowIndex < 2;
-                    const rowContent = (
-                      <View className="product-list-row mb-3 flex-row items-stretch gap-3 sm:mb-4 sm:gap-4">
-                        {row.map((product) => (
-                          <ProductListCard
-                            key={String(product.id)}
-                            product={product}
-                            className={PRODUCT_CARD_ROW_CLASS}
-                            imagePriority={eagerRow}
-                          />
-                        ))}
-                        {Array.from({ length: emptySlots }).map((_, index) => (
-                          <View
-                            key={`product-row-filler-${index}`}
-                            className={`${PRODUCT_CARD_ROW_CLASS} opacity-0`}
-                            pointerEvents="none"
-                          />
-                        ))}
-                      </View>
-                    );
-                    const rowPlaceholder = (
-                      <View className="product-list-row mb-3 flex-row items-stretch gap-3 sm:mb-4 sm:gap-4">
-                        {Array.from({ length: productColumns }).map((_, index) => (
-                          <CardSkeleton
-                            key={`product-row-placeholder-${index}`}
-                            className={PRODUCT_CARD_ROW_CLASS}
-                          />
-                        ))}
-                      </View>
-                    );
-
-                    if (Platform.OS === 'web' && !eagerRow) {
-                      return (
-                        <LazyMountWhenVisible placeholder={rowPlaceholder}>
-                          {rowContent}
-                        </LazyMountWhenVisible>
-                      );
+                Platform.OS === 'web' ? (
+                  <View>
+                    {productRows.map((row, rowIndex) => (
+                      <ProductListRow
+                        key={`product-row-${rowIndex}`}
+                        row={row}
+                        productColumns={productColumns}
+                        rowIndex={rowIndex}
+                      />
+                    ))}
+                    {loadingMore ? <ProductListRowSkeleton productColumns={productColumns} /> : null}
+                  </View>
+                ) : (
+                  <FlatList
+                    data={productRows}
+                    keyExtractor={(_, index) => `product-row-${index}`}
+                    renderItem={({ item: row, index: rowIndex }) => (
+                      <ProductListRow
+                        row={row}
+                        productColumns={productColumns}
+                        rowIndex={rowIndex}
+                      />
+                    )}
+                    scrollEnabled={false}
+                    showsVerticalScrollIndicator={false}
+                    initialNumToRender={6}
+                    maxToRenderPerBatch={4}
+                    windowSize={9}
+                    removeClippedSubviews
+                    ListFooterComponent={
+                      loadingMore ? (
+                        <ProductListRowSkeleton productColumns={productColumns} />
+                      ) : null
                     }
-
-                    return rowContent;
-                  }}
-                  scrollEnabled={false}
-                  showsVerticalScrollIndicator={false}
-                  initialNumToRender={Platform.OS === 'web' ? 3 : 4}
-                  maxToRenderPerBatch={Platform.OS === 'web' ? 1 : 2}
-                  windowSize={Platform.OS === 'web' ? 3 : 5}
-                  removeClippedSubviews={Platform.OS !== 'web'}
-                  ListFooterComponent={
-                    loadingMore ? (
-                      <View className="mb-3 flex-row items-stretch gap-3 sm:mb-4 sm:gap-4">
-                        {Array.from({ length: productColumns }).map((_, index) => (
-                          <CardSkeleton
-                            key={`more-product-skeleton-${index}`}
-                            className={PRODUCT_CARD_ROW_CLASS}
-                          />
-                        ))}
-                      </View>
-                    ) : null
-                  }
-                />
+                  />
+                )
               ) : !loading ? (
                 <View className="w-full items-center py-16">
                   <Feather name="search" color={isDark ? '#475569' : '#cbd5e1'} size={48} />

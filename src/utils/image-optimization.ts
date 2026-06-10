@@ -78,6 +78,14 @@ export const getProductListImageSources = (
 ): ImageSource[] => {
   if (!url) return [];
 
+  const primary = getWebPUrl(url, { width: DEFAULT_LIST_WIDTH });
+  if (!primary) return [];
+
+  // Without a resize proxy every width resolves to the same URL — use one source.
+  if (!IMAGE_PROXY_URL) {
+    return [{ uri: primary, width: DEFAULT_LIST_WIDTH }];
+  }
+
   const sources: ImageSource[] = [];
 
   for (const width of widths) {
@@ -87,7 +95,7 @@ export const getProductListImageSources = (
     }
   }
 
-  return sources;
+  return sources.length > 0 ? sources : [{ uri: primary, width: DEFAULT_LIST_WIDTH }];
 };
 
 export const getProductListImageSource = (url: string | undefined): ImageSource | null => {

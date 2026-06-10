@@ -33,17 +33,18 @@ export function OptimizedImage({
   recyclingKey,
   resizeMode,
   responsivePolicy,
+  sizes,
   transition = 120,
   ...props
-}: ImageProps) {
+}: ImageProps & { sizes?: string }) {
   const sourceUri = getSourceUri(source);
   const remote = isRemoteUri(sourceUri);
   const resolvedContentFit =
     contentFit ?? (resizeMode === 'contain' || resizeMode === 'center' ? 'contain' : 'cover');
+  const hasResponsiveSources = Array.isArray(source) && source.length > 1;
   const resolvedResponsivePolicy =
-    responsivePolicy ?? (Platform.OS === 'web' && Array.isArray(source) && source.length > 1
-      ? 'static'
-      : undefined);
+    responsivePolicy ??
+    (Platform.OS === 'web' && hasResponsiveSources ? 'static' : undefined);
 
   return (
     <ExpoImage
@@ -57,6 +58,7 @@ export function OptimizedImage({
       priority={priority}
       recyclingKey={recyclingKey ?? sourceUri ?? undefined}
       responsivePolicy={resolvedResponsivePolicy}
+      sizes={sizes}
       transition={transition}
     />
   );
