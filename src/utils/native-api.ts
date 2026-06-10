@@ -14,6 +14,10 @@ export type HomeCategory = {
   name: string;
   nameEn: string;
   nameMm: string;
+  slugEn?: string;
+  slugMm?: string;
+  descriptionEn?: string;
+  descriptionMm?: string;
   productCount: number;
   childrenCount: number;
   imageUrl?: string;
@@ -22,9 +26,15 @@ export type HomeCategory = {
 };
 
 export type BrowserCategory = HomeCategory & {
-  nameEn: string;
-  nameMm: string;
   children: BrowserCategory[];
+};
+
+export type CategoryDetail = BrowserCategory & {
+  slugEn: string;
+  slugMm: string;
+  descriptionEn: string;
+  descriptionMm: string;
+  canonicalSlug: string;
 };
 
 export type HomeProduct = {
@@ -143,6 +153,8 @@ export type ProductDetail = {
   nameEn?: string;
   nameMm?: string;
   description: string;
+  descriptionEn?: string;
+  descriptionMm?: string;
   sku?: string;
   priceValue: number;
   price: string;
@@ -4111,12 +4123,18 @@ const mapBrowserCategory = (category: UnknownRecord, index = 0): BrowserCategory
     : [];
   const nameEn = getString(category.name_en || category.name, 'Unnamed category');
   const nameMm = getString(category.name_mm);
+  const slugEn = getString(category.slug_en || category.slugEn);
+  const slugMm = getString(category.slug_mm || category.slugMm);
 
   return {
     id: getString(category.id, `category-${index}`),
     name: nameEn || nameMm || 'Unnamed category',
     nameEn,
     nameMm,
+    slugEn,
+    slugMm,
+    descriptionEn: stripHtml(category.description_en || category.descriptionEn),
+    descriptionMm: stripHtml(category.description_mm || category.descriptionMm),
     productCount: getNumber(category.products_count),
     childrenCount: children.length,
     imageUrl: getNativeImageUrl(category.image),
@@ -4139,7 +4157,7 @@ export async function fetchCategoryBrowser(signal?: AbortSignal): Promise<Browse
     DATA_CACHE_TTL.categories,
     async (requestSignal) => {
       const payload = await apiGet(
-        '/categories?fields=id,name_en,name_mm,image,products_count,parent_id,children&with_products_only=true',
+        '/categories?fields=id,name_en,name_mm,slug_en,slug_mm,description_en,description_mm,image,products_count,parent_id,children&with_products_only=true',
         requestSignal
       );
 
@@ -4148,6 +4166,79 @@ export async function fetchCategoryBrowser(signal?: AbortSignal): Promise<Browse
         .filter((category) => category.parent_id == null)
         .map(mapBrowserCategory)
         .filter(hasCategoryProducts);
+    },
+    signal,
+  );
+}
+
+export function flattenBrowserCategories(categories: BrowserCategory[]): BrowserCategory[] {
+  const flat: BrowserCategory[] = [];
+
+  const walk = (items: BrowserCategory[]) => {
+    for (const item of items) {
+      flat.push(item);
+      if (item.children.length > 0) walk(item.children);
+    }
+  };
+
+  walk(categories);
+  return flat;
+}
+
+const mapCategoryDetail = (
+  category: UnknownRecord,
+  fallback: BrowserCategory,
+  index = 0
+): CategoryDetail => {
+  const mapped = mapBrowserCategory(category, index);
+  const slugEn = mapped.slugEn || fallback.slugEn || String(mapped.id);
+  const slugMm = mapped.slugMm || fallback.slugMm || '';
+
+  return {
+    ...fallback,
+    ...mapped,
+    slugEn,
+    slugMm,
+    descriptionEn: mapped.descriptionEn || fallback.descriptionEn || '',
+    descriptionMm: mapped.descriptionMm || fallback.descriptionMm || '',
+    canonicalSlug: slugEn || slugMm || String(mapped.id),
+    children: mapped.children.length > 0 ? mapped.children : fallback.children,
+  };
+};
+
+export async function fetchCategoryDetail(
+  slug: string,
+  signal?: AbortSignal
+): Promise<CategoryDetail | null> {
+  return withDataCache(
+    `api:category-detail:${slug}`,
+    DATA_CACHE_TTL.categories,
+    async (requestSignal) => {
+      const tree = await fetchCategoryBrowser(requestSignal);
+      const match = flattenBrowserCategories(tree).find(
+        (category) =>
+          category.slugEn === slug ||
+          category.slugMm === slug ||
+          String(category.id) === slug
+      );
+
+      if (!match) return null;
+
+      try {
+        const payload = await apiGet(`/categories/${encodeURIComponent(String(match.id))}`, requestSignal);
+        const record = isRecord(payload) && isRecord(payload.data) ? payload.data : extractRecordPayload(payload);
+        if (!isRecord(record)) return mapCategoryDetail({}, match);
+        return mapCategoryDetail(record, match);
+      } catch {
+        return {
+          ...match,
+          slugEn: match.slugEn || String(match.id),
+          slugMm: match.slugMm || '',
+          descriptionEn: match.descriptionEn || '',
+          descriptionMm: match.descriptionMm || '',
+          canonicalSlug: match.slugEn || match.slugMm || String(match.id),
+        };
+      }
     },
     signal,
   );
@@ -4298,6 +4389,8 @@ async function fetchProductDetailUncached(
 
   const nameEn = getString(product.name_en || product.name, 'Unnamed product');
   const nameMm = getString(product.name_mm);
+  const descriptionEn = stripHtml(product.description_en);
+  const descriptionMm = stripHtml(product.description_mm);
 
   return {
     id: getString(product.id, slug),
@@ -4305,7 +4398,9 @@ async function fetchProductDetailUncached(
     name: nameEn || nameMm || 'Unnamed product',
     nameEn,
     nameMm,
-    description: stripHtml(product.description_en || product.description_mm),
+    description: descriptionEn || descriptionMm,
+    descriptionEn,
+    descriptionMm,
     sku: getString(product.sku),
     priceValue: effectivePrice,
     price: formatMMK(effectivePrice),
@@ -7508,6 +7603,7 @@ const mapBlogPost = (post: UnknownRecord, index = 0): BlogPost => {
 export type BlogPageParams = {
   search?: string;
   category?: string;
+  page?: number;
   perPage?: number;
 };
 
@@ -7517,6 +7613,7 @@ export async function fetchBlogPagePosts(
 ): Promise<{ posts: BlogPost[]; categories: string[] }> {
   const query = new URLSearchParams({
     per_page: String(params.perPage || 24),
+    page: String(params.page || 1),
   });
 
   if (params.search) query.set('search', params.search);

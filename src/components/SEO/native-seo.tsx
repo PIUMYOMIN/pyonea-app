@@ -2,7 +2,8 @@ import Head from 'expo-router/head';
 import { useGlobalSearchParams, usePathname } from 'expo-router';
 import { Platform } from 'react-native';
 
-import { SITE_PUBLIC_URL } from '@/config/native';
+import { SITE_PUBLIC_URL, GOOGLE_SITE_VERIFICATION } from '@/config/native';
+import { staticRouteSeoMy } from '@/utils/seo-localization';
 import { BRAND_LOGO_BACKGROUND } from '@/constants/brand';
 import { normalizeLanguage, useAppTranslation, type SupportedLanguage } from '@/i18n';
 
@@ -184,6 +185,7 @@ const routeKeyFor = (pathname: string) => {
   if (cleanPath.startsWith('/products/')) return '/products';
   if (cleanPath.startsWith('/sellers/')) return '/sellers';
   if (cleanPath.startsWith('/blog/')) return '/blog';
+  if (cleanPath.startsWith('/categories/')) return '/categories';
   return cleanPath;
 };
 
@@ -230,7 +232,12 @@ export function NativeSeo({
   const params = useGlobalSearchParams<{ lang?: string }>();
   const { language } = useAppTranslation();
   const activeLanguage = normalizeLanguage(params.lang || language);
-  const routeSeo = indexableRoutes[routeKeyFor(pathname)];
+  const routeSeoBase = indexableRoutes[routeKeyFor(pathname)];
+  const routeSeoMy = staticRouteSeoMy[routeKeyFor(pathname)];
+  const routeSeo =
+    activeLanguage === 'my' && routeSeoMy
+      ? { ...routeSeoBase, ...routeSeoMy, priority: routeSeoBase?.priority }
+      : routeSeoBase;
   const routePrivate = isPrivateRoute(pathname);
   const resolvedTitle = title || routeSeo?.title || defaultTitle;
   const resolvedDescription = description || routeSeo?.description || defaultDescription;
@@ -252,6 +259,9 @@ export function NativeSeo({
     <Head>
       <title>{resolvedTitle}</title>
       <meta name="description" content={resolvedDescription} />
+      {GOOGLE_SITE_VERIFICATION ? (
+        <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />
+      ) : null}
       <meta httpEquiv="content-language" content={activeLanguage} />
       <meta name="robots" content={shouldNoindex ? 'noindex,nofollow' : 'index,follow'} />
       <link rel="canonical" href={canonicalUrl} />

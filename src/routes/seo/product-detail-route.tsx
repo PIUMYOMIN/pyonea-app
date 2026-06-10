@@ -1,25 +1,47 @@
-import { useLoaderData, useLocalSearchParams, type ErrorBoundaryProps } from 'expo-router';
+import { useGlobalSearchParams, useLoaderData, useLocalSearchParams, type ErrorBoundaryProps } from 'expo-router';
 import { Pressable, Text, View } from 'react-native';
 
 import { NativeSeo } from '@/components/SEO/native-seo';
 import { SITE_PUBLIC_URL } from '@/config/native';
 import { ProductDetailNative } from '@/pages/product-detail-native';
-import { fetchProductDetail, fetchProductList, type ProductDetail } from '@/utils/native-api';
+import { fetchProductDetail, type ProductDetail } from '@/utils/native-api';
+import {
+  buildBilingualSeoContent,
+  compactSeoText,
+  resolveSeoLanguage,
+  withPyoneaTitle,
+} from '@/utils/seo-localization';
+import { fetchAllProductSlugs } from '@/utils/seo-export';
 import { shouldSkipDynamicSeoExport } from '@/utils/static-export';
 
 const firstParam = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
-const compactText = (value: string | undefined, fallback: string, limit = 155) => {
-  const cleanValue = (value || fallback).replace(/\s+/g, ' ').trim();
-  return cleanValue.length > limit ? `${cleanValue.slice(0, limit - 1).trim()}...` : cleanValue;
-};
+const buildProductSchema = (
+  product: ProductDetail,
+  language: ReturnType<typeof resolveSeoLanguage>
+) => {
+  const seo = buildBilingualSeoContent({
+    language,
+    titleEn: product.nameEn,
+    titleMm: product.nameMm,
+    descriptionEn: product.descriptionEn,
+    descriptionMm: product.descriptionMm,
+    fallbackTitle: product.name,
+    fallbackDescription: `Buy ${product.name} from verified Myanmar suppliers on Pyonea.`,
+  });
 
-const buildProductSchema = (product: ProductDetail) => {
   const schema: Record<string, unknown> = {
     '@context': 'https://schema.org',
     '@type': 'Product',
-    name: product.name,
-    description: compactText(product.description, `${product.name} on Pyonea`, 300),
+    name: seo.schemaName,
+    ...(seo.alternateName ? { alternateName: seo.alternateName } : {}),
+    description: compactSeoText(
+      language === 'my'
+        ? product.descriptionMm || product.descriptionEn
+        : product.descriptionEn || product.descriptionMm,
+      `${product.name} on Pyonea`,
+      300
+    ),
     image: product.images,
     sku: product.sku || String(product.id),
     category: product.categoryName,
@@ -55,11 +77,8 @@ export async function generateStaticParams(): Promise<{ slug: string }[]> {
   if (shouldSkipDynamicSeoExport()) return [];
 
   try {
-    const products = await fetchProductList({ perPage: 100 });
-    return products
-      .map((product) => product.slug || String(product.id))
-      .filter(Boolean)
-      .map((slug) => ({ slug }));
+    const slugs = await fetchAllProductSlugs();
+    return slugs.map((slug) => ({ slug }));
   } catch {
     return [];
   }
@@ -99,25 +118,35 @@ export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
 
 export default function ProductDetailRoute() {
   const { slug } = useLocalSearchParams<{ slug?: string | string[] }>();
+  const params = useGlobalSearchParams<{ lang?: string | string[] }>();
   const productSlug = firstParam(slug);
   const initialProduct = useLoaderData<typeof loader>();
   const product = initialProduct || null;
   const resolvedSlug = product?.slug || productSlug || '';
+  const seoLanguage = resolveSeoLanguage(params.lang);
+  const seo = product
+    ? buildBilingualSeoContent({
+        language: seoLanguage,
+        titleEn: product.nameEn,
+        titleMm: product.nameMm,
+        descriptionEn: product.descriptionEn,
+        descriptionMm: product.descriptionMm,
+        fallbackTitle: product.name,
+        fallbackDescription: `Buy ${product.name} from verified Myanmar suppliers on Pyonea.`,
+      })
+    : null;
 
   return (
     <>
-      {product ? (
+      {product && seo ? (
         <NativeSeo
-          title={`${product.name} | Pyonea`}
-          description={compactText(
-            product.description,
-            `Buy ${product.name} from verified Myanmar suppliers on Pyonea.`
-          )}
+          title={withPyoneaTitle(seo.title)}
+          description={seo.description}
           image={product.images[0]}
-          imageAlt={product.name}
+          imageAlt={seo.schemaName}
           url={`/products/${resolvedSlug}`}
           type="product"
-          schema={buildProductSchema(product)}
+          schema={buildProductSchema(product, seoLanguage)}
         />
       ) : null}
       <ProductDetailNative slug={resolvedSlug} initialProduct={initialProduct} />

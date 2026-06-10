@@ -60,8 +60,10 @@
     "web": "expo start --web --port 8082",
     "web:clean": "node ./scripts/clear-metro-cache.js && expo start --clear --web --port 8082",
     "seo:sitemap": "node ./scripts/generate-sitemap.js",
+    "verify:google-oauth": "node ./scripts/verify-google-oauth-setup.js",
     "export:web": "npm run seo:sitemap && expo export --platform web",
     "export:web:fast": "node ./scripts/export-web-fast.js",
+    "deploy:web": "node ./scripts/deploy-web.js",
     "lint": "expo lint"
   },
   "private": true

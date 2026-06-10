@@ -8,6 +8,11 @@ import {
   GOOGLE_IOS_CLIENT_ID,
   GOOGLE_WEB_CLIENT_ID,
 } from '@/config/native';
+import {
+  assertGoogleWebOrigin,
+  formatGoogleAuthError,
+  getGoogleOAuthOriginHelp,
+} from '@/config/google-oauth';
 
 type GoogleTokenResponse = {
   access_token?: string;
@@ -68,6 +73,11 @@ export const preloadGoogleIdentityServices = () => {
     throw new Error('Google login is missing EXPO_PUBLIC_GOOGLE_CLIENT_ID.');
   }
 
+  const originHelp = getGoogleOAuthOriginHelp();
+  if (originHelp) {
+    console.warn(`[Pyonea Google OAuth] ${originHelp}`);
+  }
+
   const win = globalThis as GoogleWindow;
   if (win.google?.accounts?.oauth2) return Promise.resolve();
   if (scriptPromise) return scriptPromise;
@@ -119,14 +129,17 @@ export async function requestGoogleAccessToken() {
     return requestNativeGoogleAccessToken();
   }
 
+  assertGoogleWebOrigin();
   await preloadGoogleIdentityServices();
 
   const oauth2 = (globalThis as GoogleWindow).google?.accounts?.oauth2;
   if (!oauth2) throw new Error('Google login is not ready.');
 
+  const clientId = GOOGLE_WEB_CLIENT_ID || GOOGLE_CLIENT_ID;
+
   return new Promise<string>((resolve, reject) => {
     const client = oauth2.initTokenClient({
-      client_id: GOOGLE_CLIENT_ID,
+      client_id: clientId,
       scope: 'email profile',
       callback: (response) => {
         if (response.access_token) {
@@ -135,11 +148,15 @@ export async function requestGoogleAccessToken() {
         }
 
         reject(
-          new Error(response.error_description || response.error || 'Google login was cancelled.')
+          new Error(
+            formatGoogleAuthError(
+              response.error_description || response.error || 'Google login was cancelled.'
+            )
+          )
         );
       },
       error_callback: (error) => {
-        reject(new Error(error.message || error.type || 'Google login failed.'));
+        reject(new Error(formatGoogleAuthError(error.message || error.type || 'Google login failed.')));
       },
     });
 

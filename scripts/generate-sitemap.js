@@ -107,10 +107,57 @@ function uniqueRoutes(routes) {
   });
 }
 
+async function fetchAllPaginatedRoutes(routePath, mapItem, pageSize = 100, maxPages = 50) {
+  const routes = [];
+
+  for (let page = 1; page <= maxPages; page += 1) {
+    const separator = routePath.includes('?') ? '&' : '?';
+    const payload = await getJson(`${routePath}${separator}page=${page}&per_page=${pageSize}`).catch(
+      (error) => {
+        if (page === 1) console.warn(error.message);
+        return [];
+      }
+    );
+
+    const items = getArrayPayload(payload);
+    if (items.length === 0) break;
+
+    routes.push(...items.map(mapItem));
+    if (items.length < pageSize) break;
+  }
+
+  return routes;
+}
+
+function flattenCategories(items) {
+  const flat = [];
+
+  const walk = (categories) => {
+    for (const category of categories) {
+      flat.push(category);
+      if (Array.isArray(category.children) && category.children.length > 0) {
+        walk(category.children);
+      }
+    }
+  };
+
+  walk(items);
+  return flat;
+}
+
 async function getDynamicRoutes() {
-  const [productsPayload, sellersPayload, blogPayload] = await Promise.all([
+  const [products, categoriesPayload, sellersPayload, posts] = await Promise.all([
+    fetchAllPaginatedRoutes(
+      '/products?sort_by=created_at&sort_order=desc&fields=id,slug_en,slug,updated_at,created_at',
+      (item) => ({
+        path: `/products/${getSlug(item, ['slug_en', 'slug', 'id'])}`,
+        lastmod: getLastmod(item),
+        priority: '0.8',
+        changefreq: 'weekly',
+      })
+    ),
     getJson(
-      '/products?per_page=200&page=1&sort_by=created_at&sort_order=desc&fields=id,slug_en,slug,updated_at,created_at'
+      '/categories?fields=id,slug_en,slug_mm,updated_at,created_at,children&with_products_only=true'
     ).catch((error) => {
       console.warn(error.message);
       return [];
@@ -119,18 +166,36 @@ async function getDynamicRoutes() {
       console.warn(error.message);
       return [];
     }),
-    getJson('/blog?per_page=200').catch((error) => {
-      console.warn(error.message);
-      return [];
-    }),
+    fetchAllPaginatedRoutes('/blog', (item) => ({
+      path: `/blog/${getSlug(item, ['slug', 'slug_en', 'id'])}`,
+      lastmod: getLastmod(item),
+      priority: '0.7',
+      changefreq: 'monthly',
+    })),
   ]);
 
-  const products = getArrayPayload(productsPayload).map((item) => ({
-    path: `/products/${getSlug(item, ['slug_en', 'slug', 'id'])}`,
-    lastmod: getLastmod(item),
-    priority: '0.8',
-    changefreq: 'weekly',
-  }));
+  const categoryRoutes = [];
+  for (const item of flattenCategories(getArrayPayload(categoriesPayload))) {
+    const slugEn = getSlug(item, ['slug_en']);
+    const slugMm = getSlug(item, ['slug_mm']);
+    const lastmod = getLastmod(item);
+    if (slugEn) {
+      categoryRoutes.push({
+        path: `/categories/${slugEn}`,
+        lastmod,
+        priority: '0.7',
+        changefreq: 'weekly',
+      });
+    }
+    if (slugMm && slugMm !== slugEn) {
+      categoryRoutes.push({
+        path: `/categories/${slugMm}`,
+        lastmod,
+        priority: '0.7',
+        changefreq: 'weekly',
+      });
+    }
+  }
 
   const sellers = getArrayPayload(sellersPayload).map((item) => ({
     path: `/sellers/${getSlug(item, ['store_slug', 'slug', 'id'])}`,
@@ -139,14 +204,9 @@ async function getDynamicRoutes() {
     changefreq: 'weekly',
   }));
 
-  const posts = getArrayPayload(blogPayload).map((item) => ({
-    path: `/blog/${getSlug(item, ['slug', 'slug_en', 'id'])}`,
-    lastmod: getLastmod(item),
-    priority: '0.7',
-    changefreq: 'monthly',
-  }));
-
-  return [...products, ...sellers, ...posts].filter((route) => !route.path.endsWith('/'));
+  return [...products, ...categoryRoutes, ...sellers, ...posts].filter(
+    (route) => !route.path.endsWith('/')
+  );
 }
 
 function renderUrl(route) {

@@ -82,10 +82,17 @@ export function getCategoryDisplayName(
 }
 
 export function getCategoryHref(
-  categoryId: string | number,
+  category: HomeCategory | BrowserCategory,
   language: 'en' | 'my'
 ): Href {
-  return `/products?category=${categoryId}&lang=${language}` as Href;
+  const slugEn = category.slugEn || '';
+  const slugMm = category.slugMm || '';
+  const slug =
+    language === 'my'
+      ? slugMm || slugEn || String(category.id)
+      : slugEn || slugMm || String(category.id);
+
+  return `/categories/${slug}?lang=${language}` as Href;
 }
 
 function CategoryGradientPlaceholder({
@@ -286,7 +293,7 @@ export function CategoryCardFromHome({
             ? [`${category.productCount} ${t('category.products')}`]
             : []
       }
-      href={getCategoryHref(category.id, language)}
+      href={getCategoryHref(category, language)}
       priority={priority}
       className={className}
     />
@@ -313,7 +320,7 @@ export function CategoryCardFromBrowser({
       imageUrl={category.imageUrl}
       discountPct={category.discountPct}
       slidingItems={slidingItems}
-      href={getCategoryHref(category.id, language)}
+      href={getCategoryHref(category, language)}
       priority={priority}
       className={className}
     />

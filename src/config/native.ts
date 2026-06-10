@@ -57,6 +57,11 @@ export const GA_MEASUREMENT_ID =
   process.env.VITE_GA_MEASUREMENT_ID ||
   '';
 
+export const GOOGLE_SITE_VERIFICATION =
+  process.env.EXPO_PUBLIC_GOOGLE_SITE_VERIFICATION ||
+  process.env.VITE_GOOGLE_SITE_VERIFICATION ||
+  '';
+
 export const IS_LOCAL_API =
   API_BASE_URL.includes('localhost') ||
   API_BASE_URL.includes('127.0.0.1') ||

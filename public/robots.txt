@@ -1,4 +1,21 @@
 User-agent: *
 Allow: /
 
+# Private / account-only areas — not useful in search results.
+Disallow: /admin
+Disallow: /buyer
+Disallow: /seller/dashboard
+Disallow: /cart
+Disallow: /checkout
+Disallow: /wishlist
+Disallow: /login
+Disallow: /register
+Disallow: /forgot-password
+Disallow: /reset-password
+Disallow: /payment-success
+Disallow: /my-reports
+Disallow: /unsubscribe
+Disallow: /newsletter-confirm
+Disallow: /newsletter/confirm
+
 Sitemap: https://pyonea.com/sitemap.xml
