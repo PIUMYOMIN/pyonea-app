@@ -18,8 +18,17 @@ export async function withDataCache<T>(
   const cached = getScreenCache<T>(key, ttlMs);
   if (cached !== null) return cached;
 
-  const data = await withInFlightRequest(key, () => fetcher(signal));
+  // The in-flight promise is shared between callers, so it must not be tied to
+  // one caller's abort signal — an unmounting screen would kill the request for
+  // everyone else. Let it complete and fill the cache; aborted callers ignore
+  // the result via their own signal check below.
+  const data = await withInFlightRequest(key, () => fetcher(undefined));
   setScreenCache(key, data);
+
+  if (signal?.aborted) {
+    throw new DOMException('Aborted', 'AbortError');
+  }
+
   return data;
 }
 

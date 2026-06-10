@@ -1514,6 +1514,8 @@
     "shop": "Shop",
     "more_from_seller": "More from this seller",
     "more_from_seller_subtitle": "Browse additional products from the same store.",
+    "carousel_previous": "Previous products",
+    "carousel_next": "Next products",
     "view_store": "View store",
     "ratings": "ratings",
     "reviews": "reviews",
@@ -3971,6 +3973,8 @@
       "approved": "Approved",
       "rejected": "Rejected",
       "selected": "selected",
+      "featured": "Featured",
+      "feature": "Feature",
       "table": {
         "image": "Image",
         "name": "Name",
@@ -4045,7 +4049,10 @@
         "discountPrice": "Discount Price",
         "submitted": "Submitted",
         "rejectionReason": "Rejection Reason",
-        "variants": "Variants"
+        "variants": "Variants",
+        "category": "Category",
+        "qty": "Qty",
+        "variant": "Variant"
       },
       "buttons": {
         "preview": "Preview Product",

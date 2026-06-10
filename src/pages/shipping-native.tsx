@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import { Link, type Href } from 'expo-router';
 import { useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { useAppTranslation } from '@/i18n';
@@ -141,61 +141,144 @@ function MethodCard({
   );
 }
 
-function ZoneCard({
-  zone,
-  areas,
-  standard,
-  express,
-  freight,
+function ZoneTimeCell({
+  value,
   notAvailable,
+  tone = 'standard',
 }: {
+  value: string;
+  notAvailable: string;
+  tone?: 'standard' | 'express' | 'freight';
+}) {
+  const unavailable = value === notAvailable;
+
+  if (tone === 'freight') {
+    return (
+      <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">{value}</Text>
+    );
+  }
+
+  if (tone === 'express' && unavailable) {
+    return (
+      <View className="flex-row items-center gap-1">
+        <Feather name="x-circle" color="#94a3b8" size={14} />
+        <Text className="font-sans text-xs text-gray-400 dark:text-slate-500">{value}</Text>
+      </View>
+    );
+  }
+
+  const textClass =
+    tone === 'express'
+      ? 'text-blue-700 dark:text-blue-400'
+      : 'text-green-700 dark:text-green-400';
+
+  return (
+    <View className="flex-row items-center gap-1">
+      <Feather name="check-circle" color={tone === 'express' ? '#2563eb' : '#16a34a'} size={14} />
+      <Text className={`font-sans text-xs font-medium ${textClass}`}>{value}</Text>
+    </View>
+  );
+}
+
+type DeliveryZoneRow = {
   zone: string;
   areas: string;
   standard: string;
   express: string;
   freight: string;
-  notAvailable: string;
-}) {
-  const expressAvailable = express !== notAvailable;
+};
 
-  return (
-    <View className="rounded-xl border border-gray-100 bg-gray-50 p-4 dark:border-slate-700 dark:bg-slate-900/60">
-      <Text className="font-sans text-sm font-bold text-gray-900 dark:text-slate-100">{zone}</Text>
-      <Text className="mt-1 font-sans text-xs leading-5 text-gray-500 dark:text-slate-400">{areas}</Text>
-      <View className="mt-4 gap-2">
-        <DeliveryLine label="Standard" value={standard} icon="check-circle" color="#15803d" />
-        <DeliveryLine
-          label="Express"
-          value={express}
-          icon={expressAvailable ? 'check-circle' : 'x-circle'}
-          color={expressAvailable ? '#2563eb' : '#94a3b8'}
-        />
-        <DeliveryLine label="Freight" value={freight} icon="truck" color="#64748b" />
+function DeliveryZonesTable({
+  zones,
+  notAvailable,
+  labels,
+}: {
+  zones: DeliveryZoneRow[];
+  notAvailable: string;
+  labels: {
+    zone: string;
+    areas: string;
+    standard: string;
+    express: string;
+    freight: string;
+  };
+}) {
+  const columnClass = 'px-3 py-3';
+  const zoneCol = `${columnClass} w-[18%] min-w-[112px]`;
+  const areasCol = `${columnClass} w-[28%] min-w-[160px]`;
+  const timeCol = `${columnClass} w-[18%] min-w-[120px]`;
+
+  const table = (
+    <View className="min-w-[720px] w-full">
+      <View className="flex-row border-b border-gray-200 bg-gray-50 dark:border-slate-600 dark:bg-slate-900/70">
+        <View className={zoneCol}>
+          <Text className="font-sans text-xs font-semibold uppercase text-gray-700 dark:text-slate-300">
+            {labels.zone}
+          </Text>
+        </View>
+        <View className={areasCol}>
+          <Text className="font-sans text-xs font-semibold uppercase text-gray-700 dark:text-slate-300">
+            {labels.areas}
+          </Text>
+        </View>
+        <View className={timeCol}>
+          <Text className="font-sans text-xs font-semibold uppercase text-gray-700 dark:text-slate-300">
+            {labels.standard}
+          </Text>
+        </View>
+        <View className={timeCol}>
+          <Text className="font-sans text-xs font-semibold uppercase text-gray-700 dark:text-slate-300">
+            {labels.express}
+          </Text>
+        </View>
+        <View className={`${timeCol} pr-4`}>
+          <Text className="font-sans text-xs font-semibold uppercase text-gray-700 dark:text-slate-300">
+            {labels.freight}
+          </Text>
+        </View>
       </View>
+
+      {zones.map((row, index) => (
+        <View
+          key={row.zone}
+          className={`flex-row border-b border-gray-100 dark:border-slate-700 ${
+            index === zones.length - 1 ? 'border-b-0' : ''
+          } web:hover:bg-gray-50 dark:web:hover:bg-slate-700/30`}
+        >
+          <View className={zoneCol}>
+            <Text className="font-sans text-sm font-medium text-gray-900 dark:text-slate-100">
+              {row.zone}
+            </Text>
+          </View>
+          <View className={areasCol}>
+            <Text className="font-sans text-xs leading-5 text-gray-500 dark:text-slate-400">
+              {row.areas}
+            </Text>
+          </View>
+          <View className={timeCol}>
+            <ZoneTimeCell value={row.standard} notAvailable={notAvailable} tone="standard" />
+          </View>
+          <View className={timeCol}>
+            <ZoneTimeCell value={row.express} notAvailable={notAvailable} tone="express" />
+          </View>
+          <View className={`${timeCol} pr-4`}>
+            <ZoneTimeCell value={row.freight} notAvailable={notAvailable} tone="freight" />
+          </View>
+        </View>
+      ))}
     </View>
   );
-}
 
-function DeliveryLine({
-  label,
-  value,
-  icon,
-  color,
-}: {
-  label: string;
-  value: string;
-  icon: keyof typeof Feather.glyphMap;
-  color: string;
-}) {
   return (
-    <View className="flex-row items-center justify-between gap-3">
-      <View className="flex-row items-center gap-1.5">
-        <Feather name={icon} color={color} size={14} />
-        <Text className="font-sans text-xs font-semibold text-gray-500 dark:text-slate-400">{label}</Text>
-      </View>
-      <Text className="min-w-0 flex-1 text-right font-sans text-xs text-gray-700 dark:text-slate-300">
-        {value}
-      </Text>
+    <View className="overflow-hidden rounded-xl border border-gray-100 dark:border-slate-700">
+      <ScrollView
+        horizontal
+        showsHorizontalScrollIndicator={Platform.OS === 'web'}
+        className="w-full"
+        contentContainerClassName="min-w-full"
+      >
+        {table}
+      </ScrollView>
     </View>
   );
 }
@@ -414,11 +497,17 @@ export function ShippingNative() {
               title={t('shipping_page.zones.title')}
               subtitle={t('shipping_page.zones.subtitle')}
             />
-            <View className="gap-3">
-              {zones.map((zone) => (
-                <ZoneCard key={zone.zone} {...zone} notAvailable={notAvailable} />
-              ))}
-            </View>
+            <DeliveryZonesTable
+              zones={zones}
+              notAvailable={notAvailable}
+              labels={{
+                zone: t('shipping_page.zones.col_zone'),
+                areas: t('shipping_page.zones.col_areas'),
+                standard: t('shipping_page.zones.col_standard'),
+                express: t('shipping_page.zones.col_express'),
+                freight: t('shipping_page.zones.col_freight'),
+              }}
+            />
             <Text className="mt-4 font-sans text-xs leading-5 text-gray-500 dark:text-slate-500">
               {t('shipping_page.zones.footnote')}
             </Text>

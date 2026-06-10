@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
+import { useTheme } from '@/context/theme';
 import { useAppTranslation } from '@/i18n';
 
 type IconName = keyof typeof Feather.glyphMap;
@@ -30,10 +31,12 @@ function SectionHeader({
   title: string;
   subtitle?: string;
 }) {
+  const { isDark } = useTheme();
+
   return (
     <View className="mb-6 flex-row items-start gap-4">
       <View className="h-10 w-10 flex-shrink-0 items-center justify-center rounded-lg bg-green-100 dark:bg-green-900/30">
-        <Feather name={icon} color="#15803d" size={20} />
+        <Feather name={icon} color={isDark ? '#4ade80' : '#15803d'} size={20} />
       </View>
       <View className="min-w-0 flex-1">
         <Text className="font-sans text-xl font-bold text-gray-900 dark:text-slate-100 sm:text-2xl">
@@ -91,20 +94,34 @@ function InfoBox({
   label: string;
   children: React.ReactNode;
 }) {
-  const classes = {
-    blue: 'border-blue-100 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300',
-    amber:
-      'border-amber-100 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300',
-    green:
-      'border-green-100 bg-green-50 dark:border-green-800 dark:bg-green-900/20 text-green-800 dark:text-green-300',
-    gray: 'border-gray-200 bg-gray-50 dark:border-slate-600 dark:bg-slate-700/50 text-gray-700 dark:text-slate-300',
-  };
+  const styles = {
+    blue: {
+      box: 'border-blue-100 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20',
+      text: 'text-blue-800 dark:text-blue-300',
+    },
+    amber: {
+      box: 'border-amber-100 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20',
+      text: 'text-amber-800 dark:text-amber-300',
+    },
+    green: {
+      box: 'border-green-100 bg-green-50 dark:border-green-800 dark:bg-green-900/20',
+      text: 'text-green-800 dark:text-green-300',
+    },
+    gray: {
+      box: 'border-gray-200 bg-gray-50 dark:border-slate-600 dark:bg-slate-700/50',
+      text: 'text-gray-700 dark:text-slate-300',
+    },
+  } as const;
+
+  const toneStyle = styles[tone];
 
   return (
-    <View className={`rounded-lg border p-4 ${classes[tone]}`}>
-      <Text className="font-sans text-sm leading-6">
-        <Text className="font-semibold">{label}</Text> {children}
+    <View className={`rounded-lg border p-4 ${toneStyle.box}`}>
+      <Text className={`font-sans text-sm leading-6 ${toneStyle.text}`}>
+        <Text className="font-semibold">{label}</Text>
+        {typeof children === 'string' ? ` ${children}` : null}
       </Text>
+      {typeof children !== 'string' ? children : null}
     </View>
   );
 }
@@ -120,6 +137,8 @@ function AccordionItem({
   open: boolean;
   onToggle: () => void;
 }) {
+  const { isDark } = useTheme();
+
   return (
     <View className="overflow-hidden rounded-lg border border-gray-200 dark:border-slate-700">
       <Pressable
@@ -128,7 +147,11 @@ function AccordionItem({
         <Text className="min-w-0 flex-1 font-sans text-sm font-medium text-gray-800 dark:text-slate-100">
           {question}
         </Text>
-        <Feather name={open ? 'chevron-up' : 'chevron-down'} color="#9ca3af" size={20} />
+        <Feather
+          name={open ? 'chevron-up' : 'chevron-down'}
+          color={isDark ? '#94a3b8' : '#6b7280'}
+          size={20}
+        />
       </Pressable>
       {open ? (
         <View className="border-t border-gray-100 bg-gray-50 px-5 py-4 dark:border-slate-700 dark:bg-slate-900/50">
@@ -143,6 +166,7 @@ function AccordionItem({
 
 export function SellerGuidelinesNative() {
   const { t } = useAppTranslation();
+  const { isDark } = useTheme();
   const [activeSection, setActiveSection] = useState('eligibility');
   const [openFaq, setOpenFaq] = useState<number | null>(null);
 
@@ -274,7 +298,7 @@ export function SellerGuidelinesNative() {
                         }`}>
                         <Feather
                           name={section.icon}
-                          color={active ? '#15803d' : '#94a3b8'}
+                          color={active ? (isDark ? '#4ade80' : '#15803d') : isDark ? '#64748b' : '#94a3b8'}
                           size={16}
                         />
                         <Text
@@ -298,9 +322,11 @@ export function SellerGuidelinesNative() {
                     {t('seller_guidelines.sidebar.support_hours')}
                   </Text>
                   <Link href="/contact" asChild>
-                    <Text className="mt-3 font-sans text-xs font-medium text-green-700 underline dark:text-green-400">
-                      {t('seller_guidelines.sidebar.contact_support')}
-                    </Text>
+                    <Pressable>
+                      <Text className="mt-3 font-sans text-xs font-medium text-green-700 underline dark:text-green-400">
+                        {t('seller_guidelines.sidebar.contact_support')}
+                      </Text>
+                    </Pressable>
                   </Link>
                 </View>
               </View>
@@ -417,9 +443,11 @@ export function SellerGuidelinesNative() {
                     {t('seller_guidelines.pricing.footnote')}{' '}
                   </Text>
                   <Link href="/pricing" asChild>
-                    <Text className="font-sans text-xs leading-5 text-green-600 underline dark:text-green-400">
-                      {t('seller_guidelines.pricing.view_full_pricing')}
-                    </Text>
+                    <Pressable>
+                      <Text className="font-sans text-xs leading-5 text-green-600 underline dark:text-green-400">
+                        {t('seller_guidelines.pricing.view_full_pricing')}
+                      </Text>
+                    </Pressable>
                   </Link>
                 </View>
                 <View className="mt-5">
@@ -488,7 +516,12 @@ export function SellerGuidelinesNative() {
                     <View
                       key={document.title}
                       className="w-full flex-row items-start gap-3 rounded-lg border border-gray-100 bg-gray-50 p-4 dark:border-slate-600 dark:bg-slate-700/50 sm:w-[48%]">
-                      <Feather name="file-text" color="#94a3b8" size={20} style={{ marginTop: 2 }} />
+                      <Feather
+                        name="file-text"
+                        color={isDark ? '#94a3b8' : '#64748b'}
+                        size={20}
+                        style={{ marginTop: 2 }}
+                      />
                       <View className="min-w-0 flex-1">
                         <View className="flex-row flex-wrap items-center gap-2">
                           <Text className="font-sans text-sm font-medium text-gray-800 dark:text-slate-100">
@@ -542,9 +575,11 @@ export function SellerGuidelinesNative() {
                     {t('seller_guidelines.prohibited.footnote')}{' '}
                   </Text>
                   <Link href="/contact" asChild>
-                    <Text className="font-sans text-xs leading-5 text-green-600 underline dark:text-green-400">
-                      {t('seller_guidelines.prohibited.contact_unsure')}
-                    </Text>
+                    <Pressable>
+                      <Text className="font-sans text-xs leading-5 text-green-600 underline dark:text-green-400">
+                        {t('seller_guidelines.prohibited.contact_unsure')}
+                      </Text>
+                    </Pressable>
                   </Link>
                 </View>
               </ContentCard>
@@ -640,9 +675,11 @@ export function SellerGuidelinesNative() {
                   {t('seller_guidelines.footer.last_updated')}{' '}
                 </Text>
                 <Link href="/contact" asChild>
-                  <Text className="font-sans text-center text-xs text-green-600 dark:text-green-400">
-                    {t('seller_guidelines.footer.contact_us')}
-                  </Text>
+                  <Pressable>
+                    <Text className="font-sans text-center text-xs text-green-600 dark:text-green-400">
+                      {t('seller_guidelines.footer.contact_us')}
+                    </Text>
+                  </Pressable>
                 </Link>
               </View>
             </View>

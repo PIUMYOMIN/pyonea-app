@@ -1,7 +1,8 @@
 import {
-  OptimizedImage as Image,
+  ProductImage,
   productGridImageTransition,
-} from "@/components/ui/optimized-image";
+} from "@/components/ui/product-image";
+import { OptimizedImage } from "@/components/ui/optimized-image";
 import Feather from "@expo/vector-icons/Feather";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { Link, useRouter, type Href } from "expo-router";
@@ -12,20 +13,12 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { SiteSection } from "@/components/layout/site-container";
 import { CategoryCardFromHome } from "@/components/ui/category-card";
 import { PRODUCT_LIST_GRID_CLASS } from "@/constants/layout";
+import { useIsProductInCompare } from "@/context/compare-products-context";
 import { useNativeAuth } from "@/context/native-auth";
 import { useWishlistProductState } from "@/context/wishlist-context";
 import { localizeBilingualName, useAppTranslation } from "@/i18n";
 import { hasUserRole } from "@/utils/auth-routing";
-import {
-  isProductCompared,
-  subscribeCompareChanged,
-  toggleCompareProduct,
-} from "@/utils/compare-native";
-import {
-  PRODUCT_LIST_IMAGE_SIZES,
-  getProductListImageSource,
-  getProductListImageSources,
-} from "@/utils/image-optimization";
+import { toggleCompareProduct } from "@/utils/compare-native";
 import {
   addProductToCart,
   getProductApiId,
@@ -249,15 +242,7 @@ function ProductListCardComponent({
   const [wishlistBusy, setWishlistBusy] = useState(false);
   const [cartBusy, setCartBusy] = useState(false);
   const productHref = `/products/${product.slug || product.id}` as Href;
-  const [compared, setCompared] = useState(() =>
-    isProductCompared(getProductApiId(product)),
-  );
-
-  useEffect(() => {
-    return subscribeCompareChanged(() => {
-      setCompared(isProductCompared(getProductApiId(product)));
-    });
-  }, [product.id, product.productId]);
+  const compared = useIsProductInCompare(product);
   const productName = localizeBilingualName(
     language,
     product.nameEn,
@@ -270,22 +255,10 @@ function ProductListCardComponent({
     product.categoryNameMm,
     product.categoryName,
   );
-  const imageSources = useMemo(
-    () => getProductListImageSources(product.imageUrl),
-    [product.imageUrl],
-  );
-  const nativeImageSource = useMemo(
-    () => getProductListImageSource(product.imageUrl),
-    [product.imageUrl],
-  );
   const resolvedImageSource = useMemo(() => {
-    if (Platform.OS === "web") {
-      return imageSources.length > 0 ? imageSources : placeholderProduct;
-    }
-    if (nativeImageSource) return nativeImageSource;
     if (product.imageUrl) return { uri: product.imageUrl };
     return placeholderProduct;
-  }, [imageSources, nativeImageSource, product.imageUrl]);
+  }, [product.imageUrl]);
 
   const nameLineHeight = Platform.OS === "android" ? 20 : 18;
 
@@ -345,16 +318,14 @@ function ProductListCardComponent({
       <View className="relative w-full flex-shrink-0">
         <Link href={productHref} asChild>
           <Pressable className="aspect-square w-full overflow-hidden bg-gray-100 dark:bg-gray-700">
-            <Image
-              source={resolvedImageSource}
+            <ProductImage
+              source={resolvedImageSource ?? undefined}
               style={{ width: "100%", height: "100%" }}
               contentFit="cover"
+              brandSize="sm"
               loading={imagePriority ? "eager" : "lazy"}
               priority={imagePriority ? "high" : "normal"}
               recyclingKey={String(product.productId ?? product.id)}
-              sizes={
-                Platform.OS === "web" ? PRODUCT_LIST_IMAGE_SIZES : undefined
-              }
               transition={productGridImageTransition(imagePriority)}
             />
             <View className="absolute left-2 top-2 z-10 gap-1">
@@ -471,8 +442,7 @@ function ProductListCardComponent({
           <View className="mt-1.5 flex-row gap-1.5">
             <Pressable
               onPress={() => {
-                const result = toggleCompareProduct(product);
-                setCompared(result.compared);
+                toggleCompareProduct(product);
               }}
               className={`h-8 min-w-0 flex-1 items-center justify-center rounded-lg border px-1 ${
                 compared
@@ -565,7 +535,7 @@ export function SellerListCard({ seller }: { seller: HomeSeller }) {
         <View className="flex-row items-start gap-2 sm:gap-3">
           <View className="relative flex-shrink-0">
             {seller.imageUrl ? (
-              <Image
+              <OptimizedImage
                 source={{ uri: seller.imageUrl }}
                 style={{ width: 56, height: 56, borderRadius: 28 }}
                 contentFit="cover"
@@ -717,7 +687,7 @@ export function BlogPostCard({ post }: { post: BlogPost }) {
     <View className="w-full overflow-hidden rounded-2xl border border-gray-100 bg-white shadow-sm sm:w-[48%] lg:w-[31%]">
       <View className="aspect-[16/9] bg-gray-100">
         {post.imageUrl ? (
-          <Image
+          <OptimizedImage
             source={{ uri: post.imageUrl }}
             style={{ width: "100%", height: "100%" }}
             contentFit="cover"

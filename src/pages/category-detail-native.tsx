@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import { Link, useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
-import { FlatList, Platform, Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { PRODUCT_LIST_GRID_CLASS, SITE_CONTAINER_CLASS } from '@/constants/layout';
@@ -226,41 +226,17 @@ export function CategoryDetailNative({ slug, initialCategory = null }: CategoryD
               ))}
             </View>
           ) : products.length > 0 ? (
-            Platform.OS === 'web' ? (
-              <View>
-                {productRows.map((row, rowIndex) => (
-                  <ProductListRow
-                    key={`category-product-row-${rowIndex}`}
-                    row={row}
-                    productColumns={productColumns}
-                    rowIndex={rowIndex}
-                  />
-                ))}
-                {loadingMore ? <ProductListRowSkeleton productColumns={productColumns} /> : null}
-              </View>
-            ) : (
-              <FlatList
-                data={productRows}
-                keyExtractor={(_, index) => `category-product-row-${index}`}
-                scrollEnabled={false}
-                renderItem={({ item: row, index: rowIndex }) => (
-                  <ProductListRow
-                    row={row}
-                    productColumns={productColumns}
-                    rowIndex={rowIndex}
-                  />
-                )}
-                initialNumToRender={6}
-                maxToRenderPerBatch={4}
-                windowSize={9}
-                removeClippedSubviews
-                ListFooterComponent={
-                  loadingMore ? (
-                    <ProductListRowSkeleton productColumns={productColumns} />
-                  ) : null
-                }
-              />
-            )
+            <View>
+              {productRows.map((row, rowIndex) => (
+                <ProductListRow
+                  key={`category-product-row-${rowIndex}`}
+                  row={row}
+                  productColumns={productColumns}
+                  rowIndex={rowIndex}
+                />
+              ))}
+              {loadingMore ? <ProductListRowSkeleton productColumns={productColumns} /> : null}
+            </View>
           ) : (
             <View className="items-center py-12">
               <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">

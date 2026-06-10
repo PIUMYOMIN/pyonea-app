@@ -31,6 +31,7 @@ import { NativeNotificationBell } from "@/components/notifications/native-notifi
 import { AnnouncementNative } from "@/components/ui/announcement-native";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { FloatingCompareButtonNative } from "@/components/ui/floating-compare-button-native";
+import { WebLoadMoreSentinel } from "@/components/ui/web-load-more-sentinel";
 import { footerGroups, mainRoutes } from "@/constants/routes";
 import { FOOTER_LINK_GRID_CLASS, SITE_CONTAINER_CLASS } from "@/constants/layout";
 import { useCookies } from "@/context/cookies";
@@ -931,10 +932,11 @@ export function AppLayout({
 }: AppLayoutProps) {
   const endReachedRef = useRef(false);
   const isNative = Platform.OS !== "web";
+  const useWebLoadMoreSentinel = Platform.OS === "web" && Boolean(onEndReached);
 
   const handleScroll = useCallback(
     (event: NativeSyntheticEvent<NativeScrollEvent>) => {
-      if (!onEndReached) return;
+      if (!onEndReached || useWebLoadMoreSentinel) return;
 
       const { contentOffset, contentSize, layoutMeasurement } = event.nativeEvent;
       const distanceFromEnd =
@@ -948,7 +950,7 @@ export function AppLayout({
         endReachedRef.current = false;
       }
     },
-    [onEndReached, onEndReachedThreshold],
+    [onEndReached, onEndReachedThreshold, useWebLoadMoreSentinel],
   );
 
   if (!scrollEnabled) {
@@ -963,6 +965,7 @@ export function AppLayout({
           children
         )}
         {isNative && showNativeBottomTabs ? <NativeBottomTabs /> : null}
+        {isNative ? <FloatingCompareButtonNative /> : null}
       </View>
     );
   }
@@ -977,12 +980,19 @@ export function AppLayout({
             keyboardDismissMode="on-drag"
             keyboardShouldPersistTaps="handled"
             nestedScrollEnabled
-            onScroll={handleScroll}
-            scrollEventThrottle={16}
+            {...(useWebLoadMoreSentinel
+              ? {}
+              : { onScroll: handleScroll, scrollEventThrottle: 16 as const })}
             showsVerticalScrollIndicator
           >
             <AnnouncementNative />
             {children}
+            {useWebLoadMoreSentinel && onEndReached ? (
+              <WebLoadMoreSentinel
+                onVisible={onEndReached}
+                rootMargin={`${onEndReachedThreshold}px`}
+              />
+            ) : null}
           </ScrollView>
         </SafeAreaView>
         {showNativeBottomTabs ? <NativeBottomTabs /> : null}
@@ -1000,12 +1010,19 @@ export function AppLayout({
         keyboardDismissMode="on-drag"
         keyboardShouldPersistTaps="handled"
         nestedScrollEnabled
-        onScroll={handleScroll}
-        scrollEventThrottle={16}
+        {...(useWebLoadMoreSentinel
+          ? {}
+          : { onScroll: handleScroll, scrollEventThrottle: 16 as const })}
         showsVerticalScrollIndicator
       >
         <AnnouncementNative />
         {children}
+        {useWebLoadMoreSentinel && onEndReached ? (
+          <WebLoadMoreSentinel
+            onVisible={onEndReached}
+            rootMargin={`${onEndReachedThreshold}px`}
+          />
+        ) : null}
         <Footer />
       </ScrollView>
       <FloatingCompareButtonNative />

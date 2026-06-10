@@ -152,4 +152,11 @@ body.dark {
     content-visibility: auto;
     contain-intrinsic-size: auto 320px;
   }
+
+  /* RN Web TextInput renders as input/textarea — suppress default browser outline. */
+  input:focus,
+  textarea:focus,
+  .native-date-field-input:focus {
+    outline: none;
+  }
 }

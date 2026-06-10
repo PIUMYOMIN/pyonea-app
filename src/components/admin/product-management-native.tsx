@@ -16,10 +16,13 @@ import { useAppTranslation } from '@/i18n';
 import {
   approveAdminProduct,
   deleteAdminProduct,
+  fetchAdminProductDetail,
   fetchAdminProducts,
   rejectAdminProduct,
   updateAdminProductActive,
+  updateAdminProductFeatured,
   type AdminManagedProduct,
+  type AdminProductDetail,
   type AdminProductFilters,
 } from '@/utils/native-api';
 
@@ -27,6 +30,7 @@ const placeholderProduct = require('@/assets/images/placeholder-product.png');
 
 type ApprovalFilter = 'all' | 'approved' | 'pending' | 'rejected';
 type ActiveFilter = 'all' | 'active' | 'inactive';
+type BulkAction = '' | 'activate' | 'deactivate' | 'approve' | 'reject' | 'delete';
 
 const approvalTone: Record<string, { wrap: string; text: string }> = {
   approved: {
@@ -78,14 +82,54 @@ function SummaryCard({
   );
 }
 
-function ApprovalBadge({ status }: { status: string }) {
+function ActionIconButton({
+  icon,
+  label,
+  onPress,
+  disabled,
+  tone = 'neutral',
+}: {
+  icon: keyof typeof Feather.glyphMap;
+  label: string;
+  onPress: () => void;
+  disabled?: boolean;
+  tone?: 'neutral' | 'indigo' | 'green' | 'red';
+}) {
+  const tones = {
+    neutral: ['bg-gray-50 dark:bg-slate-700', '#64748b'],
+    indigo: ['bg-indigo-50 dark:bg-indigo-900/20', '#4f46e5'],
+    green: ['bg-green-50 dark:bg-green-900/20', '#16a34a'],
+    red: ['bg-red-50 dark:bg-red-900/20', '#dc2626'],
+  } as const;
+  const [bg, color] = tones[tone];
+
+  return (
+    <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      disabled={disabled}
+      onPress={onPress}
+      className={`h-9 w-9 items-center justify-center rounded-lg ${bg} ${disabled ? 'opacity-50' : ''}`}>
+      <Feather name={icon} color={color} size={16} />
+    </Pressable>
+  );
+}
+
+function ApprovalBadge({ status, rejectionReason }: { status: string; rejectionReason?: string }) {
   const { t } = useAppTranslation();
   const tone = approvalTone[status] || approvalTone.pending;
   return (
-    <View className={`self-start rounded-full px-2.5 py-1 ${tone.wrap}`}>
-      <Text className={`font-sans text-xs font-semibold capitalize ${tone.text}`}>
-        {t(`admin.productManagement.table.${status}`, status)}
-      </Text>
+    <View className="gap-1">
+      <View className={`self-start rounded-full px-2.5 py-1 ${tone.wrap}`}>
+        <Text className={`font-sans text-xs font-semibold capitalize ${tone.text}`}>
+          {t(`admin.productManagement.table.${status}`, status)}
+        </Text>
+      </View>
+      {rejectionReason ? (
+        <Text className="max-w-[160px] font-sans text-[11px] text-red-600 dark:text-red-400" numberOfLines={2}>
+          ↳ {rejectionReason}
+        </Text>
+      ) : null}
     </View>
   );
 }
@@ -116,25 +160,36 @@ function StockBadge({ product }: { product: AdminManagedProduct }) {
 function ProductRow({
   product,
   busyId,
+  selected,
+  onToggleSelect,
+  onPreview,
   onToggleActive,
+  onToggleFeatured,
   onApprove,
   onReject,
   onDelete,
 }: {
   product: AdminManagedProduct;
   busyId: string | number | null;
+  selected: boolean;
+  onToggleSelect: () => void;
+  onPreview: (product: AdminManagedProduct) => void;
   onToggleActive: (product: AdminManagedProduct) => void;
+  onToggleFeatured: (product: AdminManagedProduct) => void;
   onApprove: (product: AdminManagedProduct) => void;
   onReject: (product: AdminManagedProduct) => void;
   onDelete: (product: AdminManagedProduct) => void;
 }) {
   const { t } = useAppTranslation();
   const busy = busyId === product.id;
-  const productHref = `/products/${product.slug || product.id}` as Href;
   const editHref = `/admin/products/${product.id}/edit` as Href;
 
   return (
     <View className="min-h-[84px] w-full flex-row items-center border-b border-gray-100 bg-white px-4 py-3 last:border-b-0 dark:border-slate-700 dark:bg-slate-800">
+      <Pressable onPress={onToggleSelect} className="w-10 pr-3">
+        <Feather name={selected ? 'check-square' : 'square'} color="#64748b" size={16} />
+      </Pressable>
+
       <View className="w-72 flex-row gap-3 pr-4">
         <View className="h-14 w-14 overflow-hidden rounded-lg bg-gray-100 dark:bg-slate-700">
           <Image
@@ -187,11 +242,43 @@ function ProductRow({
       </View>
 
       <View className="w-24 pr-4">
+        <Text className="font-sans text-xs text-gray-700 dark:text-slate-300">
+          {product.discountPercentage > 0
+            ? `${product.discountPercentage}%`
+            : product.isOnSale
+              ? t('admin.productManagement.sale', 'Sale')
+              : '—'}
+        </Text>
+      </View>
+
+      <View className="w-24 pr-4">
         <Text className="font-sans text-xs text-gray-700 dark:text-slate-300">{product.moq}</Text>
       </View>
 
-      <View className="w-32 pr-4">
-        <ApprovalBadge status={product.approvalStatus} />
+      <View className="w-28 pr-4">
+        <Pressable
+          disabled={busy}
+          onPress={() => onToggleFeatured(product)}
+          className={`self-start rounded-full border px-2.5 py-1 ${
+            product.isFeatured
+              ? 'border-amber-300 bg-amber-50 dark:border-amber-700 dark:bg-amber-900/30'
+              : 'border-gray-200 bg-white dark:border-slate-600 dark:bg-slate-700'
+          }`}>
+          <Text
+            className={`font-sans text-[11px] font-semibold ${
+              product.isFeatured
+                ? 'text-amber-700 dark:text-amber-300'
+                : 'text-gray-600 dark:text-slate-300'
+            }`}>
+            {product.isFeatured
+              ? t('admin.productManagement.featured', 'Featured')
+              : t('admin.productManagement.feature', 'Feature')}
+          </Text>
+        </Pressable>
+      </View>
+
+      <View className="w-36 pr-4">
+        <ApprovalBadge status={product.approvalStatus} rejectionReason={product.rejectionReason} />
       </View>
 
       <View className="w-28 pr-4">
@@ -216,49 +303,74 @@ function ProductRow({
         <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">{formatDate(product.createdAt)}</Text>
       </View>
 
-      <View className="w-48 flex-row flex-wrap items-center gap-1.5">
-        <Link href={productHref} asChild>
-          <Pressable className="h-9 w-9 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20">
-            <Feather name="external-link" color="#2563eb" size={16} />
-          </Pressable>
-        </Link>
-        <Pressable
+      <View className="w-72 flex-row flex-wrap items-center gap-1.5">
+        <ActionIconButton
+          icon="eye"
+          label={t('admin.productManagement.buttons.preview', 'Preview Product')}
+          onPress={() => onPreview(product)}
           disabled={busy}
+        />
+        <ActionIconButton
+          icon="edit-2"
+          label={t('admin.productManagement.buttons.edit', 'Edit Product')}
           onPress={() => router.push(editHref)}
-          className="h-9 w-9 items-center justify-center rounded-lg bg-indigo-50 dark:bg-indigo-900/20">
-          <Feather name="edit-2" color="#4f46e5" size={16} />
-        </Pressable>
+          disabled={busy}
+          tone="indigo"
+        />
+        <ActionIconButton
+          icon="trash-2"
+          label={t('admin.productManagement.buttons.delete', 'Delete Product')}
+          onPress={() => onDelete(product)}
+          disabled={busy}
+          tone="red"
+        />
         {product.approvalStatus === 'pending' ? (
           <>
-            <Pressable
-              disabled={busy}
+            <ActionIconButton
+              icon="check"
+              label={t('admin.productManagement.buttons.approve', 'Approve')}
               onPress={() => onApprove(product)}
-              className="h-9 w-9 items-center justify-center rounded-lg bg-green-50 dark:bg-green-900/20">
-              <Feather name="check" color="#16a34a" size={16} />
-            </Pressable>
-            <Pressable
               disabled={busy}
+              tone="green"
+            />
+            <ActionIconButton
+              icon="x"
+              label={t('admin.productManagement.buttons.reject', 'Reject')}
               onPress={() => onReject(product)}
-              className="h-9 w-9 items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20">
-              <Feather name="x" color="#dc2626" size={16} />
-            </Pressable>
+              disabled={busy}
+              tone="red"
+            />
           </>
         ) : product.approvalStatus === 'rejected' ? (
           <Pressable
             disabled={busy}
             onPress={() => onApprove(product)}
-            className="rounded-lg bg-green-50 px-2 py-1 dark:bg-green-900/20">
+            className="rounded-lg border border-green-200 bg-green-50 px-2 py-1 dark:border-green-800 dark:bg-green-900/20">
             <Text className="font-sans text-[11px] font-semibold text-green-700 dark:text-green-300">
               {t('admin.productManagement.table.reApprove', 'Re-approve')}
             </Text>
           </Pressable>
         ) : null}
-        <Pressable
-          disabled={busy}
-          onPress={() => onDelete(product)}
-          className="h-9 w-9 items-center justify-center rounded-lg bg-red-50 dark:bg-red-900/20">
-          <Feather name="trash-2" color="#dc2626" size={16} />
-        </Pressable>
+        {product.approvalStatus === 'approved' ? (
+          <Pressable
+            disabled={busy}
+            onPress={() => onToggleActive(product)}
+            className="rounded-lg border border-gray-200 bg-white px-2 py-1 dark:border-slate-600 dark:bg-slate-700">
+            <Text className="font-sans text-[11px] font-semibold text-gray-700 dark:text-slate-300">
+              {product.isActive
+                ? t('admin.productManagement.table.inactive', 'Inactive')
+                : t('admin.productManagement.table.active', 'Active')}
+            </Text>
+          </Pressable>
+        ) : null}
+        <Link href={`/products/${product.slug || product.id}` as Href} asChild>
+          <Pressable
+            accessibilityRole="link"
+            accessibilityLabel={t('admin.productManagement.buttons.preview', 'Preview Product')}
+            className="h-9 w-9 items-center justify-center rounded-lg bg-blue-50 dark:bg-blue-900/20">
+            <Feather name="external-link" color="#2563eb" size={16} />
+          </Pressable>
+        </Link>
       </View>
     </View>
   );
@@ -308,6 +420,238 @@ function ConfirmModal({
   );
 }
 
+function RejectModal({
+  visible,
+  productName,
+  reason,
+  onChangeReason,
+  onClose,
+  onConfirm,
+}: {
+  visible: boolean;
+  productName: string;
+  reason: string;
+  onChangeReason: (value: string) => void;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const { t } = useAppTranslation();
+  if (!visible) return null;
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <View className="flex-1 items-center justify-center bg-black/40 p-4">
+        <View className="w-full max-w-md rounded-2xl bg-white p-6 dark:bg-slate-900">
+          <Text className="font-sans text-lg font-bold text-gray-950 dark:text-slate-100">
+            {t('admin.productManagement.modals.rejectProduct', 'Reject Product')}
+          </Text>
+          <Text className="mt-1 font-sans text-sm font-semibold text-red-600 dark:text-red-400" numberOfLines={1}>
+            {productName}
+          </Text>
+          <Text className="mt-3 font-sans text-sm text-gray-600 dark:text-slate-400">
+            {t('admin.productManagement.modals.rejectReason', 'Optionally provide a reason for the seller:')}
+          </Text>
+          <TextInput
+            value={reason}
+            onChangeText={onChangeReason}
+            multiline
+            numberOfLines={3}
+            placeholder={t(
+              'admin.productManagement.modals.rejectionReasonPlaceholder',
+              'Rejection reason (optional)',
+            )}
+            placeholderTextColor="#94a3b8"
+            className="mt-3 min-h-[88px] rounded-xl border border-gray-200 bg-white px-3 py-2 font-sans text-sm text-gray-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
+          />
+          <View className="mt-6 flex-row justify-end gap-3">
+            <Pressable onPress={onClose} className="rounded-lg border border-gray-200 px-4 py-2 dark:border-slate-700">
+              <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">
+                {t('admin.productManagement.modals.cancel', 'Cancel')}
+              </Text>
+            </Pressable>
+            <Pressable onPress={onConfirm} className="rounded-lg bg-red-600 px-4 py-2">
+              <Text className="font-sans text-sm font-semibold text-white">
+                {t('admin.productManagement.modals.reject', 'Reject Product')}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function ProductPreviewModal({
+  product,
+  loading,
+  onClose,
+  onApprove,
+  onReject,
+}: {
+  product: AdminProductDetail | null;
+  loading: boolean;
+  onClose: () => void;
+  onApprove: (product: AdminProductDetail) => void;
+  onReject: (product: AdminProductDetail) => void;
+}) {
+  const { t, i18n } = useAppTranslation();
+  if (!product) return null;
+
+  const description =
+    i18n.language === 'my' && product.descriptionMm ? product.descriptionMm : product.descriptionEn || product.description;
+  const images = product.images.length > 0 ? product.images : product.imageUrl ? [{ url: product.imageUrl, isPrimary: true }] : [];
+
+  return (
+    <Modal visible transparent animationType="fade" onRequestClose={onClose}>
+      <View className="flex-1 items-center justify-center bg-black/50 p-4">
+        <View className="max-h-[90%] w-full max-w-2xl overflow-hidden rounded-2xl bg-white dark:bg-slate-900">
+          <View className="flex-row items-center justify-between border-b border-gray-200 px-5 py-4 dark:border-slate-700">
+            <Text className="font-sans text-lg font-bold text-gray-950 dark:text-slate-100">
+              {t('admin.productManagement.modals.productPreview', 'Product Preview')}
+            </Text>
+            <View className="flex-row items-center gap-2">
+              {product.approvalStatus === 'pending' ? (
+                <>
+                  <Pressable
+                    onPress={() => onApprove(product)}
+                    className="rounded-lg bg-green-600 px-3 py-1.5">
+                    <Text className="font-sans text-xs font-semibold text-white">
+                      {t('admin.productManagement.buttons.approve', 'Approve')}
+                    </Text>
+                  </Pressable>
+                  <Pressable
+                    onPress={() => onReject(product)}
+                    className="rounded-lg bg-red-600 px-3 py-1.5">
+                    <Text className="font-sans text-xs font-semibold text-white">
+                      {t('admin.productManagement.buttons.reject', 'Reject')}
+                    </Text>
+                  </Pressable>
+                </>
+              ) : null}
+              <Pressable onPress={onClose} className="rounded-lg p-2">
+                <Feather name="x" color="#64748b" size={20} />
+              </Pressable>
+            </View>
+          </View>
+
+          <ScrollView className="max-h-[720px] px-5 py-4">
+            {loading ? (
+              <View className="mb-4 flex-row items-center justify-center py-2">
+                <ActivityIndicator color="#16a34a" size="small" />
+                <Text className="ml-2 font-sans text-xs text-gray-500 dark:text-slate-400">
+                  {t('admin.productManagement.modals.loadingFullDetails', 'Loading full details…')}
+                </Text>
+              </View>
+            ) : null}
+
+            {images.length > 0 ? (
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mb-4">
+                <View className="flex-row gap-3">
+                  {images.map((image, index) => (
+                    <View
+                      key={`${image.url}-${index}`}
+                      className={`h-40 w-40 overflow-hidden rounded-xl border-2 ${
+                        image.isPrimary ? 'border-green-400' : 'border-gray-200 dark:border-slate-600'
+                      }`}>
+                      <Image source={{ uri: image.url }} className="h-full w-full" contentFit="cover" />
+                    </View>
+                  ))}
+                </View>
+              </ScrollView>
+            ) : (
+              <View className="mb-4 h-48 items-center justify-center rounded-xl bg-gray-100 dark:bg-slate-800">
+                <Text className="font-sans text-sm text-gray-400 dark:text-slate-500">
+                  {t('admin.productManagement.modals.noImage', 'No image')}
+                </Text>
+              </View>
+            )}
+
+            <View className="mb-4 flex-row flex-wrap gap-2">
+              <ApprovalBadge status={product.approvalStatus} rejectionReason={product.rejectionReason} />
+              <View
+                className={`rounded-full px-2.5 py-1 ${
+                  product.isActive ? 'bg-green-100 dark:bg-green-900/30' : 'bg-red-100 dark:bg-red-900/30'
+                }`}>
+                <Text
+                  className={`font-sans text-xs font-semibold ${
+                    product.isActive ? 'text-green-800 dark:text-green-300' : 'text-red-800 dark:text-red-300'
+                  }`}>
+                  {product.isActive
+                    ? t('admin.productManagement.table.active', 'Active')
+                    : t('admin.productManagement.table.inactive', 'Inactive')}
+                </Text>
+              </View>
+              {product.productType ? (
+                <View className="rounded-full bg-blue-100 px-2.5 py-1 dark:bg-blue-900/30">
+                  <Text className="font-sans text-xs font-semibold text-blue-800 dark:text-blue-300">
+                    {product.productType}
+                  </Text>
+                </View>
+              ) : null}
+            </View>
+
+            <Text className="font-sans text-xl font-bold text-gray-950 dark:text-slate-100">{product.name}</Text>
+
+            {description ? (
+              <View className="mt-4">
+                <Text className="font-sans text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400">
+                  {t('admin.productManagement.modals.description', 'Description')}
+                </Text>
+                <Text className="mt-1 font-sans text-sm leading-6 text-gray-700 dark:text-slate-300">{description}</Text>
+              </View>
+            ) : null}
+
+            <View className="mt-4 flex-row flex-wrap gap-4">
+              {[
+                [t('admin.productManagement.modals.sku', 'SKU'), product.sku || '—'],
+                [t('admin.productManagement.modals.category', 'Category'), product.categoryName || '—'],
+                [t('admin.productManagement.modals.price', 'Price'), product.isOnSale ? product.salePrice : product.price],
+                [t('admin.productManagement.modals.stock', 'Stock'), String(product.totalStock)],
+                [t('admin.productManagement.modals.moq', 'MOQ'), String(product.moq)],
+                [t('admin.productManagement.modals.seller', 'Seller'), product.sellerName || '—'],
+              ].map(([label, value]) => (
+                <View key={String(label)} className="min-w-[140px]">
+                  <Text className="font-sans text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400">
+                    {label}
+                  </Text>
+                  <Text className="mt-1 font-sans text-sm text-gray-900 dark:text-slate-100">{value}</Text>
+                </View>
+              ))}
+            </View>
+
+            {product.rejectionReason ? (
+              <View className="mt-4 rounded-xl border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
+                <Text className="font-sans text-xs font-semibold text-red-700 dark:text-red-300">
+                  {t('admin.productManagement.modals.rejectionReason', 'Rejection Reason')}
+                </Text>
+                <Text className="mt-1 font-sans text-sm text-red-700 dark:text-red-300">{product.rejectionReason}</Text>
+              </View>
+            ) : null}
+
+            {product.variants.length > 0 ? (
+              <View className="mt-4">
+                <Text className="font-sans text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400">
+                  {t('admin.productManagement.modals.variants', 'Variants')} ({product.variants.length})
+                </Text>
+                {product.variants.map((variant) => (
+                  <View
+                    key={String(variant.id)}
+                    className="mt-2 flex-row items-center justify-between rounded-lg border border-gray-200 px-3 py-2 dark:border-slate-700">
+                    <Text className="font-sans text-sm text-gray-700 dark:text-slate-300">{variant.optionLabel}</Text>
+                    <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">
+                      {t('admin.productManagement.modals.qty', 'Qty')}: {variant.quantity}
+                    </Text>
+                  </View>
+                ))}
+              </View>
+            ) : null}
+          </ScrollView>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export function ProductManagementNative() {
   const { t } = useAppTranslation();
   const [products, setProducts] = useState<AdminManagedProduct[]>([]);
@@ -319,9 +663,15 @@ export function ProductManagementNative() {
   const [approvalFilter, setApprovalFilter] = useState<ApprovalFilter>('all');
   const [activeFilter, setActiveFilter] = useState<ActiveFilter>('all');
   const [busyId, setBusyId] = useState<string | number | null>(null);
+  const [selectedIds, setSelectedIds] = useState<Array<string | number>>([]);
+  const [bulkAction, setBulkAction] = useState<BulkAction>('');
+  const [showBulkModal, setShowBulkModal] = useState(false);
   const [approveTarget, setApproveTarget] = useState<AdminManagedProduct | null>(null);
   const [rejectTarget, setRejectTarget] = useState<AdminManagedProduct | null>(null);
+  const [rejectReason, setRejectReason] = useState('');
   const [deleteTarget, setDeleteTarget] = useState<AdminManagedProduct | null>(null);
+  const [previewProduct, setPreviewProduct] = useState<AdminProductDetail | null>(null);
+  const [previewLoading, setPreviewLoading] = useState(false);
 
   const filters = useMemo<AdminProductFilters>(
     () => ({
@@ -356,6 +706,10 @@ export function ProductManagementNative() {
     return () => clearTimeout(timeout);
   }, [loadProducts]);
 
+  useEffect(() => {
+    setSelectedIds((current) => current.filter((id) => products.some((product) => product.id === id)));
+  }, [products]);
+
   const stats = useMemo(
     () => ({
       total: products.length,
@@ -365,6 +719,18 @@ export function ProductManagementNative() {
     }),
     [products],
   );
+
+  const allSelected = products.length > 0 && products.every((product) => selectedIds.includes(product.id));
+
+  const toggleSelectAll = () => {
+    setSelectedIds(allSelected ? [] : products.map((product) => product.id));
+  };
+
+  const toggleSelect = (productId: string | number) => {
+    setSelectedIds((current) =>
+      current.includes(productId) ? current.filter((id) => id !== productId) : [...current, productId],
+    );
+  };
 
   const refresh = async () => {
     setRefreshing(true);
@@ -378,6 +744,19 @@ export function ProductManagementNative() {
 
   const removeProduct = (productId: string | number) => {
     setProducts((current) => current.filter((item) => item.id !== productId));
+  };
+
+  const openPreview = async (product: AdminManagedProduct) => {
+    setPreviewProduct({ ...product, descriptionEn: product.description, descriptionMm: '', productType: '', images: [], variants: [] });
+    setPreviewLoading(true);
+    try {
+      const detail = await fetchAdminProductDetail(product.id);
+      setPreviewProduct(detail);
+    } catch {
+      setError(t('admin.productManagement.errors.failedLoadProducts', 'Failed to load products.'));
+    } finally {
+      setPreviewLoading(false);
+    }
   };
 
   const toggleActive = async (product: AdminManagedProduct) => {
@@ -396,10 +775,30 @@ export function ProductManagementNative() {
     }
   };
 
+  const toggleFeatured = async (product: AdminManagedProduct) => {
+    const nextFeatured = !product.isFeatured;
+    setBusyId(product.id);
+    patchProduct({ ...product, isFeatured: nextFeatured });
+    try {
+      await updateAdminProductFeatured(product.id, nextFeatured);
+      setMessage(
+        nextFeatured
+          ? t('admin.productManagement.featured', 'Featured')
+          : t('admin.productManagement.notifications.statusUpdated', 'Status updated'),
+      );
+    } catch (err) {
+      patchProduct(product);
+      setError(err instanceof Error ? err.message : t('admin.productManagement.errors.unknownError', 'Unknown error'));
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   const confirmApprove = async () => {
     if (!approveTarget) return;
     const product = approveTarget;
     setApproveTarget(null);
+    setPreviewProduct(null);
     setBusyId(product.id);
     try {
       await approveAdminProduct(product.id);
@@ -415,10 +814,13 @@ export function ProductManagementNative() {
   const confirmReject = async () => {
     if (!rejectTarget) return;
     const product = rejectTarget;
+    const reason = rejectReason.trim();
     setRejectTarget(null);
+    setRejectReason('');
+    setPreviewProduct(null);
     setBusyId(product.id);
     try {
-      await rejectAdminProduct(product.id);
+      await rejectAdminProduct(product.id, reason);
       setMessage(t('admin.productManagement.notifications.rejected', 'Product rejected'));
       await loadProducts(false);
     } catch (err) {
@@ -446,6 +848,39 @@ export function ProductManagementNative() {
     }
   };
 
+  const executeBulk = async () => {
+    setShowBulkModal(false);
+    if (!bulkAction || selectedIds.length === 0) return;
+
+    setBusyId('bulk');
+    setError('');
+    try {
+      await Promise.all(
+        selectedIds.map(async (productId) => {
+          if (bulkAction === 'delete') return deleteAdminProduct(productId);
+          if (bulkAction === 'activate') return updateAdminProductActive(productId, true);
+          if (bulkAction === 'deactivate') return updateAdminProductActive(productId, false);
+          if (bulkAction === 'approve') return approveAdminProduct(productId);
+          if (bulkAction === 'reject') return rejectAdminProduct(productId);
+        }),
+      );
+      setMessage(
+        t('admin.productManagement.notifications.bulkSuccessMsg', '{{count}} product(s) updated.', {
+          count: selectedIds.length,
+          action: bulkAction,
+        }),
+      );
+      setSelectedIds([]);
+      setBulkAction('');
+      await loadProducts(false);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('admin.productManagement.errors.failedBulkAction', 'Bulk action failed'));
+      await loadProducts(false);
+    } finally {
+      setBusyId(null);
+    }
+  };
+
   if (loading) {
     return (
       <View className="items-center justify-center py-20">
@@ -456,6 +891,14 @@ export function ProductManagementNative() {
       </View>
     );
   }
+
+  const bulkOptions: Array<{ id: BulkAction; label: string }> = [
+    { id: 'activate', label: t('admin.productManagement.bulkActions.activateSelected', 'Activate Selected') },
+    { id: 'deactivate', label: t('admin.productManagement.bulkActions.deactivateSelected', 'Deactivate Selected') },
+    { id: 'approve', label: t('admin.productManagement.bulkActions.approveSelected', 'Approve Selected') },
+    { id: 'reject', label: t('admin.productManagement.bulkActions.rejectSelected', 'Reject Selected') },
+    { id: 'delete', label: t('admin.productManagement.bulkActions.deleteSelected', 'Delete Selected') },
+  ];
 
   return (
     <View className="gap-5">
@@ -470,17 +913,16 @@ export function ProductManagementNative() {
         onClose={() => setApproveTarget(null)}
         onConfirm={() => void confirmApprove()}
       />
-      <ConfirmModal
+      <RejectModal
         visible={Boolean(rejectTarget)}
-        title={t('admin.productManagement.modals.rejectProduct', 'Reject Product')}
-        message={t(
-          'admin.productManagement.modals.rejectReason',
-          'Optionally provide a reason for the seller:',
-        )}
-        confirmLabel={t('admin.productManagement.modals.reject', 'Reject')}
-        onClose={() => setRejectTarget(null)}
+        productName={rejectTarget?.name || ''}
+        reason={rejectReason}
+        onChangeReason={setRejectReason}
+        onClose={() => {
+          setRejectTarget(null);
+          setRejectReason('');
+        }}
         onConfirm={() => void confirmReject()}
-        danger
       />
       <ConfirmModal
         visible={Boolean(deleteTarget)}
@@ -493,6 +935,32 @@ export function ProductManagementNative() {
         onClose={() => setDeleteTarget(null)}
         onConfirm={() => void confirmDelete()}
         danger
+      />
+      <ConfirmModal
+        visible={showBulkModal}
+        title={t('admin.productManagement.modals.confirmBulkAction', 'Confirm Bulk Action')}
+        message={t('admin.productManagement.modals.bulkConfirm', 'Apply {{action}} to {{count}} product(s)?', {
+          action: bulkAction,
+          count: selectedIds.length,
+        })}
+        confirmLabel={t('admin.productManagement.modals.confirm', 'Confirm')}
+        onClose={() => setShowBulkModal(false)}
+        onConfirm={() => void executeBulk()}
+        danger={bulkAction === 'delete' || bulkAction === 'reject'}
+      />
+      <ProductPreviewModal
+        product={previewProduct}
+        loading={previewLoading}
+        onClose={() => setPreviewProduct(null)}
+        onApprove={(product) => {
+          setPreviewProduct(null);
+          setApproveTarget(product);
+        }}
+        onReject={(product) => {
+          setPreviewProduct(null);
+          setRejectTarget(product);
+          setRejectReason('');
+        }}
       />
 
       <View className="flex-row flex-wrap items-start justify-between gap-3">
@@ -515,6 +983,56 @@ export function ProductManagementNative() {
           </Text>
         </Pressable>
       </View>
+
+      {selectedIds.length > 0 ? (
+        <View className="rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20">
+          <Text className="font-sans text-sm font-semibold text-green-800 dark:text-green-300">
+            {t('admin.productManagement.messages.productsSelected', '{{count}} product(s) selected', {
+              count: selectedIds.length,
+            })}
+          </Text>
+          <ScrollView horizontal showsHorizontalScrollIndicator={false} className="mt-3">
+            <View className="flex-row flex-wrap gap-2">
+              {bulkOptions.map((option) => {
+                const active = bulkAction === option.id;
+                return (
+                  <Pressable
+                    key={option.id}
+                    onPress={() => setBulkAction(option.id)}
+                    className={`rounded-full px-3 py-1.5 ${
+                      active ? 'bg-green-600' : 'bg-white dark:bg-slate-800'
+                    }`}>
+                    <Text
+                      className={`font-sans text-xs font-semibold ${
+                        active ? 'text-white' : 'text-gray-700 dark:text-slate-300'
+                      }`}>
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+              <Pressable
+                disabled={!bulkAction || busyId === 'bulk'}
+                onPress={() => setShowBulkModal(true)}
+                className="rounded-full bg-green-700 px-4 py-1.5 disabled:opacity-50">
+                <Text className="font-sans text-xs font-semibold text-white">
+                  {t('admin.productManagement.bulkActions.apply', 'Apply')}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => {
+                  setSelectedIds([]);
+                  setBulkAction('');
+                }}
+                className="rounded-full border border-gray-200 bg-white px-4 py-1.5 dark:border-slate-600 dark:bg-slate-800">
+                <Text className="font-sans text-xs font-semibold text-gray-700 dark:text-slate-300">
+                  {t('admin.productManagement.bulkActions.clearSelection', 'Clear Selection')}
+                </Text>
+              </Pressable>
+            </View>
+          </ScrollView>
+        </View>
+      ) : null}
 
       {message ? (
         <Pressable
@@ -594,48 +1112,33 @@ export function ProductManagementNative() {
       </ScrollView>
 
       <View className="flex-row flex-wrap gap-3">
-        <SummaryCard
-          label={t('admin.productManagement.total', 'Total')}
-          value={stats.total}
-          icon="box"
-          tone="blue"
-        />
-        <SummaryCard
-          label={t('admin.productManagement.pending', 'Pending')}
-          value={stats.pending}
-          icon="clock"
-          tone="yellow"
-        />
-        <SummaryCard
-          label={t('admin.productManagement.approved', 'Approved')}
-          value={stats.approved}
-          icon="check-circle"
-          tone="green"
-        />
-        <SummaryCard
-          label={t('admin.productManagement.table.inactive', 'Inactive')}
-          value={stats.inactive}
-          icon="slash"
-          tone="red"
-        />
+        <SummaryCard label={t('admin.productManagement.total', 'Total')} value={stats.total} icon="box" tone="blue" />
+        <SummaryCard label={t('admin.productManagement.pending', 'Pending')} value={stats.pending} icon="clock" tone="yellow" />
+        <SummaryCard label={t('admin.productManagement.approved', 'Approved')} value={stats.approved} icon="check-circle" tone="green" />
+        <SummaryCard label={t('admin.productManagement.table.inactive', 'Inactive')} value={stats.inactive} icon="slash" tone="red" />
       </View>
 
       <View className="overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-800">
         {products.length > 0 ? (
           <ScrollView horizontal showsHorizontalScrollIndicator contentContainerClassName="min-w-full">
-            <View className="w-full min-w-[1328px]">
+            <View className="w-full min-w-[1560px]">
               <View className="w-full flex-row bg-gray-50 px-4 py-3 dark:bg-slate-900">
+                <Pressable onPress={toggleSelectAll} className="w-10 pr-3">
+                  <Feather name={allSelected ? 'check-square' : 'square'} color="#64748b" size={16} />
+                </Pressable>
                 {[
                   { label: t('admin.productManagement.table.name', 'Name'), width: 'w-72' },
                   { label: t('admin.productManagement.table.sku', 'SKU'), width: 'w-28' },
                   { label: t('admin.productManagement.table.category', 'Category'), width: 'w-36' },
                   { label: t('admin.productManagement.table.price', 'Price'), width: 'w-32' },
                   { label: t('admin.productManagement.table.stock', 'Stock'), width: 'w-28' },
+                  { label: t('admin.productManagement.table.discount', 'Discount'), width: 'w-24' },
                   { label: t('admin.productManagement.table.moq', 'MOQ'), width: 'w-24' },
-                  { label: t('admin.productManagement.table.approvalStatus', 'Approval'), width: 'w-32' },
+                  { label: t('admin.productManagement.featured', 'Featured'), width: 'w-28' },
+                  { label: t('admin.productManagement.table.approvalStatus', 'Approval'), width: 'w-36' },
                   { label: t('admin.productManagement.table.activeInactive', 'Active'), width: 'w-28' },
                   { label: t('admin.productManagement.table.created', 'Created'), width: 'w-28' },
-                  { label: t('admin.productManagement.table.actions', 'Actions'), width: 'w-48' },
+                  { label: t('admin.productManagement.table.actions', 'Actions'), width: 'w-72' },
                 ].map((heading) => (
                   <Text
                     key={heading.label}
@@ -649,9 +1152,16 @@ export function ProductManagementNative() {
                   key={String(product.id)}
                   product={product}
                   busyId={busyId}
+                  selected={selectedIds.includes(product.id)}
+                  onToggleSelect={() => toggleSelect(product.id)}
+                  onPreview={(item) => void openPreview(item)}
                   onToggleActive={(item) => void toggleActive(item)}
+                  onToggleFeatured={(item) => void toggleFeatured(item)}
                   onApprove={setApproveTarget}
-                  onReject={setRejectTarget}
+                  onReject={(item) => {
+                    setRejectTarget(item);
+                    setRejectReason('');
+                  }}
                   onDelete={setDeleteTarget}
                 />
               ))}

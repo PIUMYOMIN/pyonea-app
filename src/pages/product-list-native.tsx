@@ -2,7 +2,6 @@ import Feather from '@expo/vector-icons/Feather';
 import { useGlobalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
-  FlatList,
   Modal,
   Platform,
   Pressable,
@@ -664,42 +663,17 @@ export function ProductListNative() {
                   ))}
                 </View>
               ) : products.length > 0 ? (
-                Platform.OS === 'web' ? (
-                  <View>
-                    {productRows.map((row, rowIndex) => (
-                      <ProductListRow
-                        key={`product-row-${rowIndex}`}
-                        row={row}
-                        productColumns={productColumns}
-                        rowIndex={rowIndex}
-                      />
-                    ))}
-                    {loadingMore ? <ProductListRowSkeleton productColumns={productColumns} /> : null}
-                  </View>
-                ) : (
-                  <FlatList
-                    data={productRows}
-                    keyExtractor={(_, index) => `product-row-${index}`}
-                    renderItem={({ item: row, index: rowIndex }) => (
-                      <ProductListRow
-                        row={row}
-                        productColumns={productColumns}
-                        rowIndex={rowIndex}
-                      />
-                    )}
-                    scrollEnabled={false}
-                    showsVerticalScrollIndicator={false}
-                    initialNumToRender={6}
-                    maxToRenderPerBatch={4}
-                    windowSize={9}
-                    removeClippedSubviews
-                    ListFooterComponent={
-                      loadingMore ? (
-                        <ProductListRowSkeleton productColumns={productColumns} />
-                      ) : null
-                    }
-                  />
-                )
+                <View>
+                  {productRows.map((row, rowIndex) => (
+                    <ProductListRow
+                      key={`product-row-${rowIndex}`}
+                      row={row}
+                      productColumns={productColumns}
+                      rowIndex={rowIndex}
+                    />
+                  ))}
+                  {loadingMore ? <ProductListRowSkeleton productColumns={productColumns} /> : null}
+                </View>
               ) : !loading ? (
                 <View className="w-full items-center py-16">
                   <Feather name="search" color={isDark ? '#475569' : '#cbd5e1'} size={48} />

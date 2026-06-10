@@ -4,10 +4,16 @@ import { ActivityIndicator, Platform, Pressable, ScrollView, Text, View } from '
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { SITE_CONTAINER_6XL_CLASS, SITE_CONTAINER_CLASS } from '@/constants/layout';
-import { localizeBilingualName, useAppTranslation } from '@/i18n';
+import {
+  localizeBilingualName,
+  normalizeLanguage,
+  useAppTranslation,
+  type SupportedLanguage,
+} from '@/i18n';
 import {
   clearCompareItems,
   formatComparePrice,
+  hydrateCompareFromStorage,
   loadCompareItems,
   refreshCompareItemsFromBackend,
   removeCompareItem,
@@ -21,7 +27,7 @@ const PRODUCT_COLUMN_CLASS = 'min-w-[220px] shrink-0 px-4 py-3';
 
 const getRows = (
   t: ReturnType<typeof useAppTranslation>['t'],
-  language: string
+  language: SupportedLanguage
 ): {
   label: string;
   render: (item: NativeCompareItem) => string;
@@ -89,7 +95,16 @@ export function ProductComparisonNative() {
   }, [t]);
 
   useEffect(() => {
-    void refreshFromBackend();
+    let cancelled = false;
+
+    void (async () => {
+      await hydrateCompareFromStorage();
+      if (cancelled) return;
+      syncCompareStorage();
+      setItems(loadCompareItems());
+      await refreshFromBackend();
+    })();
+
     return subscribeCompareChanged(() => {
       setItems(loadCompareItems());
     });
@@ -144,7 +159,7 @@ export function ProductComparisonNative() {
     );
   }
 
-  const rows = getRows(t, i18n.language);
+  const rows = getRows(t, normalizeLanguage(i18n.language));
 
   return (
     <AppLayout>

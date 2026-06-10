@@ -47,3 +47,6 @@ export const LOCAL_DEALS_GRID_CLASS = 'grid grid-cols-1 gap-4 md:grid-cols-2';
 /** Footer link columns — match pyonea Footer.jsx. */
 export const FOOTER_LINK_GRID_CLASS =
   'grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 xl:grid-cols-5 gap-x-8 gap-y-10';
+
+/** Native bottom tab bar + safe padding used by floating UI (compare FAB, etc.). */
+export const NATIVE_BOTTOM_TAB_OFFSET_CLASS = 'bottom-24';

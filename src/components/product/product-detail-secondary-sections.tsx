@@ -1,9 +1,9 @@
 import Feather from '@expo/vector-icons/Feather';
 import { Link, type Href } from 'expo-router';
-import { ActivityIndicator, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import { useState } from 'react';
 
-import { ProductListCard, PRODUCT_CARD_CAROUSEL_CLASS } from '@/components/marketplace-list-screen';
+import { MoreFromSellerCarousel } from '@/components/product/more-from-seller-carousel';
 import { useTheme } from '@/context/theme';
 import { useAppTranslation } from '@/i18n';
 import type { HomeProduct, ProductDetail, ProductReview } from '@/utils/native-api';
@@ -165,22 +165,7 @@ export function ProductDetailSecondarySections({
           {moreProductsLoading ? (
             <MoreFromSellerSkeleton />
           ) : (
-            <View className="min-w-0 w-full">
-              <ScrollView
-                horizontal
-                showsHorizontalScrollIndicator={false}
-                showsVerticalScrollIndicator={false}
-                className="scroll-x-only w-full max-w-full"
-                contentContainerClassName="gap-3 sm:gap-4">
-                {moreProducts.map((item) => (
-                  <ProductListCard
-                    key={String(item.id)}
-                    product={item}
-                    className={PRODUCT_CARD_CAROUSEL_CLASS}
-                  />
-                ))}
-              </ScrollView>
-            </View>
+            <MoreFromSellerCarousel products={moreProducts} />
           )}
         </View>
       ) : null}

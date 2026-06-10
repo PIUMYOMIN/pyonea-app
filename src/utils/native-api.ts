@@ -4511,20 +4511,29 @@ export async function fetchMoreProductsFromSeller(
   currentProductId: string | number,
   signal?: AbortSignal
 ): Promise<HomeProduct[]> {
-  const params = new URLSearchParams({
-    per_page: '12',
-    page: '1',
-    seller_id: String(sellerId),
-    sort_by: 'created_at',
-    sort_order: 'desc',
-    fields:
-      'id,name_en,name_mm,slug_en,slug,price,selling_price,images,image,average_rating,review_count,quantity,total_stock,is_active,moq,min_order_unit,quantity_unit,category_id,seller_id,is_on_sale,is_currently_on_sale,effective_discount_pct,discount_percentage,category,seller',
-  });
+  // Cache per seller (not per product) so browsing a seller's catalog reuses
+  // one request across all of their product detail pages.
+  const sellerProducts = await withDataCache(
+    `api:seller-more-products:${sellerId}`,
+    DATA_CACHE_TTL.products,
+    async (requestSignal) => {
+      const params = new URLSearchParams({
+        per_page: '12',
+        page: '1',
+        seller_id: String(sellerId),
+        sort_by: 'created_at',
+        sort_order: 'desc',
+        fields:
+          'id,name_en,name_mm,slug_en,slug,price,selling_price,images,image,average_rating,review_count,quantity,total_stock,is_active,moq,min_order_unit,quantity_unit,category_id,seller_id,is_on_sale,is_currently_on_sale,effective_discount_pct,discount_percentage,category,seller',
+      });
 
-  const payload = await apiGet(`/products?${params.toString()}`, signal);
+      const payload = await apiGet(`/products?${params.toString()}`, requestSignal);
+      return getArrayPayload(payload).filter(isRecord);
+    },
+    signal,
+  );
 
-  return getArrayPayload(payload)
-    .filter(isRecord)
+  return sellerProducts
     .filter((product) => String(product.id) !== String(currentProductId))
     .slice(0, 8)
     .map(mapHomeProduct);
@@ -4640,9 +4649,18 @@ export async function fetchSellerDeliveryAreas(
   slug: string,
   signal?: AbortSignal
 ): Promise<SellerDeliveryArea[]> {
-  const payload = await apiGet(`/sellers/${encodeURIComponent(slug)}/delivery-areas`, signal);
-
-  return getArrayPayload(payload).filter(isRecord).map(mapSellerDeliveryArea);
+  return withDataCache(
+    `api:seller-delivery-areas:${slug}`,
+    DATA_CACHE_TTL.checkoutStatic,
+    async (requestSignal) => {
+      const payload = await apiGet(
+        `/sellers/${encodeURIComponent(slug)}/delivery-areas`,
+        requestSignal,
+      );
+      return getArrayPayload(payload).filter(isRecord).map(mapSellerDeliveryArea);
+    },
+    signal,
+  );
 }
 
 export async function fetchSellerDeliveryZones(signal?: AbortSignal): Promise<SellerDeliveryArea[]> {
@@ -6009,6 +6027,27 @@ export type AdminManagedProduct = SellerManagedProduct & {
   isFeatured: boolean;
   moq: number;
   createdAt: string;
+  rejectionReason: string;
+};
+
+export type AdminProductImage = {
+  url: string;
+  isPrimary: boolean;
+};
+
+export type AdminProductVariant = {
+  id: string | number;
+  quantity: number;
+  price: number;
+  optionLabel: string;
+};
+
+export type AdminProductDetail = AdminManagedProduct & {
+  descriptionEn: string;
+  descriptionMm: string;
+  productType: string;
+  images: AdminProductImage[];
+  variants: AdminProductVariant[];
 };
 
 export type AdminProductFilters = {
@@ -6029,8 +6068,55 @@ const mapAdminManagedProduct = (product: UnknownRecord): AdminManagedProduct => 
     isFeatured: Boolean(product.is_featured),
     moq: getNumber(product.moq || product.min_order, 1),
     createdAt: getString(product.created_at || product.createdAt),
+    rejectionReason: getString(product.rejection_reason),
   };
 };
+
+const mapAdminProductImages = (product: UnknownRecord): AdminProductImage[] => {
+  const raw = product.images;
+  if (!Array.isArray(raw)) return [];
+
+  return raw
+    .filter(isRecord)
+    .map((image) => ({
+      url: getNativeImageUrl(image.url || image.path || image.image_url),
+      isPrimary: Boolean(image.is_primary || image.isPrimary),
+    }))
+    .filter((image): image is AdminProductImage => Boolean(image.url));
+};
+
+const mapAdminProductVariants = (product: UnknownRecord): AdminProductVariant[] => {
+  const raw = product.activeVariants || product.active_variants || product.variants;
+  if (!Array.isArray(raw)) return [];
+
+  return raw.filter(isRecord).map((variant, index) => {
+    const optionValues = Array.isArray(variant.optionValues)
+      ? variant.optionValues
+      : Array.isArray(variant.option_values)
+        ? variant.option_values
+        : [];
+    const labels = optionValues
+      .filter(isRecord)
+      .map((value) => getString(value.value || value.name))
+      .filter(Boolean);
+
+    return {
+      id: getString(variant.id, `variant-${index}`),
+      quantity: getNumber(variant.quantity ?? variant.stock),
+      price: getNumber(variant.price),
+      optionLabel: labels.join(' / ') || `Variant #${getString(variant.id, String(index + 1))}`,
+    };
+  });
+};
+
+const mapAdminProductDetail = (product: UnknownRecord): AdminProductDetail => ({
+  ...mapAdminManagedProduct(product),
+  descriptionEn: getString(product.description_en || product.description),
+  descriptionMm: getString(product.description_mm),
+  productType: getString(product.product_type),
+  images: mapAdminProductImages(product),
+  variants: mapAdminProductVariants(product),
+});
 
 export async function fetchAdminProducts(
   filters: AdminProductFilters = {},
@@ -6089,6 +6175,28 @@ export async function deleteAdminProduct(
   signal?: AbortSignal
 ): Promise<void> {
   await apiDelete(`/admin/products/${encodeURIComponent(String(productId))}`, signal);
+}
+
+export async function fetchAdminProductDetail(
+  productId: string | number,
+  signal?: AbortSignal
+): Promise<AdminProductDetail> {
+  const payload = await apiGet(`/admin/products/${encodeURIComponent(String(productId))}`, signal);
+  const data = extractRecordPayload(payload);
+  if (!isRecord(data)) throw new Error('Product not found');
+  return mapAdminProductDetail(data);
+}
+
+export async function updateAdminProductFeatured(
+  productId: string | number,
+  isFeatured: boolean,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPatch(
+    `/admin/products/${encodeURIComponent(String(productId))}/toggle-featured`,
+    { is_featured: isFeatured },
+    signal
+  );
 }
 
 export async function fetchAdminProductForEdit(

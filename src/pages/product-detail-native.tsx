@@ -4,20 +4,22 @@ import { Link, useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
+  Platform,
   Pressable,
   ScrollView,
   Text,
   TextInput,
+  useWindowDimensions,
   View,
 } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { SITE_CONTAINER_CLASS } from '@/constants/layout';
+import { ProductDetailActions } from '@/components/product/product-detail-actions';
 import { ProductDetailGallery } from '@/components/product/product-detail-gallery';
 import { ProductDetailToast } from '@/components/product/product-detail-toast';
 import { ProductDetailSecondarySections } from '@/components/product/product-detail-secondary-sections';
 import { ProductVariantPicker } from '@/components/product/product-variant-picker';
-import { SocialSharePanel } from '@/components/ui/social-share-panel';
 import { SITE_PUBLIC_URL } from '@/config/native';
 import { useNativeAuth } from '@/context/native-auth';
 import { useTheme } from '@/context/theme';
@@ -257,6 +259,8 @@ export function ProductDetailNative({
 }) {
   const { t, language } = useAppTranslation();
   const router = useRouter();
+  const { width } = useWindowDimensions();
+  const useCompactActions = Platform.OS !== 'web' || width < 768;
   const { user, isAuthenticated } = useNativeAuth();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const [product, setProduct] = useState<ProductDetail | null>(initialProduct || null);
@@ -338,6 +342,8 @@ export function ProductDetailNative({
       setError('');
       setMoreProducts([]);
       setMoreProductsLoading(false);
+      setDeliveryAreas([]);
+      setDeliveryLoading(false);
 
       try {
         const nextProduct =
@@ -353,39 +359,6 @@ export function ProductDetailNative({
         setSelectedOptions({});
         setVariantError('');
         setCompared(isProductCompared(nextProduct.id));
-
-        const reviewList =
-          nextProduct.reviews.length > 0
-            ? nextProduct.reviews
-            : await fetchProductReviews(nextProduct.id, controller.signal).catch(() => []);
-        setReviews(reviewList);
-
-        const sellerId = nextProduct.seller?.id || nextProduct.sellerId;
-        if (sellerId) {
-          if (!controller.signal.aborted) {
-            setMoreProductsLoading(true);
-            setDeliveryLoading(true);
-          }
-          const sellerKey =
-            nextProduct.seller?.slug || String(nextProduct.seller?.id || sellerId);
-          const [sellerProducts, areas] = await Promise.all([
-            fetchMoreProductsFromSeller(sellerId, nextProduct.id, controller.signal).catch(
-              () => []
-            ),
-            fetchSellerDeliveryAreas(sellerKey, controller.signal).catch(() => []),
-          ]);
-
-          if (!controller.signal.aborted) {
-            setMoreProducts(sellerProducts);
-            setDeliveryAreas(areas);
-            setMoreProductsLoading(false);
-            setDeliveryLoading(false);
-          }
-        } else {
-          setMoreProducts([]);
-          setMoreProductsLoading(false);
-          setDeliveryAreas([]);
-        }
       } catch (err) {
         if (!controller.signal.aborted) {
           if (hasInitialProduct) {
@@ -400,8 +373,6 @@ export function ProductDetailNative({
         }
       } finally {
         if (!controller.signal.aborted) {
-          setDeliveryLoading(false);
-          setMoreProductsLoading(false);
           setLoading(false);
         }
       }
@@ -411,6 +382,52 @@ export function ProductDetailNative({
 
     return () => controller.abort();
   }, [hasInitialProduct, initialProduct, slug, t]);
+
+  useEffect(() => {
+    if (!product?.id) return;
+
+    const controller = new AbortController();
+    const productId = product.id;
+    const sellerId = product.seller?.id || product.sellerId;
+
+    if (product.reviews.length === 0) {
+      void fetchProductReviews(productId, controller.signal)
+        .then((reviewList) => {
+          if (!controller.signal.aborted) setReviews(reviewList);
+        })
+        .catch(() => {});
+    }
+
+    if (sellerId) {
+      setMoreProductsLoading(true);
+      setDeliveryLoading(true);
+      const sellerKey = product.seller?.slug || String(product.seller?.id || sellerId);
+
+      void Promise.all([
+        fetchMoreProductsFromSeller(sellerId, productId, controller.signal).catch(() => []),
+        fetchSellerDeliveryAreas(sellerKey, controller.signal).catch(() => []),
+      ])
+        .then(([sellerProducts, areas]) => {
+          if (!controller.signal.aborted) {
+            setMoreProducts(sellerProducts);
+            setDeliveryAreas(areas);
+          }
+        })
+        .finally(() => {
+          if (!controller.signal.aborted) {
+            setMoreProductsLoading(false);
+            setDeliveryLoading(false);
+          }
+        });
+    } else {
+      setMoreProducts([]);
+      setDeliveryAreas([]);
+      setMoreProductsLoading(false);
+      setDeliveryLoading(false);
+    }
+
+    return () => controller.abort();
+  }, [product?.id, product?.reviews.length, product?.seller?.id, product?.seller?.slug, product?.sellerId]);
 
   const images = useMemo(() => product?.images ?? [], [product]);
   const deliveryLabels = useMemo(
@@ -762,7 +779,7 @@ export function ProductDetailNative({
         message={actionMessage}
         onDismiss={() => setActionMessage(null)}
       />
-      <View className="bg-gray-50 py-6 dark:bg-slate-950 sm:py-8 sm:pb-8 pb-24">
+      <View className="bg-gray-50 py-6 dark:bg-slate-950 sm:py-8 sm:pb-8 web:pb-24">
         <View className={`${SITE_CONTAINER_CLASS} min-w-0`}>
           <Pressable
             onPress={() => router.back()}
@@ -1067,146 +1084,42 @@ export function ProductDetailNative({
                 ) : null}
               </View>
 
-              <View className="gap-2 pt-4">
-                {stockIsOut ? (
-                  <Pressable
-                    disabled
-                    className="min-h-9 items-center justify-center rounded-md bg-gray-300 px-3 py-1.5 dark:bg-slate-700"
-                  >
-                    <Text className="font-sans text-xs font-semibold text-gray-500 dark:text-slate-400 sm:text-sm">
-                      🚫 {t('productDetail.out_of_stock')}
-                    </Text>
-                  </Pressable>
-                ) : (
-                  <>
-                    <View className="flex-col gap-2 sm:grid sm:grid-cols-[minmax(0,1fr)_minmax(0,1fr)_auto] sm:items-stretch sm:gap-2">
-                      <Pressable
-                        onPress={() => void handlePrimaryCta()}
-                        disabled={addingToCart}
-                        className={`min-h-9 flex-row items-center justify-center rounded-md px-3 py-1.5 sm:min-h-10 sm:px-4 ${
-                          variantReady ? 'bg-green-600' : 'bg-amber-500'
-                        } ${addingToCart ? 'opacity-50' : ''}`}
-                      >
-                        {addingToCart ? (
-                          <ActivityIndicator color="#ffffff" size="small" />
-                        ) : (
-                          <Feather
-                            name={variantReady ? 'shopping-cart' : 'sliders'}
-                            color="#ffffff"
-                            size={14}
-                          />
-                        )}
-                        <Text
-                          className="ml-1.5 font-sans text-xs font-semibold text-white sm:text-sm"
-                          numberOfLines={1}>
-                          {primaryCtaLabel}
-                        </Text>
-                      </Pressable>
-
-                      <Pressable
-                        onPress={() => void handleBuyNow()}
-                        disabled={addingToCart}
-                        className={`min-h-9 items-center justify-center rounded-md bg-gray-800 px-3 py-1.5 dark:bg-slate-700 sm:min-h-10 sm:px-4 ${
-                          addingToCart ? 'opacity-50' : ''
-                        }`}
-                      >
-                        <Text
-                          className="font-sans text-xs font-semibold text-white sm:text-sm"
-                          numberOfLines={1}>
-                          {t('productDetail.buy_now')}
-                        </Text>
-                      </Pressable>
-
-                      <View className="flex-row items-center gap-1.5 sm:gap-2">
-                        <Pressable
-                          onPress={() => void handleToggleWishlist()}
-                          disabled={wishlistLoading}
-                          accessibilityLabel={
-                            savedToWishlist
-                              ? t('productDetail.remove_from_wishlist')
-                              : t('productDetail.add_to_wishlist')
-                          }
-                          className={`h-8 w-8 items-center justify-center rounded-md border sm:h-9 sm:w-9 ${
-                            savedToWishlist
-                              ? 'border-red-300 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
-                              : 'border-gray-300 bg-white dark:border-slate-600 dark:bg-slate-800'
-                          }`}
-                        >
-                          {wishlistLoading ? (
-                            <ActivityIndicator color="#16a34a" size="small" />
-                          ) : (
-                            <Feather
-                              name="heart"
-                              color={savedToWishlist ? '#ef4444' : '#64748b'}
-                              size={16}
-                            />
-                          )}
-                        </Pressable>
-
-                        <View className="relative">
-                          <Pressable
-                            onPress={handleShare}
-                            accessibilityLabel={t('productDetail.share_product')}
-                            className={`h-8 w-8 items-center justify-center rounded-md border sm:h-9 sm:w-9 ${
-                              shareOpen
-                                ? 'border-green-500 bg-green-50 dark:border-green-600 dark:bg-green-900/30'
-                                : 'border-gray-300 bg-white dark:border-slate-600 dark:bg-slate-800'
-                            }`}
-                          >
-                            <Feather
-                              name="share-2"
-                              color={shareOpen ? '#16a34a' : '#64748b'}
-                              size={16}
-                            />
-                          </Pressable>
-                          {shareOpen && sharePayload ? (
-                            <View className="absolute right-0 top-full z-50 mt-2 w-56">
-                              <SocialSharePanel
-                                payload={sharePayload}
-                                heading={t('productDetail.share_product')}
-                                shareOnLabel={t('productDetail.share_on')}
-                                copyLinkLabel={t('productDetail.copy_link')}
-                                copiedLabel={t('productDetail.copied')}
-                                platformLabels={{
-                                  facebook: t('productDetail.share_facebook'),
-                                  whatsapp: t('productDetail.share_whatsapp'),
-                                  viber: t('productDetail.share_viber'),
-                                  telegram: t('productDetail.share_telegram'),
-                                  x: t('productDetail.share_x'),
-                                }}
-                              />
-                            </View>
-                          ) : null}
-                        </View>
-
-                        <Pressable
-                          onPress={handleToggleCompare}
-                          accessibilityLabel={
-                            compared
-                              ? t('productDetail.remove_from_compare')
-                              : t('productDetail.add_to_compare')
-                          }
-                          className={`h-8 items-center justify-center rounded-md border px-2 sm:h-9 sm:min-w-[5.5rem] sm:px-2.5 ${
-                            compared
-                              ? 'border-indigo-400 bg-indigo-50 dark:border-indigo-800 dark:bg-indigo-900/30'
-                              : 'border-gray-300 bg-white dark:border-slate-600 dark:bg-slate-800'
-                          }`}
-                        >
-                          <Text
-                            className={`font-sans text-[11px] font-semibold sm:text-xs ${
-                              compared
-                                ? 'text-indigo-700 dark:text-indigo-300'
-                                : 'text-gray-700 dark:text-slate-300'
-                            }`}
-                            numberOfLines={1}>
-                            {compared ? t('productDetail.compared') : t('productDetail.compare')}
-                          </Text>
-                        </Pressable>
-                      </View>
-                    </View>
-                  </>
-                )}
-              </View>
+              <ProductDetailActions
+                compact={useCompactActions}
+                stockIsOut={stockIsOut}
+                variantReady={variantReady}
+                addingToCart={addingToCart}
+                primaryCtaLabel={primaryCtaLabel}
+                compared={compared}
+                savedToWishlist={savedToWishlist}
+                wishlistLoading={wishlistLoading}
+                shareOpen={shareOpen}
+                sharePayload={sharePayload}
+                onPrimaryCta={() => void handlePrimaryCta()}
+                onBuyNow={() => void handleBuyNow()}
+                onToggleWishlist={() => void handleToggleWishlist()}
+                onShare={handleShare}
+                onToggleCompare={handleToggleCompare}
+                labels={{
+                  outOfStock: t('productDetail.out_of_stock'),
+                  buyNow: t('productDetail.buy_now'),
+                  compared: t('productDetail.compared'),
+                  compare: t('productDetail.compare'),
+                  removeFromWishlist: t('productDetail.remove_from_wishlist'),
+                  addToWishlist: t('productDetail.add_to_wishlist'),
+                  shareProduct: t('productDetail.share_product'),
+                  shareOn: t('productDetail.share_on'),
+                  copyLink: t('productDetail.copy_link'),
+                  copied: t('productDetail.copied'),
+                  removeFromCompare: t('productDetail.remove_from_compare'),
+                  addToCompare: t('productDetail.add_to_compare'),
+                  shareFacebook: t('productDetail.share_facebook'),
+                  shareWhatsapp: t('productDetail.share_whatsapp'),
+                  shareViber: t('productDetail.share_viber'),
+                  shareTelegram: t('productDetail.share_telegram'),
+                  shareX: t('productDetail.share_x'),
+                }}
+              />
 
               {product.seller ? (
                 <View className="border-t border-gray-200 pt-2 dark:border-slate-700">
@@ -1257,45 +1170,47 @@ export function ProductDetailNative({
         </View>
       </View>
 
-      <View className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 py-3 dark:border-slate-800 dark:bg-slate-900/95 sm:hidden">
-        <View className={`${SITE_CONTAINER_CLASS} min-w-0 flex-row items-center gap-3`}>
-          <View className="min-w-0 flex-1">
-            <Text className="font-sans text-xs text-gray-500 dark:text-slate-400" numberOfLines={1}>
-              {t('productDetail.price')}
-            </Text>
-            <Text className="font-sans text-sm font-bold text-gray-900 dark:text-slate-100" numberOfLines={1}>
-              {displayPrice}
-            </Text>
+      {Platform.OS === 'web' ? (
+        <View className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 py-3 dark:border-slate-800 dark:bg-slate-900/95 sm:hidden">
+          <View className={`${SITE_CONTAINER_CLASS} min-w-0 flex-row items-center gap-3`}>
+            <View className="min-w-0 flex-1">
+              <Text className="font-sans text-xs text-gray-500 dark:text-slate-400" numberOfLines={1}>
+                {t('productDetail.price')}
+              </Text>
+              <Text className="font-sans text-sm font-bold text-gray-900 dark:text-slate-100" numberOfLines={1}>
+                {displayPrice}
+              </Text>
+            </View>
+            {stockIsOut ? (
+              <Pressable
+                disabled
+                className="ml-auto min-h-9 max-w-[52%] items-center justify-center rounded-lg bg-gray-300 px-3 py-1.5 dark:bg-slate-700"
+              >
+                <Text className="font-sans text-xs font-semibold text-gray-500 dark:text-slate-400 sm:text-sm">
+                  🚫 {t('productDetail.out_of_stock')}
+                </Text>
+              </Pressable>
+            ) : (
+              <Pressable
+                onPress={() => void handlePrimaryCta()}
+                disabled={addingToCart}
+                className={`ml-auto min-h-9 max-w-[52%] flex-row items-center justify-center rounded-lg px-3 py-1.5 ${
+                  variantReady ? 'bg-green-600' : 'bg-amber-500'
+                } ${addingToCart ? 'opacity-50' : ''}`}
+              >
+                <Feather
+                  name={variantReady ? 'shopping-cart' : 'sliders'}
+                  color="#ffffff"
+                  size={14}
+                />
+                <Text className="ml-1.5 font-sans text-xs font-semibold text-white sm:text-sm" numberOfLines={1}>
+                  {primaryCtaLabel}
+                </Text>
+              </Pressable>
+            )}
           </View>
-          {stockIsOut ? (
-            <Pressable
-              disabled
-              className="ml-auto min-h-10 max-w-[52%] items-center justify-center rounded-lg bg-gray-300 px-3 py-2 dark:bg-slate-700"
-            >
-              <Text className="font-sans text-sm font-semibold text-gray-500 dark:text-slate-400">
-                🚫 {t('productDetail.out_of_stock')}
-              </Text>
-            </Pressable>
-          ) : (
-            <Pressable
-              onPress={() => void handlePrimaryCta()}
-              disabled={addingToCart}
-              className={`ml-auto min-h-10 max-w-[52%] flex-row items-center justify-center rounded-lg px-3 py-2 ${
-                variantReady ? 'bg-green-600' : 'bg-amber-500'
-              } ${addingToCart ? 'opacity-50' : ''}`}
-            >
-              <Feather
-                name={variantReady ? 'shopping-cart' : 'sliders'}
-                color="#ffffff"
-                size={16}
-              />
-              <Text className="ml-1.5 font-sans text-sm font-semibold text-white" numberOfLines={1}>
-                {primaryCtaLabel}
-              </Text>
-            </Pressable>
-          )}
         </View>
-      </View>
+      ) : null}
     </AppLayout>
   );
 }

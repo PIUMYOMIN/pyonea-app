@@ -11,6 +11,7 @@ import { NativeSeo } from '@/components/SEO/native-seo';
 import { CookieBannerNative } from '@/components/ui/cookie-banner-native';
 import { CookieProvider } from '@/context/cookies';
 import { CartCountProvider } from '@/context/cart-count-context';
+import { CompareProductsProvider } from '@/context/compare-products-context';
 import { NativeAuthProvider } from '@/context/native-auth';
 import { AppThemeProvider, useTheme } from '@/context/theme';
 import { WishlistProvider } from '@/context/wishlist-context';
@@ -59,15 +60,17 @@ export default function RootLayout() {
   return (
     <AppThemeProvider>
       <NativeAuthProvider>
-        <CartCountProvider>
-          <WishlistProvider>
-            <CookieProvider>
-              <WelcomeLoaderProvider>
-                <RootStack />
-              </WelcomeLoaderProvider>
-            </CookieProvider>
-          </WishlistProvider>
-        </CartCountProvider>
+        <CompareProductsProvider>
+          <CartCountProvider>
+            <WishlistProvider>
+              <CookieProvider>
+                <WelcomeLoaderProvider>
+                  <RootStack />
+                </WelcomeLoaderProvider>
+              </CookieProvider>
+            </WishlistProvider>
+          </CartCountProvider>
+        </CompareProductsProvider>
       </NativeAuthProvider>
     </AppThemeProvider>
   );

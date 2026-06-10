@@ -1,3 +1,6 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
+import { Platform } from 'react-native';
+
 import type { HomeProduct, ProductDetail } from '@/utils/native-api';
 import { fetchProductDetail } from '@/utils/native-api';
 import { invalidateScreenCache } from '@/utils/screen-cache';
@@ -36,11 +39,49 @@ type CompareListener = (count: number) => void;
 const listeners = new Set<CompareListener>();
 let memoryItems: NativeCompareItem[] = [];
 let memoryStorageKey = 'product_compare_guest';
+let nativeHydrated = false;
 
 const canUseLocalStorage = () =>
-  typeof globalThis !== 'undefined' && 'localStorage' in globalThis;
+  Platform.OS === 'web' &&
+  typeof globalThis !== 'undefined' &&
+  'localStorage' in globalThis;
+
+const getNativeCompareStorageKey = () => `product_compare_guest`;
+
+const persistNativeCompareItems = (items: NativeCompareItem[]) => {
+  if (Platform.OS === 'web') return;
+  void AsyncStorage.setItem(getNativeCompareStorageKey(), JSON.stringify(items)).catch(() => {
+    // Ignore persistence failures; in-memory list still works for this session.
+  });
+};
+
+export const hydrateCompareFromStorage = async () => {
+  if (Platform.OS === 'web' || nativeHydrated) return;
+
+  nativeHydrated = true;
+  memoryStorageKey = getNativeCompareStorageKey();
+
+  try {
+    const raw = await AsyncStorage.getItem(getNativeCompareStorageKey());
+    if (!raw) {
+      emitCompareChanged(0);
+      return;
+    }
+
+    const parsed = JSON.parse(raw);
+    memoryItems = Array.isArray(parsed)
+      ? parsed.map((item) => normalizeLegacyItem(item))
+      : [];
+    emitCompareChanged(memoryItems.length);
+  } catch {
+    memoryItems = [];
+    emitCompareChanged(0);
+  }
+};
 
 const getCompareStorageKey = () => {
+  if (Platform.OS !== 'web') return getNativeCompareStorageKey();
+
   if (!canUseLocalStorage()) return memoryStorageKey;
 
   try {
@@ -81,7 +122,11 @@ const normalizeLegacyItem = (raw: unknown): NativeCompareItem => {
     id: item.id ?? '',
     slug: String(item.slug || item.slug_en || item.id || ''),
     name: String(item.name || item.name_en || item.name_mm || 'Product'),
-    categoryId: item.categoryId ?? item.category_id ?? null,
+    categoryId:
+      item.categoryId ??
+      (typeof item.category_id === 'string' || typeof item.category_id === 'number'
+        ? item.category_id
+        : null),
     priceValue: item.priceValue ?? parsePriceValue(numericLegacyPrice ?? item.price),
     price: typeof item.price === 'string' ? item.price : '',
     rating: String(item.rating ?? item.average_rating ?? 0),
@@ -149,6 +194,10 @@ const emitCompareChanged = (count: number) => {
 export const loadCompareItems = (): NativeCompareItem[] => {
   const storageKey = getCompareStorageKey();
 
+  if (Platform.OS !== 'web') {
+    return storageKey === memoryStorageKey ? memoryItems : [];
+  }
+
   if (!canUseLocalStorage()) {
     return storageKey === memoryStorageKey ? memoryItems : [];
   }
@@ -168,6 +217,12 @@ export const saveCompareItems = (items: NativeCompareItem[]) => {
   const storageKey = getCompareStorageKey();
   memoryItems = items;
   memoryStorageKey = storageKey;
+
+  if (Platform.OS !== 'web') {
+    persistNativeCompareItems(items);
+    emitCompareChanged(items.length);
+    return;
+  }
 
   if (!canUseLocalStorage()) {
     emitCompareChanged(items.length);

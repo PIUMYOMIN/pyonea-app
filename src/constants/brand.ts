@@ -6,3 +6,6 @@ export const BRAND_LOGO_PUBLIC_URL = '/logo.png';
 
 /** Sampled from Logo_on_payslip.png edge pixels. */
 export const BRAND_LOGO_BACKGROUND = '#3b8950';
+
+/** Brand wordmark font — loaded in _layout.tsx / +html.tsx. */
+export const BRAND_FONT_FAMILY = 'Torus-SemiBold';

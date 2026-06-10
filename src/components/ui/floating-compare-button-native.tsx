@@ -3,9 +3,11 @@ import { Link, usePathname } from 'expo-router';
 import { useEffect, useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 
+import { NATIVE_BOTTOM_TAB_OFFSET_CLASS } from '@/constants/layout';
 import { useAppTranslation } from '@/i18n';
 import {
   getCompareCount,
+  hydrateCompareFromStorage,
   subscribeCompareChanged,
   syncCompareStorage,
 } from '@/utils/compare-native';
@@ -16,7 +18,7 @@ export function FloatingCompareButtonNative() {
   const [count, setCount] = useState(() => getCompareCount());
 
   useEffect(() => {
-    syncCompareStorage();
+    void hydrateCompareFromStorage().then(() => syncCompareStorage());
     return subscribeCompareChanged(setCount);
   }, []);
 
@@ -36,7 +38,9 @@ export function FloatingCompareButtonNative() {
 
   return (
     <View
-      className="pointer-events-none absolute bottom-6 right-4 z-40 sm:right-6 web:fixed"
+      className={`pointer-events-none absolute right-4 z-40 sm:right-6 web:fixed web:bottom-6 ${
+        Platform.OS === 'web' ? 'bottom-6' : NATIVE_BOTTOM_TAB_OFFSET_CLASS
+      }`}
       accessibilityElementsHidden={false}>
       <Link href="/compare" asChild>
         <Pressable

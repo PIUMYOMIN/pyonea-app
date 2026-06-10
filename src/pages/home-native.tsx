@@ -2,7 +2,7 @@ import Feather from '@expo/vector-icons/Feather';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { Link, type Href } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import type { ComponentProps, ReactNode } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
@@ -279,7 +279,13 @@ export default function HomeNative() {
   const { t, language } = useAppTranslation();
   const { user, isAuthenticated } = useNativeAuth();
   const welcomeLoader = useWelcomeLoaderProgress();
-  const cachedFeed = getScreenCache<HomeFeedCache>(HOME_CACHE_KEY, HOME_CACHE_TTL_MS);
+  // Snapshot the cache once per mount; reading it on every render would change
+  // the reference after the fetch writes the cache and retrigger the effect.
+  const [cachedFeed] = useState(() =>
+    getScreenCache<HomeFeedCache>(HOME_CACHE_KEY, HOME_CACHE_TTL_MS),
+  );
+  const tRef = useRef(t);
+  const welcomeLoaderRef = useRef(welcomeLoader);
   const [categories, setCategories] = useState<HomeCategory[]>(cachedFeed?.categories ?? []);
   const [products, setProducts] = useState<HomeProduct[]>(cachedFeed?.products ?? []);
   const [sellers, setSellers] = useState<HomeSeller[]>(cachedFeed?.sellers ?? []);
@@ -314,13 +320,20 @@ export default function HomeNative() {
           : t('home.get_started');
 
   useEffect(() => {
+    tRef.current = t;
+    welcomeLoaderRef.current = welcomeLoader;
+  });
+
+  useEffect(() => {
     if (cachedFeed) {
-      welcomeLoader?.setHomeDataProgress(100);
+      welcomeLoaderRef.current?.setHomeDataProgress(100);
     }
-  }, [cachedFeed, welcomeLoader]);
+  }, [cachedFeed]);
 
   useEffect(() => {
     const controller = new AbortController();
+    const t = tRef.current;
+    const welcomeLoader = welcomeLoaderRef.current;
     const hasCachedFeed = Boolean(cachedFeed);
     let completedTasks = 0;
     let nextCategories: HomeCategory[] | null = null;
@@ -415,7 +428,8 @@ export default function HomeNative() {
     });
 
     return () => controller.abort();
-  }, [cachedFeed, t, welcomeLoader]);
+    // Fetch once per mount; cachedFeed is a mount-time snapshot.
+  }, [cachedFeed]);
 
   return (
     <AppLayout>

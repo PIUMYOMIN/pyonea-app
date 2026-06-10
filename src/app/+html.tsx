@@ -5,7 +5,7 @@ import {
 import type { PropsWithChildren } from "react";
 
 import { BRAND_LOGO_BACKGROUND } from "@/constants/brand";
-import { getPreconnectOrigins } from "@/utils/image-optimization";
+import { IMAGE_BASE_URL, SITE_PUBLIC_URL } from "@/config/native";
 
 const loaderStyles = `
 :root {
@@ -224,7 +224,17 @@ const themeBootstrapScript = `
 export default function RootHtml({ children }: PropsWithChildren) {
   const { htmlAttributes, bodyAttributes, headNodes, bodyNodes } =
     useServerDocumentContext();
-  const preconnectOrigins = getPreconnectOrigins();
+  const preconnectOrigins = [...new Set(
+    [SITE_PUBLIC_URL, IMAGE_BASE_URL]
+      .map((value) => {
+        try {
+          return new URL(value).origin;
+        } catch {
+          return null;
+        }
+      })
+      .filter((origin): origin is string => Boolean(origin)),
+  )];
 
   return (
     <html {...htmlAttributes} lang="en">

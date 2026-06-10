@@ -15,6 +15,12 @@ import {
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { SITE_CONTAINER_CLASS } from '@/constants/layout';
+import {
+  FORM_INPUT_CLASS,
+  FORM_QTY_INPUT_CLASS,
+  FORM_SEARCH_INPUT_CLASS,
+  FORM_SEARCH_WRAPPER_CLASS,
+} from '@/components/ui/form-field-styles';
 import { NativeDateField } from '@/components/ui/native-date-field';
 import { useNativeAuth } from '@/context/native-auth';
 import { useAppTranslation } from '@/i18n';
@@ -278,7 +284,7 @@ function BulkLineCard({
             onChangeText={onQty}
             onBlur={onSnap}
             keyboardType="number-pad"
-            className="rounded-lg border border-gray-200 bg-white px-3 py-2 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+            className={FORM_QTY_INPUT_CLASS}
           />
           <Text className="mt-0.5 font-sans text-[10px] text-gray-400">
             {t('bulk_order.moq_label')} {line.moq}
@@ -778,14 +784,14 @@ export function BulkOrderToolNative() {
                     {t('bulk_order.search_title')}
                   </Text>
                 </View>
-                <View className="flex-row items-center rounded-xl border border-gray-200 bg-white px-3 dark:border-slate-600 dark:bg-slate-900">
+                <View className={FORM_SEARCH_WRAPPER_CLASS}>
                   <Feather name="search" color="#9ca3af" size={18} />
                   <TextInput
                     value={search}
                     onChangeText={setSearch}
                     placeholder={t('bulk_order.search_placeholder')}
                     placeholderTextColor="#9ca3af"
-                    className="min-w-0 flex-1 px-3 py-3 font-sans text-sm text-gray-900 dark:text-white"
+                    className={FORM_SEARCH_INPUT_CLASS}
                     returnKeyType="search"
                   />
                 </View>
@@ -936,9 +942,10 @@ export function BulkOrderToolNative() {
                       onChangeText={setBuyerNotes}
                       multiline
                       numberOfLines={3}
+                      textAlignVertical="top"
                       placeholder={t('bulk_order.notes_ph')}
                       placeholderTextColor="#9ca3af"
-                      className="min-h-20 rounded-xl border border-gray-200 bg-white px-3 py-2 align-top font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-700 dark:text-slate-100"
+                      className={`min-h-20 ${FORM_INPUT_CLASS}`}
                     />
                   </View>
                 </View>

@@ -1,9 +1,6 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-import { DEFAULT_PRODUCT_IMAGE } from "@/config/native";
-import { getSrcSet, getWebPUrl } from "@/utils/image-optimization";
-
-const DEFAULT_PLACEHOLDER = DEFAULT_PRODUCT_IMAGE;
+import { ProductImageBrandPlaceholder } from "@/components/ui/product-image-brand-placeholder";
 
 function ChevronLeftIcon({ className = "h-6 w-6" }) {
   return (
@@ -88,6 +85,7 @@ const ProductImageGallery = ({
   const [lightboxOpen, setLightboxOpen] = useState(false);
   const [pauseAutoplay, setPauseAutoplay] = useState(false);
   const [mainLoaded, setMainLoaded] = useState(false);
+  const [mainFailed, setMainFailed] = useState(false);
   const mainImgRef = useRef(null);
   const thumbRowRef = useRef(null);
 
@@ -137,13 +135,12 @@ const ProductImageGallery = ({
   }, [lightboxOpen, next, prev]);
 
   const activeSrc = total ? getImageUrl(normalized[active]) : null;
-  const mainSrc = activeSrc ? getWebPUrl(activeSrc, { width: 1024, quality: 82 }) : null;
-  const mainSrcSet = activeSrc ? getSrcSet(activeSrc, [480, 768, 1024, 1280]) : "";
-  const lightboxSrc = activeSrc ? getWebPUrl(activeSrc, { width: 1600, quality: 90 }) : null;
-  const lightboxSrcSet = activeSrc ? getSrcSet(activeSrc, [768, 1200, 1600, 2000]) : "";
+  const mainSrc = activeSrc;
+  const lightboxSrc = activeSrc;
 
   useEffect(() => {
     setMainLoaded(false);
+    setMainFailed(false);
   }, [mainSrc]);
 
   useEffect(() => {
@@ -152,12 +149,14 @@ const ProductImageGallery = ({
 
     if (img.complete && img.naturalWidth > 0) {
       setMainLoaded(true);
+      setMainFailed(false);
       return;
     }
 
     const id = window.requestAnimationFrame(() => {
       if (img.complete && img.naturalWidth > 0) {
         setMainLoaded(true);
+        setMainFailed(false);
       }
     });
 
@@ -206,33 +205,34 @@ const ProductImageGallery = ({
                    aspect-square sm:aspect-[4/3] lg:aspect-[5/4]
                    select-none"
       >
+        {(!activeSrc || !mainLoaded || mainFailed) ? (
+          <ProductImageBrandPlaceholder size="lg" />
+        ) : null}
+
         {activeSrc ? (
           <img
             ref={mainImgRef}
             key={activeSrc}
             src={mainSrc}
-            srcSet={mainSrcSet}
-            sizes="(min-width: 1024px) 50vw, 100vw"
             alt={alt}
             className={`absolute inset-0 w-full h-full object-contain bg-gray-50 dark:bg-slate-800 transition-opacity duration-300 ease-out ${
-              mainLoaded ? "opacity-100" : "opacity-0"
+              mainLoaded && !mainFailed ? "opacity-100" : "opacity-0"
             }`}
             style={{ animation: "pdFadeSlideIn 450ms ease-out" }}
             loading={priority ? "eager" : "lazy"}
             decoding="async"
             fetchPriority={priority ? "high" : "low"}
-            onLoad={() => setMainLoaded(true)}
-            onError={(event) => {
-              event.currentTarget.onerror = null;
-              event.currentTarget.removeAttribute("srcset");
-              event.currentTarget.src = DEFAULT_PLACEHOLDER;
+            onLoad={() => {
               setMainLoaded(true);
+              setMainFailed(false);
+            }}
+            onError={() => {
+              setMainLoaded(false);
+              setMainFailed(true);
             }}
             onClick={() => setLightboxOpen(true)}
           />
-        ) : (
-          <div className="absolute inset-0 animate-pulse bg-gray-200 dark:bg-slate-700" />
-        )}
+        ) : null}
 
         {/* Desktop arrows */}
         {total > 1 && (
@@ -281,7 +281,7 @@ const ProductImageGallery = ({
         >
           {normalized.map((img, idx) => {
             const src = getImageUrl(img);
-            const thumbSrc = getWebPUrl(src, { width: 160, quality: 70 });
+            const thumbSrc = src;
             const selected = idx === active;
             return (
               <button
@@ -342,8 +342,6 @@ const ProductImageGallery = ({
             <img
               key={`lb-${activeSrc}`}
               src={lightboxSrc}
-              srcSet={lightboxSrcSet}
-              sizes="95vw"
               alt={alt}
               className="max-h-[88vh] max-w-[95vw] object-contain"
               style={{ animation: "pdFadeSlideIn 450ms ease-out" }}
