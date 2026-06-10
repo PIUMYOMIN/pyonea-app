@@ -1,8 +1,12 @@
 import Feather from '@expo/vector-icons/Feather';
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Pressable, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
+import {
+  CATEGORY_BROWSER_GRID_CLASS,
+  SITE_CONTAINER_CLASS,
+} from '@/constants/layout';
 import {
   CategoryCardFromBrowser,
   CategoryCardSkeleton,
@@ -27,8 +31,6 @@ export function CategoryBrowserNative() {
   const [error, setError] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [visibleCount, setVisibleCount] = useState(CATEGORIES_PER_BATCH);
-  const { width } = useWindowDimensions();
-  const categoryColumns = width >= 1024 ? 6 : width >= 640 ? 3 : 2;
 
   useEffect(() => {
     const controller = new AbortController();
@@ -73,13 +75,6 @@ export function CategoryBrowserNative() {
     });
   }, [categories, language, searchQuery]);
   const visibleCategories = filteredCategories.slice(0, visibleCount);
-  const categoryRows = useMemo(() => {
-    const rows: BrowserCategory[][] = [];
-    for (let index = 0; index < visibleCategories.length; index += categoryColumns) {
-      rows.push(visibleCategories.slice(index, index + categoryColumns));
-    }
-    return rows;
-  }, [categoryColumns, visibleCategories]);
   const hasMoreCategories = visibleCount < filteredCategories.length;
 
   const loadMoreCategories = () => {
@@ -102,7 +97,7 @@ export function CategoryBrowserNative() {
     <AppLayout onEndReached={loadMoreCategories}>
       <View className="bg-gray-50 dark:bg-slate-950">
         <View className="bg-green-600">
-          <View className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <View className={`${SITE_CONTAINER_CLASS} py-12`}>
             <View className="items-center text-center">
               <Text className="mb-4 text-center font-sans text-2xl font-bold text-white sm:text-4xl">
                 {t('categories.browse_categories')}
@@ -131,7 +126,7 @@ export function CategoryBrowserNative() {
           </View>
         </View>
 
-        <View className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+        <View className={`${SITE_CONTAINER_CLASS} py-12`}>
           {error ? (
             <View className="items-center py-16">
               <Text className="mb-4 text-center font-sans text-base text-red-600 dark:text-red-400">
@@ -154,7 +149,7 @@ export function CategoryBrowserNative() {
               </Pressable>
             </View>
           ) : loading ? (
-            <View className="flex-row flex-wrap gap-3 sm:gap-5">
+            <View className={CATEGORY_BROWSER_GRID_CLASS}>
               {Array.from({ length: 12 }).map((_, index) => (
                 <CategoryCardSkeleton key={`category-skeleton-${index}`} />
               ))}
@@ -164,27 +159,17 @@ export function CategoryBrowserNative() {
               <Text className="mb-4 font-sans text-sm text-gray-500 dark:text-slate-500">
                 {t('categories.showing_categories', { count: filteredCategories.length })}
               </Text>
-              <FlatList
-                data={categoryRows}
-                keyExtractor={(_, index) => `category-row-${index}`}
-                renderItem={({ item: row, index: rowIndex }) => (
-                  <View className="mb-3 flex-row flex-wrap gap-3 sm:mb-5 sm:gap-5">
-                    {row.map((category, columnIndex) => {
-                      const cardIndex = rowIndex * categoryColumns + columnIndex;
-                      return (
-                        <CategoryCardFromBrowser
-                          key={String(category.id)}
-                          category={category}
-                          language={language}
-                          priority={cardIndex < 6}
-                        />
-                      );
-                    })}
-                  </View>
-                )}
-                scrollEnabled={false}
-                showsVerticalScrollIndicator={false}
-              />
+              <View className={CATEGORY_BROWSER_GRID_CLASS}>
+                {visibleCategories.map((category, index) => (
+                  <CategoryCardFromBrowser
+                    key={String(category.id)}
+                    category={category}
+                    language={language}
+                    priority={index < 6}
+                    className="w-full min-w-0"
+                  />
+                ))}
+              </View>
               {hasMoreCategories ? (
                 <View className="items-center py-4">
                   <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">

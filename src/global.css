@@ -122,4 +122,9 @@ body.dark {
   .container-pad {
     @apply px-4 sm:px-6 lg:px-8;
   }
+
+  .product-list-row {
+    content-visibility: auto;
+    contain-intrinsic-size: auto 380px;
+  }
 }

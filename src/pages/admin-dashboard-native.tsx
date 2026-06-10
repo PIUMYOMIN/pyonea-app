@@ -66,8 +66,8 @@ const AdminUserManagementNative = lazy(() =>
   })),
 );
 const AdminSellersManagementNative = lazy(() =>
-  import('@/components/admin/sellers-management-native').then((module) => ({
-    default: module.SellersManagementNative,
+  import('@/components/admin/admin-seller-center-native').then((module) => ({
+    default: module.AdminSellerCenterNative,
   })),
 );
 const AdminPlatformLogisticsNative = lazy(() =>
@@ -120,6 +120,36 @@ const AdminReportManagementNative = lazy(() =>
     default: module.ReportManagementNative,
   })),
 );
+const AdminFinancialReportsNative = lazy(() =>
+  import('@/components/admin/financial-reports-native').then((module) => ({
+    default: module.AdminFinancialReportsNative,
+  })),
+);
+const AdminBlogManagementNative = lazy(() =>
+  import('@/components/admin/blog-management-native').then((module) => ({
+    default: module.BlogManagementNative,
+  })),
+);
+const AdminDeliveryFeeReviewNative = lazy(() =>
+  import('@/components/admin/delivery-fee-review-native').then((module) => ({
+    default: module.DeliveryFeeReviewNative,
+  })),
+);
+const AdminSettingsNative = lazy(() =>
+  import('@/components/admin/settings-native').then((module) => ({
+    default: module.AdminSettingsNative,
+  })),
+);
+const AdminContactMessagesNative = lazy(() =>
+  import('@/components/admin/contact-messages-management-native').then((module) => ({
+    default: module.ContactMessagesManagementNative,
+  })),
+);
+const AdminNotificationsNative = lazy(() =>
+  import('@/components/admin/admin-notifications-native').then((module) => ({
+    default: module.AdminNotificationsNative,
+  })),
+);
 
 const lazyAdminTabs: Partial<Record<AdminTab, LazyExoticComponent<ComponentType>>> = {
   announcements: AdminAnnouncementsNative,
@@ -129,6 +159,7 @@ const lazyAdminTabs: Partial<Record<AdminTab, LazyExoticComponent<ComponentType>
   sellers: AdminSellersManagementNative,
   'platform-logistics': AdminPlatformLogisticsNative,
   'delivery-fees': AdminDeliveryFeeManagementNative,
+  'delivery-fee-review': AdminDeliveryFeeReviewNative,
   'cod-invoices': AdminCodInvoiceManagementNative,
   'commission-rules': AdminCommissionRulesManagementNative,
   categories: AdminCategoryManagementNative,
@@ -137,8 +168,13 @@ const lazyAdminTabs: Partial<Record<AdminTab, LazyExoticComponent<ComponentType>
   analytics: AdminAnalyticsManagementNative,
   rfq: AdminRfqNative,
   reports: AdminReportManagementNative,
+  'financial-reports': AdminFinancialReportsNative,
+  blog: AdminBlogManagementNative,
   subscriptions: AdminSubscriptionManagementNative,
   reviews: AdminReviewManagementNative,
+  settings: AdminSettingsNative,
+  'contact-messages': AdminContactMessagesNative,
+  notifications: AdminNotificationsNative,
 };
 
 export function AdminDashboardNative() {

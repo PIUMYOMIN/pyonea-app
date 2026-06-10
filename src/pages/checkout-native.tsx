@@ -47,6 +47,7 @@ import {
   type CheckoutCoupon,
   type CheckoutLocationRow,
   type CheckoutOrderResult,
+  type CheckoutSellerShippingFee,
   type CheckoutProfile,
   type CheckoutSellerPolicy,
 } from "@/utils/native-api";
@@ -475,6 +476,7 @@ export function CheckoutNative() {
   const [locationRows, setLocationRows] = useState<CheckoutLocationRow[]>([]);
   const [locationLoading, setLocationLoading] = useState(true);
   const [feesLoading, setFeesLoading] = useState(true);
+  const [sellerShippingFees, setSellerShippingFees] = useState<CheckoutSellerShippingFee[]>([]);
   const [sellerPolicies, setSellerPolicies] = useState<CheckoutSellerPolicy[]>(
     [],
   );
@@ -493,6 +495,8 @@ export function CheckoutNative() {
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
   const [paymentOrder, setPaymentOrder] = useState<CheckoutOrderResult | null>(null);
+  const [paymentQueue, setPaymentQueue] = useState<CheckoutOrderResult[]>([]);
+  const [paymentQueueIndex, setPaymentQueueIndex] = useState(0);
   const [paymentVisible, setPaymentVisible] = useState(false);
   const [redirecting, setRedirecting] = useState(false);
   const addressCountry = address.country;
@@ -688,6 +692,7 @@ export function CheckoutNative() {
           if (!controller.signal.aborted) {
             setShippingFee(fees.shippingFeeValue);
             setTaxRate(fees.taxRate);
+            setSellerShippingFees(fees.sellers);
           }
         })
         .catch(() => {})
@@ -728,6 +733,17 @@ export function CheckoutNative() {
   const hasCartIssues = Boolean(
     cart?.items.some((item) => !item.isAvailable || !item.isQuantityValid),
   );
+
+  const uniqueSellerCount = useMemo(() => {
+    const sellers = new Set(
+      cart?.items.map((item) => item.sellerSlug || item.seller).filter(Boolean) || [],
+    );
+    return sellers.size;
+  }, [cart?.items]);
+
+  const isMultiSellerCart = uniqueSellerCount > 1;
+  const requiresSequentialPayments =
+    isMultiSellerCart && paymentMethod !== "cash_on_delivery";
 
   const updateAddress = (key: keyof CheckoutAddress, value: string) => {
     setAddress((current) => ({ ...current, [key]: value }));
@@ -782,11 +798,13 @@ export function CheckoutNative() {
     }
   }, [authLoading, isAuthenticated, isBuyer, otpVisible, paymentVisible, router, t]);
 
-  const finishOrder = async (order: CheckoutOrderResult) => {
+  const finishOrder = async (order: CheckoutOrderResult, allOrders: CheckoutOrderResult[] = []) => {
     checkoutBusyRef.current = true;
     setRedirecting(true);
     setPaymentVisible(false);
     setPaymentOrder(null);
+    setPaymentQueue([]);
+    setPaymentQueueIndex(0);
     setOtpVisible(false);
     await clearCartItems().catch(() => {});
     setCart((current) =>
@@ -813,8 +831,22 @@ export function CheckoutNative() {
     });
     router.replace({
       pathname: "/payment-success",
-      params: { order_id: String(order.id) },
+      params: {
+        order_id: String(order.id),
+        order_ids: (allOrders.length ? allOrders : [order]).map((entry) => String(entry.id)).join(","),
+      },
     } as Href);
+  };
+
+  const beginOnlinePayment = (orders: CheckoutOrderResult[]) => {
+    if (!orders.length) return;
+
+    checkoutBusyRef.current = true;
+    setPaymentQueue(orders);
+    setPaymentQueueIndex(0);
+    setPaymentOrder(orders[0]);
+    setPaymentVisible(true);
+    setOtpVisible(false);
   };
 
   const startOtpCountdown = (seconds = 600) => {
@@ -941,21 +973,18 @@ export function CheckoutNative() {
     setSubmitting(true);
     try {
       const pendingPayment = paymentMethod !== "cash_on_delivery";
-      const order = await createCheckoutOrder(
+      const result = await createCheckoutOrder(
         buildOrderPayload("pending"),
         undefined,
         idempotencyKeyRef.current
       );
 
       if (pendingPayment) {
-        checkoutBusyRef.current = true;
-        setPaymentOrder({ ...order, paymentMethod });
-        setPaymentVisible(true);
-        setOtpVisible(false);
+        beginOnlinePayment(result.orders);
         return;
       }
 
-      await finishOrder(order);
+      await finishOrder(result.primaryOrder, result.orders);
     } catch (err) {
       checkoutBusyRef.current = false;
       showMessage(
@@ -967,6 +996,26 @@ export function CheckoutNative() {
   };
 
   const completePaidOrder = async (order: CheckoutOrderResult) => {
+    const queue = paymentQueue.length ? paymentQueue : [order];
+    const currentIndex = queue.findIndex((entry) => String(entry.id) === String(order.id));
+    const resolvedIndex = currentIndex >= 0 ? currentIndex : paymentQueueIndex;
+    const nextIndex = resolvedIndex + 1;
+
+    if (nextIndex < queue.length) {
+      showMessage(
+        t("checkout.payment_step_complete", {
+          defaultValue: "Payment {{step}} of {{total}} complete. Continue with the next seller.",
+          step: nextIndex,
+          total: queue.length,
+        }),
+      );
+      setPaymentQueueIndex(nextIndex);
+      setPaymentOrder(queue[nextIndex]);
+      setPaymentVisible(false);
+      setTimeout(() => setPaymentVisible(true), 0);
+      return;
+    }
+
     try {
       const receipt = await fetchPaymentReceipt(order.id);
       const isPaid = String(receipt.paymentStatus).toLowerCase() === "paid";
@@ -985,11 +1034,7 @@ export function CheckoutNative() {
 
       setPaymentVisible(false);
       setPaymentOrder(null);
-      await finishOrder({
-        ...order,
-        paymentStatus: receipt.paymentStatus,
-        paymentMethod: receipt.paymentMethod,
-      });
+      await finishOrder(queue[0], queue);
     } catch (err) {
       showMessage(
         err instanceof Error
@@ -1222,6 +1267,22 @@ export function CheckoutNative() {
                       : t("checkout.mmqr_how_text")}
                   </Text>
                 </View>
+                {requiresSequentialPayments ? (
+                  <View className="mt-4 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
+                    <Text className="font-sans text-sm font-semibold text-amber-900 dark:text-amber-200">
+                      {t("checkout.multi_seller_payment_title", {
+                        defaultValue: "Multiple sellers in your cart",
+                      })}
+                    </Text>
+                    <Text className="mt-1 font-sans text-sm leading-6 text-amber-800 dark:text-amber-300">
+                      {t("checkout.multi_seller_payment_text", {
+                        defaultValue:
+                          "Items ship from {{count}} sellers. You will complete one payment per seller after placing the order.",
+                        count: uniqueSellerCount,
+                      })}
+                    </Text>
+                  </View>
+                ) : null}
               </View>
 
               <View className="rounded-2xl border border-gray-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-900 sm:p-6">
@@ -1326,6 +1387,26 @@ export function CheckoutNative() {
                       </Text>
                     )}
                   </View>
+                  {sellerShippingFees.length > 1 ? (
+                    <View className="gap-1 rounded-lg bg-gray-50 p-3 dark:bg-slate-900/50">
+                      {sellerShippingFees.map((sellerFee) => (
+                        <View
+                          key={String(sellerFee.sellerId)}
+                          className="flex-row justify-between gap-3"
+                        >
+                          <Text
+                            className="min-w-0 flex-1 font-sans text-xs text-gray-500 dark:text-slate-400"
+                            numberOfLines={1}
+                          >
+                            {sellerFee.sellerName}
+                          </Text>
+                          <Text className="font-sans text-xs font-medium text-gray-700 dark:text-slate-300">
+                            {sellerFee.shippingFee}
+                          </Text>
+                        </View>
+                      ))}
+                    </View>
+                  ) : null}
                   {coupon ? (
                     <View className="flex-row justify-between">
                       <Text className="font-sans text-sm text-green-700 dark:text-green-300">
@@ -1510,9 +1591,12 @@ export function CheckoutNative() {
         onResend={handleRequestOtp}
       />
       <CheckoutPaymentModal
+        key={String(paymentOrder?.id ?? "checkout-payment")}
         visible={paymentVisible}
         order={paymentOrder}
         paymentMethod={paymentOrder?.paymentMethod || paymentMethod}
+        paymentStep={paymentQueueIndex + 1}
+        paymentStepCount={paymentQueue.length || 1}
         onSuccess={(order) => {
           void completePaidOrder(order);
         }}
@@ -1520,11 +1604,19 @@ export function CheckoutNative() {
           checkoutBusyRef.current = false;
           setPaymentVisible(false);
           setPaymentOrder(null);
+          const remaining = Math.max(0, paymentQueue.length - paymentQueueIndex);
+          setPaymentQueue([]);
+          setPaymentQueueIndex(0);
           showMessage(
-            t("checkout.payment_cancelled_saved", {
-              defaultValue:
-                "Payment was cancelled. Your order is saved in your dashboard.",
-            }),
+            remaining > 1
+              ? t("checkout.payment_cancelled_partial", {
+                  defaultValue:
+                    "Payment was cancelled. Unpaid seller orders remain in your dashboard.",
+                })
+              : t("checkout.payment_cancelled_saved", {
+                  defaultValue:
+                    "Payment was cancelled. Your order is saved in your dashboard.",
+                }),
           );
         }}
       />

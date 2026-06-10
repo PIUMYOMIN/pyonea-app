@@ -12,6 +12,12 @@ export const IMAGE_BASE_URL = trimTrailingSlash(
   process.env.EXPO_PUBLIC_IMAGE_BASE_URL || 'https://api.pyonea.com/storage'
 );
 
+export const IMAGE_PROXY_URL = trimTrailingSlash(
+  process.env.EXPO_PUBLIC_IMAGE_PROXY_URL ||
+    process.env.VITE_IMAGE_PROXY_URL ||
+    ''
+);
+
 export const DEFAULT_PRODUCT_IMAGE =
   process.env.EXPO_PUBLIC_DEFAULT_PRODUCT_IMAGE || '/placeholder-product.png';
 

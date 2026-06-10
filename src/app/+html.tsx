@@ -2,6 +2,7 @@ import { ScrollViewStyleReset, useServerDocumentContext } from 'expo-router/html
 import type { PropsWithChildren } from 'react';
 
 import { BRAND_LOGO_BACKGROUND } from '@/constants/brand';
+import { getPreconnectOrigins } from '@/utils/image-optimization';
 
 const loaderStyles = `
 :root {
@@ -153,11 +154,18 @@ const themeBootstrapScript = `
 
 export default function RootHtml({ children }: PropsWithChildren) {
   const { htmlAttributes, bodyAttributes, headNodes, bodyNodes } = useServerDocumentContext();
+  const preconnectOrigins = getPreconnectOrigins();
 
   return (
     <html {...htmlAttributes}>
       <head>
         <ScrollViewStyleReset />
+        {preconnectOrigins.map((origin) => (
+          <link key={origin} rel="preconnect" href={origin} crossOrigin="anonymous" />
+        ))}
+        {preconnectOrigins.map((origin) => (
+          <link key={`${origin}-dns`} rel="dns-prefetch" href={origin} />
+        ))}
         {headNodes}
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
         <style dangerouslySetInnerHTML={{ __html: loaderStyles }} />

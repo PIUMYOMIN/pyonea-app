@@ -146,7 +146,7 @@ function RfqListCard({
   onQuote?: () => void;
 }) {
   const { t } = useAppTranslation();
-  const needsQuote = mode === 'received' && rfq.status === 'open' && !rfq.myQuote;
+  const needsQuote = mode === 'received' && (rfq.status === 'open' || rfq.status === 'quoted') && !rfq.myQuote;
 
   return (
     <View className="w-full gap-2 md:w-[48%] xl:w-[31%]">
@@ -422,7 +422,11 @@ function RfqDetailModal({
                     key={String(quote.id)}
                     quote={quote}
                     rfqId={current.id}
-                    canRespond={current.status !== 'cancelled' && current.status !== 'closed'}
+                    canRespond={
+                      mode === 'sent'
+                        ? false
+                        : current.status !== 'cancelled' && current.status !== 'closed'
+                    }
                     onUpdated={(next) => {
                       setData(next);
                       onUpdated(next);
@@ -445,24 +449,7 @@ function RfqDetailModal({
 
           <View className="flex-row flex-wrap items-center justify-between gap-3 border-t border-gray-100 px-5 py-4 dark:border-slate-700">
             <View className="flex-row flex-wrap gap-2">
-              {mode === 'sent' && ['open', 'draft'].includes(current.status) ? (
-                <Pressable
-                  disabled={closing}
-                  onPress={() => void handleCancel()}
-                  className="flex-row items-center gap-1.5 rounded-lg border border-red-200 px-3 py-2 dark:border-red-800">
-                  <Feather name="x-circle" color="#dc2626" size={14} />
-                  <Text className="font-sans text-sm text-red-600 dark:text-red-400">{t('rfq.actions.cancel_rfq')}</Text>
-                </Pressable>
-              ) : null}
-              {mode === 'sent' && current.status === 'quoted' ? (
-                <Pressable
-                  disabled={closing}
-                  onPress={() => void handleClose()}
-                  className="rounded-lg border border-gray-300 px-3 py-2 dark:border-slate-600">
-                  <Text className="font-sans text-sm text-gray-700 dark:text-slate-300">{t('rfq.actions.close_bidding')}</Text>
-                </Pressable>
-              ) : null}
-              {mode === 'received' && current.status === 'open' && !current.myQuote && onQuote ? (
+              {mode === 'received' && (current.status === 'open' || current.status === 'quoted') && !current.myQuote && onQuote ? (
                 <Pressable onPress={() => onQuote(current)} className="flex-row items-center gap-2 rounded-xl bg-indigo-600 px-4 py-2.5">
                   <Feather name="send" color="#ffffff" size={16} />
                   <Text className="font-sans text-sm font-bold text-white">{t('rfq.actions.submit_quotation')}</Text>

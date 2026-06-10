@@ -49,12 +49,16 @@ export function CheckoutPaymentModal({
   visible,
   order,
   paymentMethod,
+  paymentStep = 1,
+  paymentStepCount = 1,
   onSuccess,
   onCancel,
 }: {
   visible: boolean;
   order: CheckoutOrderResult | null;
   paymentMethod: string;
+  paymentStep?: number;
+  paymentStepCount?: number;
   onSuccess: (order: CheckoutOrderResult) => void;
   onCancel: () => void;
 }) {
@@ -264,6 +268,13 @@ export function CheckoutPaymentModal({
                 </Text>
                 <Text className="mt-0.5 font-sans text-xs text-gray-500 dark:text-slate-400" numberOfLines={1}>
                   #{order.orderNumber}
+                  {paymentStepCount > 1
+                    ? ` · ${t('checkout.payment_step_of', {
+                        defaultValue: 'Payment {{step}} of {{total}}',
+                        step: paymentStep,
+                        total: paymentStepCount,
+                      })}`
+                    : ''}
                 </Text>
               </View>
             </View>

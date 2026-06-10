@@ -37,6 +37,7 @@ import {
   setSocialPending,
   type SocialPendingPayload,
 } from "@/utils/social-auth-pending";
+import { isValidMyanmarPhone, normalizeMyanmarPhone } from "@/utils/myanmar-phone";
 
 type FeatherName = ComponentProps<typeof Feather>["name"];
 type AuthMode = "login" | "register" | "forgot" | "reset";
@@ -46,34 +47,6 @@ type RegisterUserType = "buyer" | "seller";
 const logo = require("@/assets/images/logo.png");
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-const cleanPhoneNumber = (phone: string) => phone.replace(/\D/g, "");
-
-const normalizeMyanmarPhone = (phone: string) => {
-  const cleanPhone = cleanPhoneNumber(phone);
-
-  if (cleanPhone.startsWith("09")) return `+95${cleanPhone.substring(1)}`;
-  if (cleanPhone.startsWith("9") && !cleanPhone.startsWith("95")) return `+95${cleanPhone}`;
-  if (cleanPhone.startsWith("959")) return `+${cleanPhone}`;
-  if (cleanPhone.startsWith("95")) return `+95${cleanPhone.substring(2)}`;
-  if (phone.startsWith("+959")) return phone;
-  if (phone.startsWith("+95")) return `+95${phone.substring(3)}`;
-
-  return phone.startsWith("+") ? phone : `+${phone}`;
-};
-
-function isValidMyanmarPhone(phone: string) {
-  const cleanPhone = cleanPhoneNumber(phone);
-  const digitsOnly = cleanPhone.replace(/^(959|09|9|95)/, "");
-  const hasValidPrefix =
-    phone.startsWith("09") ||
-    phone.startsWith("9") ||
-    phone.startsWith("959") ||
-    phone.startsWith("+959") ||
-    phone.startsWith("+95");
-
-  return hasValidPrefix && digitsOnly.length >= 7 && digitsOnly.length <= 9;
-}
 
 const getApiMessage = (error: unknown, fallback: string) =>
   error instanceof ApiError || error instanceof Error ? error.message : fallback;

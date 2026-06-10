@@ -3,6 +3,7 @@ import { DarkTheme, DefaultTheme, Stack, ThemeProvider as ExpoThemeProvider } fr
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
+import { Platform } from 'react-native';
 
 import { AnalyticsPageTracker } from '@/components/analytics-page-tracker';
 import { AuthDeepLinkHandler } from '@/components/auth-deep-link-handler';
@@ -39,12 +40,18 @@ export default function RootLayout() {
     'Roboto-Bold': require('@/fonts/Roboto/Roboto-Bold.ttf'),
     'Torus-SemiBold': require('@/fonts/Torus/Torus-SemiBold.ttf'),
   });
+  const isWeb = Platform.OS === 'web';
+  const appReady = isWeb || fontsLoaded || fontError;
 
   useEffect(() => {
-    if (fontsLoaded || fontError) {
+    if (appReady) {
       void SplashScreen.hideAsync();
     }
-  }, [fontError, fontsLoaded]);
+  }, [appReady]);
+
+  if (!appReady) {
+    return null;
+  }
 
   return (
     <AppThemeProvider>

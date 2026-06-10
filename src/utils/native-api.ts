@@ -51,6 +51,7 @@ export type HomeProduct = {
 
 export type ProductReview = {
   id: string | number;
+  userId?: string | number;
   author: string;
   company?: string;
   rating: number;
@@ -191,6 +192,7 @@ export type HomeSeller = {
 };
 
 export type SellerProfile = HomeSeller & {
+  showReviews?: boolean;
   bannerUrl?: string;
   description: string;
   address: string;
@@ -225,6 +227,7 @@ export type SellerProfile = HomeSeller & {
 
 export type SellerReview = {
   id: string | number;
+  userId?: string | number;
   author: string;
   rating: number;
   comment: string;
@@ -296,6 +299,10 @@ export type SellerStoreSummary = {
   status: string;
   businessType: string;
   verificationStatus: string;
+  documentsSubmitted: boolean;
+  documentsSubmittedAt: string;
+  documentStatus: string;
+  documentRejectionReason: string;
   createdAt: string;
   email: string;
   phone: string;
@@ -631,6 +638,51 @@ export type SellerFinancialReportData = {
   orders: SellerFinancialOrder[];
 };
 
+export type AdminFinancialOrderItem = {
+  id: string | number;
+  productId: string | number;
+  sku: string;
+  name: string;
+  qty: number;
+  priceValue: number;
+  price: string;
+  subtotalValue: number;
+  subtotal: string;
+};
+
+export type AdminFinancialSummary = SellerFinancialSummary & {
+  platformRevenueValue: number;
+  platformRevenue: string;
+  platformRevenuePendingValue: number;
+  platformRevenuePending: string;
+};
+
+export type AdminFinancialOrder = SellerFinancialOrder & {
+  sellerName: string;
+  sellerEmail: string;
+  subtotal: string;
+  shippingFee: string;
+  taxAmount: string;
+  couponDiscount: string;
+  commissionConfirmedValue: number;
+  commissionConfirmed: string;
+  commissionPendingValue: number;
+  commissionPending: string;
+  deliveryFee: string;
+  deliveryFeeConfirmedValue: number;
+  deliveryFeeConfirmed: string;
+  deliveryFeePendingValue: number;
+  deliveryFeePending: string;
+  escrowStatus: string;
+  items: AdminFinancialOrderItem[];
+};
+
+export type AdminFinancialReportData = {
+  summary: AdminFinancialSummary;
+  trend: SellerFinancialTrendPoint[];
+  orders: AdminFinancialOrder[];
+};
+
 export type SellerDiscountType = 'percentage' | 'fixed' | 'free_shipping' | '';
 export type SellerDiscountScope = 'all_products' | 'specific_products' | 'specific_categories';
 
@@ -897,10 +949,17 @@ export type CheckoutSellerPolicy = {
   shippingPolicy: string;
 };
 
+export type CheckoutSellerShippingFee = {
+  sellerId: string | number;
+  sellerName: string;
+  shippingFeeValue: number;
+  shippingFee: string;
+};
+
 export type CheckoutFees = {
   shippingFeeValue: number;
   taxRate: number;
-  sellers: { seller: string; amount: string }[];
+  sellers: CheckoutSellerShippingFee[];
 };
 
 export type CheckoutCoupon = {
@@ -940,6 +999,12 @@ export type CheckoutOrderResult = {
   total: string;
   totalValue: number;
   paymentMethod?: string;
+};
+
+export type CreateCheckoutOrderResult = {
+  orders: CheckoutOrderResult[];
+  primaryOrder: CheckoutOrderResult;
+  totalOrders: number;
 };
 
 export type PaymentInitiationResult = {
@@ -1126,6 +1191,63 @@ export type BlogPost = {
 export type BlogDetail = {
   post: BlogPost;
   related: BlogPost[];
+};
+
+export type AdminBlogStatus = 'draft' | 'published' | 'archived';
+
+export type AdminManagedBlogPost = {
+  id: string | number;
+  titleEn: string;
+  titleMm: string;
+  slug: string;
+  excerptEn: string;
+  excerptMm: string;
+  contentEn: string;
+  contentMm: string;
+  featuredImage: string;
+  category: string;
+  tags: string[];
+  status: AdminBlogStatus | string;
+  isFeatured: boolean;
+  publishedAt: string;
+  seoTitleEn: string;
+  seoTitleMm: string;
+  seoDescriptionEn: string;
+  seoDescriptionMm: string;
+};
+
+export type AdminBlogFormPayload = {
+  title_en: string;
+  title_mm: string;
+  slug: string;
+  excerpt_en: string;
+  excerpt_mm: string;
+  content_en: string;
+  content_mm: string;
+  featured_image: string;
+  category: string;
+  tags: string[];
+  status: string;
+  is_featured: boolean;
+  published_at: string | null;
+  seo_title_en: string;
+  seo_title_mm: string;
+  seo_description_en: string;
+  seo_description_mm: string;
+};
+
+export type AdminBlogListResult = {
+  posts: AdminManagedBlogPost[];
+  currentPage: number;
+  lastPage: number;
+  total: number;
+};
+
+export type AdminBlogFilters = {
+  page?: number;
+  perPage?: number;
+  status?: string;
+  search?: string;
 };
 
 export type SubscriptionPlan = {
@@ -2080,6 +2202,12 @@ const mapSellerStoreSummary = (store: UnknownRecord): SellerStoreSummary => ({
   status: getString(store.status, 'active'),
   businessType: getString(store.business_type || store.businessType),
   verificationStatus: getString(store.verification_status || store.verificationStatus),
+  documentsSubmitted: Boolean(store.documents_submitted ?? store.documentsSubmitted),
+  documentsSubmittedAt: getString(store.documents_submitted_at || store.documentsSubmittedAt),
+  documentStatus: getString(store.document_status || store.documentStatus),
+  documentRejectionReason: getString(
+    store.document_rejection_reason || store.documentRejectionReason
+  ),
   createdAt: getString(store.created_at || store.createdAt),
   email: getString(store.contact_email || store.email),
   phone: getString(store.contact_phone || store.phone),
@@ -2310,6 +2438,36 @@ export async function uploadSellerVerificationDocument(
   form.append('document_type', documentType);
   appendNativeFile(form, 'document', file);
   await apiPostForm('/seller/onboarding/documents', form, signal);
+}
+
+export type SubmitSellerDocumentsResult = {
+  message: string;
+  store: SellerStoreSummary;
+};
+
+export async function submitSellerDocumentsForVerification(
+  signal?: AbortSignal
+): Promise<SubmitSellerDocumentsResult> {
+  const payload = await apiPost<UnknownRecord>(
+    '/seller/onboarding/mark-documents-complete',
+    {},
+    signal
+  );
+  const data = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+  const profile =
+    isRecord(data) && isRecord(data.seller_profile)
+      ? data.seller_profile
+      : isRecord(data)
+        ? data
+        : {};
+
+  return {
+    message: getString(
+      isRecord(payload) ? payload.message : undefined,
+      'Documents submitted successfully for verification'
+    ),
+    store: mapSellerStoreSummary(profile),
+  };
 }
 
 export async function deleteSellerAccount(userId: string | number, signal?: AbortSignal): Promise<void> {
@@ -2656,6 +2814,97 @@ export async function fetchSellerFinancialReport(
     summary: mapSellerFinancialSummary(summary),
     trend: trend.map(mapSellerFinancialTrendPoint),
     orders: orders.map(mapSellerFinancialOrder),
+  };
+}
+
+const mapAdminFinancialSummary = (summary: UnknownRecord): AdminFinancialSummary => {
+  const base = mapSellerFinancialSummary(summary);
+  const platformRevenueValue = getNumber(summary.platform_revenue);
+  const platformRevenuePendingValue = getNumber(summary.platform_revenue_pending);
+
+  return {
+    ...base,
+    platformRevenueValue,
+    platformRevenue: formatMMK(platformRevenueValue),
+    platformRevenuePendingValue,
+    platformRevenuePending: formatMMK(platformRevenuePendingValue),
+  };
+};
+
+const mapAdminFinancialOrderItem = (item: UnknownRecord, index = 0): AdminFinancialOrderItem => {
+  const priceValue = getNumber(item.price);
+  const subtotalValue = getNumber(item.subtotal);
+
+  return {
+    id: getString(item.id || item.product_id, `admin-financial-item-${index}`),
+    productId: getString(item.product_id),
+    sku: getString(item.sku),
+    name: getString(item.name, 'Item'),
+    qty: getNumber(item.qty),
+    priceValue,
+    price: formatMMK(priceValue),
+    subtotalValue,
+    subtotal: formatMMK(subtotalValue),
+  };
+};
+
+const mapAdminFinancialOrder = (order: UnknownRecord, index = 0): AdminFinancialOrder => {
+  const base = mapSellerFinancialOrder(order, index);
+  const commissionConfirmedValue = getNumber(order.commission_confirmed);
+  const commissionPendingValue = getNumber(order.commission_pending);
+  const deliveryFeeConfirmedValue = getNumber(order.delivery_fee_confirmed);
+  const deliveryFeePendingValue = getNumber(order.delivery_fee_pending);
+  const items = Array.isArray(order.items)
+    ? order.items.filter(isRecord).map(mapAdminFinancialOrderItem)
+    : [];
+
+  return {
+    ...base,
+    sellerName: getString(order.seller_name, 'Seller'),
+    sellerEmail: getString(order.seller_email),
+    subtotal: formatMMK(base.subtotalValue),
+    shippingFee: formatMMK(base.shippingFeeValue),
+    taxAmount: formatMMK(base.taxAmountValue),
+    couponDiscount: formatMMK(base.couponDiscountValue),
+    commissionConfirmedValue,
+    commissionConfirmed: formatMMK(commissionConfirmedValue),
+    commissionPendingValue,
+    commissionPending: formatMMK(commissionPendingValue),
+    deliveryFee: formatMMK(base.deliveryFeeValue),
+    deliveryFeeConfirmedValue,
+    deliveryFeeConfirmed: formatMMK(deliveryFeeConfirmedValue),
+    deliveryFeePendingValue,
+    deliveryFeePending: formatMMK(deliveryFeePendingValue),
+    escrowStatus: getString(order.escrow_status),
+    items,
+  };
+};
+
+export async function fetchAdminFinancialReport(
+  options: { period?: string; groupBy?: string; from?: string; to?: string } = {},
+  signal?: AbortSignal
+): Promise<AdminFinancialReportData> {
+  const params = new URLSearchParams({
+    period: options.period || 'month',
+    group_by: options.groupBy || 'day',
+  });
+
+  if (options.period === 'custom') {
+    if (options.from) params.set('from', options.from);
+    if (options.to) params.set('to', options.to);
+  }
+
+  const payload = await apiGet(`/admin/financial-report?${params.toString()}`, signal);
+  const data = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+  const record = isRecord(data) ? data : {};
+  const summary = isRecord(record.summary) ? record.summary : {};
+  const trend = Array.isArray(record.trend) ? record.trend.filter(isRecord) : [];
+  const orders = Array.isArray(record.orders) ? record.orders.filter(isRecord) : [];
+
+  return {
+    summary: mapAdminFinancialSummary(summary),
+    trend: trend.map(mapSellerFinancialTrendPoint),
+    orders: orders.map(mapAdminFinancialOrder),
   };
 }
 
@@ -3550,6 +3799,7 @@ const mapProductReview = (review: UnknownRecord, index: number): ProductReview =
 
   return {
     id: getString(review.id, `review-${index}`),
+    userId: getString(review.user_id || user?.id || buyer?.id, ''),
     author: getString(buyer?.name || user?.name || review.user, 'Anonymous'),
     company: getString(buyer?.company || user?.company_name),
     rating: getNumber(review.rating),
@@ -3695,9 +3945,16 @@ const mapSellerProfile = (seller: UnknownRecord, stats: UnknownRecord = {}): Sel
   const homeSeller = mapHomeSeller(seller);
   const followers = getNumber(stats.followers_count || seller.followers_count);
   const createdAt = getString(seller.created_at || seller.createdAt);
+  const user = isRecord(seller.user) ? seller.user : undefined;
+  const userSettings = parseMaybeJson(user?.settings);
+  const settingsRecord = isRecord(userSettings) ? userSettings : {};
 
   return {
     ...homeSeller,
+    showReviews:
+      seller.show_reviews !== false &&
+      seller.showReviews !== false &&
+      settingsRecord.show_reviews !== false,
     products: getNumber(stats.active_products || stats.total_products || seller.products_count, homeSeller.products),
     reviews: getNumber(seller.reviews_count || stats.reviews_count || seller.review_count, homeSeller.reviews),
     rating: getString(seller.reviews_avg_rating || stats.average_rating || seller.average_rating, homeSeller.rating),
@@ -3735,12 +3992,22 @@ const mapSellerProfile = (seller: UnknownRecord, stats: UnknownRecord = {}): Sel
 };
 
 const mapSellerReviewStats = (stats: UnknownRecord): SellerReviewStats => ({
-  star1: getNumber(stats.star_1),
-  star2: getNumber(stats.star_2),
-  star3: getNumber(stats.star_3),
-  star4: getNumber(stats.star_4),
-  star5: getNumber(stats.star_5),
+  star1: getNumber(stats.star_1 || stats.star1),
+  star2: getNumber(stats.star_2 || stats.star2),
+  star3: getNumber(stats.star_3 || stats.star3),
+  star4: getNumber(stats.star_4 || stats.star4),
+  star5: getNumber(stats.star_5 || stats.star5),
 });
+
+export const computeReviewStatsFromReviews = (reviews: SellerReview[]): SellerReviewStats =>
+  reviews.reduce(
+    (acc, review) => {
+      const key = `star${Math.max(1, Math.min(5, Math.round(review.rating)))}` as keyof SellerReviewStats;
+      acc[key] += 1;
+      return acc;
+    },
+    { star1: 0, star2: 0, star3: 0, star4: 0, star5: 0 }
+  );
 
 const mapSellerReview = (review: UnknownRecord, index = 0): SellerReview => {
   const user = isRecord(review.user) ? review.user : undefined;
@@ -3748,6 +4015,7 @@ const mapSellerReview = (review: UnknownRecord, index = 0): SellerReview => {
 
   return {
     id: getString(review.id, `seller-review-${index}`),
+    userId: getString(review.user_id || user?.id || buyer?.id, ''),
     author: getString(user?.name || buyer?.name || review.name || review.author, 'Anonymous'),
     rating: getNumber(review.rating),
     comment: getString(review.comment || review.review || review.body),
@@ -4199,9 +4467,10 @@ export async function fetchSellerProfile(
 export async function fetchSellerReviews(
   slug: string,
   page = 1,
-  signal?: AbortSignal
+  signal?: AbortSignal,
+  perPage = 5
 ): Promise<SellerReviewsResult> {
-  const params = new URLSearchParams({ page: String(page), per_page: '5' });
+  const params = new URLSearchParams({ page: String(page), per_page: String(perPage) });
   const payload = await apiGet(`/reviews/sellers/${encodeURIComponent(slug)}?${params.toString()}`, signal);
   const envelope = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
   const listSource =
@@ -4479,10 +4748,15 @@ export async function fetchCheckoutFees(
   return {
     shippingFeeValue: getNumber(data.shipping_fee, 5000),
     taxRate: getNumber(data.tax_rate, 0.05),
-    sellers: sellers.map((seller) => ({
-      seller: getString(seller.seller || seller.seller_name || seller.store_name, 'Seller'),
-      amount: formatMMK(seller.shipping_fee || seller.amount),
-    })),
+    sellers: sellers.map((seller) => {
+      const shippingFeeValue = getNumber(seller.shipping_fee || seller.amount);
+      return {
+        sellerId: getString(seller.seller_id || seller.sellerId, 'seller'),
+        sellerName: getString(seller.seller || seller.seller_name || seller.store_name, 'Seller'),
+        shippingFeeValue,
+        shippingFee: formatMMK(shippingFeeValue),
+      };
+    }),
   };
 }
 
@@ -4670,7 +4944,7 @@ export async function createCheckoutOrder(
   payload: CreateOrderPayload,
   signal?: AbortSignal,
   idempotencyKey?: string
-): Promise<CheckoutOrderResult> {
+): Promise<CreateCheckoutOrderResult> {
   const headers = idempotencyKey ? { 'X-Idempotency-Key': idempotencyKey } : undefined;
   const response = await apiPost('/orders', payload, signal, headers);
   const envelope = isRecord(response) ? response : {};
@@ -4680,15 +4954,24 @@ export async function createCheckoutOrder(
   }
 
   const data = isRecord(envelope.data) ? envelope.data : envelope;
-  const order = isRecord(data) && isRecord(data.order)
-    ? data.order
-    : isRecord(data) && Array.isArray(data.orders) && isRecord(data.orders[0])
-      ? data.orders[0]
-      : data;
+  const rawOrders = isRecord(data) && Array.isArray(data.orders)
+    ? data.orders.filter(isRecord)
+    : isRecord(data) && isRecord(data.order)
+      ? [data.order]
+      : isRecord(data)
+        ? [data]
+        : [];
 
-  if (!isRecord(order)) throw new Error('Order creation failed');
+  if (!rawOrders.length) throw new Error('Order creation failed');
 
-  return mapCheckoutOrder(order);
+  const orders = rawOrders.map((order) => mapCheckoutOrder(order));
+  const primaryOrder = orders[0];
+
+  return {
+    orders,
+    primaryOrder,
+    totalOrders: getNumber(data.total_orders, orders.length),
+  };
 }
 
 const resolvePaymentQrImageUrl = (value: unknown): string | undefined => {
@@ -5265,6 +5548,10 @@ export type SellerDelivery = {
   recipientName: string;
   recipientPhone: string;
   createdAt: string;
+  feeSubmittedAt: string;
+  feeConfirmedAt: string;
+  feeSubmissionNote: string;
+  feeConfirmationNote: string;
   updates: SellerDeliveryUpdate[];
 };
 
@@ -5411,6 +5698,10 @@ const mapSellerDelivery = (delivery: UnknownRecord): SellerDelivery => {
     recipientName: getString(delivery.recipient_name),
     recipientPhone: getString(delivery.recipient_phone),
     createdAt: getString(delivery.created_at || delivery.createdAt),
+    feeSubmittedAt: getString(delivery.fee_submitted_at || delivery.feeSubmittedAt),
+    feeConfirmedAt: getString(delivery.fee_confirmed_at || delivery.feeConfirmedAt),
+    feeSubmissionNote: getString(delivery.fee_submission_note || delivery.feeSubmissionNote),
+    feeConfirmationNote: getString(delivery.fee_confirmation_note || delivery.feeConfirmationNote),
     updates: updatesSource.filter(isRecord).map(mapSellerDeliveryUpdate),
   };
 };
@@ -5986,6 +6277,400 @@ export async function updateAdminSellerStatus(
   );
 }
 
+export type AdminVerificationSellerUser = {
+  name: string;
+  email: string;
+};
+
+export type AdminVerificationDocument = {
+  url: string;
+  label: string;
+};
+
+export type AdminVerificationSeller = {
+  id: string;
+  storeId: string;
+  storeName: string;
+  storeSlug: string;
+  storeLogo: string;
+  contactEmail: string;
+  contactPhone: string;
+  businessType: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  status: string;
+  verificationStatus: string;
+  documentStatus: string;
+  documentsSubmitted: boolean;
+  documentsSubmittedAt: string;
+  documentRejectionReason: string;
+  rejectionReason: string;
+  nrcDivision: string;
+  nrcTownshipCode: string;
+  nrcTownshipMm: string;
+  nrcType: string;
+  nrcNumber: string;
+  nrcFull: string;
+  nrcFullMm: string;
+  nrcVerificationStatus: string;
+  nrcVerifiedAt: string;
+  nrcVerificationNotes: string;
+  identityDocumentFront: string;
+  identityDocumentBack: string;
+  businessRegistrationDocument: string;
+  taxRegistrationDocument: string;
+  businessCertificate: string;
+  additionalDocuments: { name: string; url: string; path?: string }[];
+  documents: Record<string, AdminVerificationDocument>;
+  user?: AdminVerificationSellerUser;
+};
+
+export type AdminVerificationReviewFilters = {
+  page?: number;
+  perPage?: number;
+  search?: string;
+  documentStatus?: string;
+};
+
+export type AdminVerifiedSellerSummary = {
+  total: number;
+  basic: number;
+  verified: number;
+  premium: number;
+  nrcVerified: number;
+};
+
+export type AdminVerifiedSeller = {
+  id: string;
+  storeId: string;
+  storeName: string;
+  storeSlug: string;
+  contactEmail: string;
+  contactPhone: string;
+  businessType: string;
+  businessRegistrationNumber: string;
+  taxId: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  verificationLevel: string;
+  badgeType: string;
+  nrcFull: string;
+  nrcVerificationStatus: string;
+  verifiedAt: string;
+  verifiedBy: string;
+  status: string;
+  ownerName: string;
+  ownerEmail: string;
+  ownerPhone: string;
+  memberSince: string;
+  storeLogoUrl: string;
+  identityDocumentFrontUrl: string;
+  identityDocumentBackUrl: string;
+  businessRegistrationDocumentUrl: string;
+  taxRegistrationDocumentUrl: string;
+  businessCertificateUrl: string;
+  certificateUrl: string;
+  additionalDocuments: { name: string; url: string }[];
+};
+
+export type AdminVerifiedSellerFilters = {
+  page?: number;
+  perPage?: number;
+  search?: string;
+  verificationLevel?: string;
+  badgeType?: string;
+  nrcStatus?: string;
+  sortBy?: 'verified_at' | 'store_name' | 'contact_email' | 'verification_level';
+  sortDir?: 'asc' | 'desc';
+};
+
+export type AdminVerifiedSellersResult = {
+  sellers: AdminVerifiedSeller[];
+  summary: AdminVerifiedSellerSummary;
+  pagination: AdminSellersPagination;
+};
+
+const mapAdminVerificationSeller = (seller: UnknownRecord): AdminVerificationSeller => {
+  const user = isRecord(seller.user) ? seller.user : undefined;
+  const documentsRaw = isRecord(seller.documents) ? seller.documents : {};
+  const documents: Record<string, AdminVerificationDocument> = {};
+
+  Object.entries(documentsRaw).forEach(([key, value]) => {
+    if (!isRecord(value)) return;
+    documents[key] = {
+      url: getString(value.url),
+      label: getString(value.label, key.replace(/_/g, ' ')),
+    };
+  });
+
+  const additionalRaw = Array.isArray(seller.additional_documents) ? seller.additional_documents : [];
+  const additionalDocuments = additionalRaw
+    .filter(isRecord)
+    .map((doc, index) => ({
+      name: getString(doc.name, `Additional ${index + 1}`),
+      url: getString(doc.url || docUrlFromPath(doc.path)),
+      path: getString(doc.path),
+    }));
+
+  return {
+    id: getString(seller.id),
+    storeId: getString(seller.store_id),
+    storeName: getString(seller.store_name),
+    storeSlug: getString(seller.store_slug),
+    storeLogo: getString(seller.store_logo),
+    contactEmail: getString(seller.contact_email),
+    contactPhone: getString(seller.contact_phone),
+    businessType: getString(seller.business_type || seller.business_type_name),
+    address: getString(seller.address),
+    city: getString(seller.city),
+    state: getString(seller.state),
+    country: getString(seller.country),
+    status: getString(seller.status),
+    verificationStatus: getString(seller.verification_status),
+    documentStatus: getString(seller.document_status),
+    documentsSubmitted: Boolean(seller.documents_submitted),
+    documentsSubmittedAt: getString(seller.documents_submitted_at),
+    documentRejectionReason: getString(seller.document_rejection_reason),
+    rejectionReason: getString(seller.rejection_reason || seller.document_rejection_reason),
+    nrcDivision: getString(seller.nrc_division),
+    nrcTownshipCode: getString(seller.nrc_township_code),
+    nrcTownshipMm: getString(seller.nrc_township_mm),
+    nrcType: getString(seller.nrc_type),
+    nrcNumber: getString(seller.nrc_number),
+    nrcFull: getString(seller.nrc_full),
+    nrcFullMm: getString(seller.nrc_full_mm),
+    nrcVerificationStatus: getString(seller.nrc_verification_status, 'unverified'),
+    nrcVerifiedAt: getString(seller.nrc_verified_at),
+    nrcVerificationNotes: getString(seller.nrc_verification_notes),
+    identityDocumentFront: getString(seller.identity_document_front),
+    identityDocumentBack: getString(seller.identity_document_back),
+    businessRegistrationDocument: getString(seller.business_registration_document),
+    taxRegistrationDocument: getString(seller.tax_registration_document),
+    businessCertificate: getString(seller.business_certificate),
+    additionalDocuments,
+    documents,
+    user: user
+      ? {
+          name: getString(user.name),
+          email: getString(user.email),
+        }
+      : undefined,
+  };
+};
+
+const docUrlFromPath = (path: unknown) => {
+  const value = getString(path);
+  if (!value) return '';
+  if (value.startsWith('http')) return value;
+  return `${IMAGE_BASE_URL}/${value.replace(/^\/?storage\/?/, '')}`;
+};
+
+const mapAdminVerifiedSeller = (seller: UnknownRecord): AdminVerifiedSeller => ({
+  id: getString(seller.id),
+  storeId: getString(seller.store_id),
+  storeName: getString(seller.store_name),
+  storeSlug: getString(seller.store_slug),
+  contactEmail: getString(seller.contact_email),
+  contactPhone: getString(seller.contact_phone),
+  businessType: getString(seller.business_type),
+  businessRegistrationNumber: getString(seller.business_registration_number),
+  taxId: getString(seller.tax_id),
+  address: getString(seller.address),
+  city: getString(seller.city),
+  state: getString(seller.state),
+  country: getString(seller.country),
+  verificationLevel: getString(seller.verification_level),
+  badgeType: getString(seller.badge_type),
+  nrcFull: getString(seller.nrc_full),
+  nrcVerificationStatus: getString(seller.nrc_verification_status),
+  verifiedAt: getString(seller.verified_at),
+  verifiedBy: getString(seller.verified_by),
+  status: getString(seller.status),
+  ownerName: getString(seller.owner_name),
+  ownerEmail: getString(seller.owner_email),
+  ownerPhone: getString(seller.owner_phone),
+  memberSince: getString(seller.member_since),
+  storeLogoUrl: getString(seller.store_logo_url),
+  identityDocumentFrontUrl: getString(seller.identity_document_front_url),
+  identityDocumentBackUrl: getString(seller.identity_document_back_url),
+  businessRegistrationDocumentUrl: getString(seller.business_registration_document_url),
+  taxRegistrationDocumentUrl: getString(seller.tax_registration_document_url),
+  businessCertificateUrl: getString(seller.business_certificate_url),
+  certificateUrl: getString(seller.certificate_url),
+  additionalDocuments: (Array.isArray(seller.additional_documents) ? seller.additional_documents : [])
+    .filter(isRecord)
+    .map((doc, index) => ({
+      name: getString(doc.name, `Additional ${index + 1}`),
+      url: getString(doc.url),
+    })),
+});
+
+export async function fetchAdminVerificationReview(
+  filters: AdminVerificationReviewFilters = {},
+  signal?: AbortSignal
+): Promise<{ sellers: AdminVerificationSeller[]; pagination: AdminSellersPagination }> {
+  const params = new URLSearchParams();
+  params.set('page', String(filters.page ?? 1));
+  params.set('per_page', String(filters.perPage ?? 15));
+  if (filters.search?.trim()) params.set('search', filters.search.trim());
+  if (filters.documentStatus?.trim()) params.set('status', filters.documentStatus.trim());
+
+  const payload = await apiGet(`/admin/seller/verification-review?${params.toString()}`, signal);
+  const nested = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+  const rows = isRecord(nested) && Array.isArray(nested.data) ? nested.data : getArrayPayload(payload);
+  const meta = extractAdminSellersMeta(payload, filters.page ?? 1);
+
+  return {
+    sellers: rows.filter(isRecord).map(mapAdminVerificationSeller),
+    pagination: {
+      currentPage: getNumber(meta.current_page, filters.page ?? 1),
+      lastPage: getNumber(meta.last_page, 1),
+      total: getNumber(meta.total, rows.length),
+      from: getNumber(meta.from, rows.length ? 1 : 0),
+      to: getNumber(meta.to, rows.length),
+    },
+  };
+}
+
+export async function verifyAdminSeller(
+  sellerId: string | number,
+  payload: { verificationLevel: string; badgeType?: string; notes?: string },
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPost(
+    `/admin/seller/${encodeURIComponent(String(sellerId))}/verify`,
+    {
+      verification_level: payload.verificationLevel,
+      badge_type: payload.badgeType ?? 'verified',
+      notes: payload.notes,
+    },
+    signal
+  );
+}
+
+export async function rejectAdminSellerVerification(
+  sellerId: string | number,
+  reason: string,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPost(
+    `/admin/seller/${encodeURIComponent(String(sellerId))}/reject`,
+    { reason },
+    signal
+  );
+}
+
+export async function verifyAdminSellerNrc(
+  sellerId: string | number,
+  payload: {
+    nrcVerificationStatus: string;
+    nrcVerificationNotes?: string;
+    status?: string;
+  },
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPost(
+    `/admin/seller/${encodeURIComponent(String(sellerId))}/verify-nrc`,
+    {
+      nrc_verification_status: payload.nrcVerificationStatus,
+      nrc_verification_notes: payload.nrcVerificationNotes ?? null,
+      ...(payload.status ? { status: payload.status } : {}),
+    },
+    signal
+  );
+}
+
+export async function setAdminSellerQuickStatus(
+  sellerId: string | number,
+  status: AdminSellerStatus | string,
+  reason = '',
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPatch(
+    `/admin/seller/${encodeURIComponent(String(sellerId))}/set-status`,
+    { status, reason: reason.trim() || null },
+    signal
+  );
+}
+
+export async function fetchAdminVerifiedSellers(
+  filters: AdminVerifiedSellerFilters = {},
+  signal?: AbortSignal
+): Promise<AdminVerifiedSellersResult> {
+  const params = new URLSearchParams();
+  params.set('page', String(filters.page ?? 1));
+  params.set('per_page', String(filters.perPage ?? 20));
+  params.set('sort_by', filters.sortBy ?? 'verified_at');
+  params.set('sort_dir', filters.sortDir ?? 'desc');
+  if (filters.search?.trim()) params.set('search', filters.search.trim());
+  if (filters.verificationLevel) params.set('verification_level', filters.verificationLevel);
+  if (filters.badgeType) params.set('badge_type', filters.badgeType);
+  if (filters.nrcStatus) params.set('nrc_status', filters.nrcStatus);
+
+  const payload = await apiGet(`/admin/seller/verified-list?${params.toString()}`, signal);
+  const nested = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+  const rows = isRecord(nested) && Array.isArray(nested.data) ? nested.data : getArrayPayload(payload);
+  const summaryRaw = isRecord(payload) && isRecord(payload.summary) ? payload.summary : {};
+  const meta = isRecord(payload) && isRecord(payload.meta) ? payload.meta : extractAdminSellersMeta(payload, filters.page ?? 1);
+
+  return {
+    sellers: rows.filter(isRecord).map(mapAdminVerifiedSeller),
+    summary: {
+      total: getNumber(summaryRaw.total, 0),
+      basic: getNumber(summaryRaw.basic, 0),
+      verified: getNumber(summaryRaw.verified, 0),
+      premium: getNumber(summaryRaw.premium, 0),
+      nrcVerified: getNumber(summaryRaw.nrc_verified, 0),
+    },
+    pagination: {
+      currentPage: getNumber(meta.current_page, filters.page ?? 1),
+      lastPage: getNumber(meta.last_page, 1),
+      total: getNumber(meta.total, rows.length),
+      from: getNumber(meta.from, rows.length ? 1 : 0),
+      to: getNumber(meta.to, rows.length),
+    },
+  };
+}
+
+export async function fetchAdminVerifiedSellersExportCsv(
+  filters: Omit<AdminVerifiedSellerFilters, 'page' | 'perPage'> = {},
+  signal?: AbortSignal
+): Promise<string> {
+  const params = new URLSearchParams();
+  params.set('sort_by', filters.sortBy ?? 'verified_at');
+  params.set('sort_dir', filters.sortDir ?? 'desc');
+  if (filters.search?.trim()) params.set('search', filters.search.trim());
+  if (filters.verificationLevel) params.set('verification_level', filters.verificationLevel);
+  if (filters.badgeType) params.set('badge_type', filters.badgeType);
+  if (filters.nrcStatus) params.set('nrc_status', filters.nrcStatus);
+
+  const response = await fetchWithTimeout(`/admin/seller/verified-list/export?${params.toString()}`, {
+    headers: buildHeaders(),
+    signal,
+  });
+
+  if (!response.ok) {
+    throw new ApiError(`Export failed (${response.status})`, response.status);
+  }
+
+  return response.text();
+}
+
+export function resolveAdminSellerDocumentUrl(
+  seller: AdminVerificationSeller,
+  field: keyof AdminVerificationSeller | string
+): string | undefined {
+  const key = String(field);
+  const fromDocuments = seller.documents[key]?.url;
+  if (fromDocuments) return fromDocuments;
+  const raw = seller[key as keyof AdminVerificationSeller];
+  return getNativeImageUrl(raw);
+}
+
 export type AdminPlatformDelivery = SellerDelivery & {
   supplierName: string;
   platformCourierId: string | number | null;
@@ -6238,6 +6923,173 @@ export async function adjustAdminDeliveryFee(
   );
 }
 
+export type AdminPendingDeliveryFee = {
+  id: string;
+  orderId: string;
+  orderNumber: string;
+  sellerName: string;
+  platformDeliveryFeeValue: number;
+  platformDeliveryFee: string;
+  feeSubmittedAt: string;
+  feeSubmissionNote: string;
+};
+
+const mapAdminPendingDeliveryFee = (delivery: UnknownRecord, index = 0): AdminPendingDeliveryFee => {
+  const order = isRecord(delivery.order) ? delivery.order : undefined;
+  const supplier = isRecord(delivery.supplier) ? delivery.supplier : undefined;
+  const feeValue = getNumber(delivery.platform_delivery_fee);
+
+  return {
+    id: getString(delivery.id, `pending-delivery-fee-${index}`),
+    orderId: getString(delivery.order_id || order?.id),
+    orderNumber: getString(order?.order_number, getString(delivery.order_id, '—')),
+    sellerName: getString(supplier?.name, '—'),
+    platformDeliveryFeeValue: feeValue,
+    platformDeliveryFee: formatMMK(feeValue),
+    feeSubmittedAt: getString(delivery.fee_submitted_at),
+    feeSubmissionNote: getString(delivery.fee_submission_note),
+  };
+};
+
+export async function fetchAdminPendingDeliveryFees(
+  signal?: AbortSignal
+): Promise<AdminPendingDeliveryFee[]> {
+  const payload = await apiGet('/admin/delivery-fees/pending', signal);
+  const data = isRecord(payload) && Array.isArray(payload.data) ? payload.data : getArrayPayload(payload);
+  return data.filter(isRecord).map(mapAdminPendingDeliveryFee);
+}
+
+export async function confirmAdminDeliveryFee(
+  deliveryId: string | number,
+  note = 'Confirmed by admin.',
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPatch(
+    `/admin/deliveries/${encodeURIComponent(String(deliveryId))}/confirm-fee`,
+    { note: note || 'Confirmed by admin.' },
+    signal
+  );
+}
+
+export type AdminPaymentMethod = {
+  method: string;
+  label: string;
+  enabled: boolean;
+};
+
+const mapAdminPaymentMethod = (item: UnknownRecord): AdminPaymentMethod => ({
+  method: getString(item.method),
+  label: getString(item.label, getString(item.method)),
+  enabled: Boolean(item.enabled),
+});
+
+export async function fetchAdminPaymentSettings(signal?: AbortSignal): Promise<AdminPaymentMethod[]> {
+  const payload = await apiGet('/admin/payment-settings', signal);
+  const data = isRecord(payload) && Array.isArray(payload.data) ? payload.data : getArrayPayload(payload);
+  return data.filter(isRecord).map(mapAdminPaymentMethod);
+}
+
+export async function updateAdminPaymentMethod(
+  method: string,
+  enabled: boolean,
+  signal?: AbortSignal
+): Promise<AdminPaymentMethod> {
+  const payload = await apiPatch(
+    `/admin/payment-settings/${encodeURIComponent(method)}`,
+    { enabled },
+    signal
+  );
+  const data = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+  if (!isRecord(data)) throw new Error('Failed to update payment method');
+  return mapAdminPaymentMethod(data);
+}
+
+export type AdminContactMessage = {
+  id: string;
+  name: string;
+  email: string;
+  phone: string;
+  subject: string;
+  message: string;
+  readAt: string;
+  createdAt: string;
+};
+
+export type AdminContactMessageFilter = 'all' | 'read' | 'unread';
+
+export type AdminContactMessageFilters = {
+  page?: number;
+  perPage?: number;
+  search?: string;
+  filter?: AdminContactMessageFilter;
+};
+
+export type AdminContactMessagesPagination = {
+  currentPage: number;
+  lastPage: number;
+  total: number;
+  from: number;
+  to: number;
+};
+
+export type AdminContactMessagesResult = {
+  messages: AdminContactMessage[];
+  pagination: AdminContactMessagesPagination;
+};
+
+const mapAdminContactMessage = (row: UnknownRecord, index = 0): AdminContactMessage => ({
+  id: getString(row.id, `contact-message-${index}`),
+  name: getString(row.name),
+  email: getString(row.email),
+  phone: getString(row.phone),
+  subject: getString(row.subject),
+  message: getString(row.message),
+  readAt: getString(row.read_at || row.readAt),
+  createdAt: getString(row.created_at || row.createdAt),
+});
+
+export async function fetchAdminContactMessages(
+  filters: AdminContactMessageFilters = {},
+  signal?: AbortSignal
+): Promise<AdminContactMessagesResult> {
+  const params = new URLSearchParams();
+  params.set('page', String(filters.page ?? 1));
+  params.set('per_page', String(filters.perPage ?? 15));
+  if (filters.search?.trim()) params.set('search', filters.search.trim());
+  if (filters.filter && filters.filter !== 'all') params.set('filter', filters.filter);
+
+  const payload = await apiGet(`/admin/contact-messages?${params.toString()}`, signal);
+  const nested = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+  const rows = isRecord(nested) && Array.isArray(nested.data) ? nested.data : getArrayPayload(payload);
+  const messages = rows.filter(isRecord).map(mapAdminContactMessage);
+  const meta = extractAdminSellersMeta(payload, filters.page ?? 1);
+
+  return {
+    messages,
+    pagination: {
+      currentPage: getNumber(meta.current_page, filters.page ?? 1),
+      lastPage: getNumber(meta.last_page, 1),
+      total: getNumber(meta.total, messages.length),
+      from: getNumber(meta.from, messages.length ? 1 : 0),
+      to: getNumber(meta.to, messages.length),
+    },
+  };
+}
+
+export async function markAdminContactMessageRead(
+  messageId: string | number,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPut(`/admin/contact-messages/${encodeURIComponent(String(messageId))}/read`, {}, signal);
+}
+
+export async function deleteAdminContactMessage(
+  messageId: string | number,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiDelete(`/admin/contact-messages/${encodeURIComponent(String(messageId))}`, signal);
+}
+
 export async function fetchSellerOrder(
   orderId: string | number,
   signal?: AbortSignal
@@ -6333,6 +7185,20 @@ export async function uploadSellerDeliveryProof(
   return isRecord(data) ? mapSellerDelivery(data) : null;
 }
 
+export async function submitSellerDeliveryFee(
+  deliveryId: string | number,
+  note = '',
+  signal?: AbortSignal
+): Promise<SellerDelivery | null> {
+  const payload = await apiPatch(
+    `/deliveries/${encodeURIComponent(String(deliveryId))}/submit-fee`,
+    { note: note.trim() || undefined },
+    signal
+  );
+  const data = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+  return isRecord(data) ? mapSellerDelivery(data) : null;
+}
+
 export type SellerRfqBuyer = {
   id: string | number;
   name: string;
@@ -6354,6 +7220,12 @@ export type SellerRfqQuote = {
   notes: string;
   status: string;
   createdAt: string;
+};
+
+export type SellerRfqOrderLink = {
+  id: string | number;
+  orderNumber: string;
+  status: string;
 };
 
 export type SellerRfq = {
@@ -6378,6 +7250,23 @@ export type SellerRfq = {
   buyer?: SellerRfqBuyer;
   myQuote?: SellerRfqQuote;
   quotes: SellerRfqQuote[];
+  order?: SellerRfqOrderLink;
+};
+
+export type RfqCreatePayload = {
+  product_name: string;
+  category_id: string | number;
+  category?: string;
+  quantity: number;
+  unit: string;
+  specifications?: string;
+  budget_min?: number;
+  budget_max?: number;
+  currency?: string;
+  deadline: string;
+  notes?: string;
+  broadcast?: boolean;
+  seller_ids?: Array<string | number>;
 };
 
 export type RfqQuotePayload = {
@@ -6438,6 +7327,7 @@ const mapSellerRfq = (rfq: UnknownRecord): SellerRfq => {
   const myQuote = isRecord(rfq.my_quote || rfq.myQuote)
     ? mapSellerRfqQuote((rfq.my_quote || rfq.myQuote) as UnknownRecord)
     : undefined;
+  const orderRecord = isRecord(rfq.order) ? rfq.order : undefined;
 
   return {
     id: getString(rfq.id),
@@ -6461,8 +7351,22 @@ const mapSellerRfq = (rfq: UnknownRecord): SellerRfq => {
     buyer: mapSellerRfqBuyer(rfq.buyer),
     myQuote,
     quotes,
+    order: orderRecord
+      ? {
+          id: getString(orderRecord.id),
+          orderNumber: getString(orderRecord.order_number || orderRecord.orderNumber),
+          status: getString(orderRecord.status),
+        }
+      : undefined,
   };
 };
+
+export async function createRfq(payload: RfqCreatePayload, signal?: AbortSignal): Promise<SellerRfq> {
+  const response = await apiPost('/rfq', payload, signal);
+  const data = unwrapRecordPayload(response);
+  if (!Object.keys(data).length) throw new Error('RFQ creation failed');
+  return mapSellerRfq(data);
+}
 
 export async function fetchSellerReceivedRfqs(signal?: AbortSignal): Promise<SellerRfq[]> {
   const payload = await apiGet('/rfq/received', signal);
@@ -6644,6 +7548,86 @@ export async function fetchBlogDetail(slug: string, signal?: AbortSignal): Promi
     post: mapBlogPost(postPayload),
     related: relatedPayload.filter(isRecord).map(mapBlogPost),
   };
+}
+
+const mapAdminManagedBlogPost = (post: UnknownRecord, index = 0): AdminManagedBlogPost => ({
+  id: getString(post.id, `admin-blog-${index}`),
+  titleEn: getString(post.title_en || post.title),
+  titleMm: getString(post.title_mm),
+  slug: getString(post.slug, `post-${index}`),
+  excerptEn: getString(post.excerpt_en || post.excerpt),
+  excerptMm: getString(post.excerpt_mm),
+  contentEn: getString(post.content_en || post.content),
+  contentMm: getString(post.content_mm),
+  featuredImage: getString(post.featured_image),
+  category: getString(post.category, 'Business Guides'),
+  tags: normalizeStringArray(post.tags),
+  status: getString(post.status, 'draft'),
+  isFeatured: post.is_featured === true || post.is_featured === 1,
+  publishedAt: getString(post.published_at),
+  seoTitleEn: getString(post.seo_title_en),
+  seoTitleMm: getString(post.seo_title_mm),
+  seoDescriptionEn: getString(post.seo_description_en),
+  seoDescriptionMm: getString(post.seo_description_mm),
+});
+
+export async function fetchAdminBlogPosts(
+  filters: AdminBlogFilters = {},
+  signal?: AbortSignal
+): Promise<AdminBlogListResult> {
+  const params = new URLSearchParams({
+    page: String(filters.page || 1),
+    per_page: String(filters.perPage || 15),
+    status: filters.status || 'all',
+  });
+
+  if (filters.search?.trim()) params.set('search', filters.search.trim());
+
+  const payload = await apiGet(`/admin/blog?${params.toString()}`, signal);
+  const root = isRecord(payload) ? payload : {};
+  const data = isRecord(root.data) ? root.data : root;
+  const postsPayload = isRecord(data) && Array.isArray(data.data) ? data.data : getArrayPayload(payload);
+
+  return {
+    posts: postsPayload.filter(isRecord).map(mapAdminManagedBlogPost),
+    currentPage: isRecord(data) ? getNumber(data.current_page, filters.page || 1) : filters.page || 1,
+    lastPage: isRecord(data) ? getNumber(data.last_page, 1) : 1,
+    total: isRecord(data) ? getNumber(data.total) : postsPayload.length,
+  };
+}
+
+export async function createAdminBlogPost(
+  body: AdminBlogFormPayload,
+  signal?: AbortSignal
+): Promise<AdminManagedBlogPost> {
+  const payload = await apiPost('/admin/blog', body, signal);
+  const record = extractRecordPayload(payload);
+  return mapAdminManagedBlogPost(record);
+}
+
+export async function updateAdminBlogPost(
+  postId: string | number,
+  body: AdminBlogFormPayload,
+  signal?: AbortSignal
+): Promise<AdminManagedBlogPost> {
+  const payload = await apiPut(`/admin/blog/${encodeURIComponent(String(postId))}`, body, signal);
+  const record = extractRecordPayload(payload);
+  return mapAdminManagedBlogPost(record);
+}
+
+export async function deleteAdminBlogPost(
+  postId: string | number,
+  signal?: AbortSignal
+): Promise<void> {
+  await apiDelete(`/admin/blog/${encodeURIComponent(String(postId))}`, signal);
+}
+
+export async function adminBlogQuickAction(
+  postId: string | number,
+  action: 'publish' | 'archive',
+  signal?: AbortSignal
+): Promise<void> {
+  await apiPost(`/admin/blog/${encodeURIComponent(String(postId))}/${action}`, {}, signal);
 }
 
 const mapSubscriptionPlan = (plan: UnknownRecord, index = 0): SubscriptionPlan => {

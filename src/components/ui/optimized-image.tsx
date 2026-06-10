@@ -1,4 +1,5 @@
 import { Image as ExpoImage, type ImageProps } from 'expo-image';
+import { Platform } from 'react-native';
 
 const REMOTE_PLACEHOLDER =
   '|rF?hV%2WCj[ayj[a|j[ayfQayfQfQfQfQfQfQfQfQfQfQfQfQfQfQfQfQfQfQfQfQfQfQfQfQfQfQfQfQfQfQ';
@@ -31,6 +32,7 @@ export function OptimizedImage({
   priority = 'normal',
   recyclingKey,
   resizeMode,
+  responsivePolicy,
   transition = 120,
   ...props
 }: ImageProps) {
@@ -38,6 +40,10 @@ export function OptimizedImage({
   const remote = isRemoteUri(sourceUri);
   const resolvedContentFit =
     contentFit ?? (resizeMode === 'contain' || resizeMode === 'center' ? 'contain' : 'cover');
+  const resolvedResponsivePolicy =
+    responsivePolicy ?? (Platform.OS === 'web' && Array.isArray(source) && source.length > 1
+      ? 'static'
+      : undefined);
 
   return (
     <ExpoImage
@@ -49,8 +55,14 @@ export function OptimizedImage({
       placeholder={placeholder ?? (remote ? REMOTE_PLACEHOLDER : undefined)}
       placeholderContentFit={placeholderContentFit ?? resolvedContentFit}
       priority={priority}
-      recyclingKey={recyclingKey ?? sourceUri}
+      recyclingKey={recyclingKey ?? sourceUri ?? undefined}
+      responsivePolicy={resolvedResponsivePolicy}
       transition={transition}
     />
   );
+}
+
+/** Faster fade for dense product grids; skips transition when not prioritized. */
+export function productGridImageTransition(priority: boolean) {
+  return priority ? 90 : Platform.OS === 'web' ? 0 : 60;
 }

@@ -21,7 +21,8 @@ import { useAppTranslation } from '@/i18n';
 import { hasUserRole } from '@/utils/auth-routing';
 import {
   addProductToCart,
-  apiPost,
+  ApiError,
+  createRfq,
   fetchProductDetail,
   formatMMK,
   searchBulkOrderProducts,
@@ -30,16 +31,16 @@ import {
   type ProductVariant,
 } from '@/utils/native-api';
 import { emitCartCountChanged } from '@/utils/native-cart-events';
+import {
+  loadBulkOrderLines,
+  saveBulkOrderLines,
+  type StoredBulkLine,
+} from '@/utils/bulk-order-storage';
 
-type BulkLine = BulkOrderProduct & {
-  key: string;
-  quantity: string;
+type BulkLine = StoredBulkLine & {
   variantOptions: ProductVariant[];
   variantsLoading: boolean;
-  selectedVariantId: string | number | null;
 };
-
-const STORAGE_KEY = 'pyonea_bulk_order_lines_v1';
 
 const lineKey = () => `ln-${Date.now()}-${Math.random().toString(16).slice(2)}`;
 
@@ -74,33 +75,8 @@ const defaultRfqDeadline = () => {
   return date.toISOString().slice(0, 10);
 };
 
-const isWebStorageAvailable = () => Platform.OS === 'web' && typeof localStorage !== 'undefined';
-
 const getVariantLabel = (variant: ProductVariant, fallback: string) =>
   variant.sku || `${fallback} #${String(variant.id)}`;
-
-const getSavedBulkLines = (): BulkLine[] => {
-  if (!isWebStorageAvailable()) return [];
-  try {
-    const saved = localStorage.getItem(STORAGE_KEY);
-    if (!saved) return [];
-    const parsed = JSON.parse(saved) as BulkLine[];
-    if (!Array.isArray(parsed)) return [];
-    return parsed.map((line) => ({
-      ...line,
-      key: line.key || lineKey(),
-      moq: toPositiveInt(line.moq, 1),
-      quantityStep: toPositiveInt(line.quantityStep, toPositiveInt(line.moq, 1)),
-      quantity: String(line.quantity || line.moq || 1),
-      variantOptions: Array.isArray(line.variantOptions) ? line.variantOptions : [],
-      variantsLoading: false,
-      selectedVariantId: line.selectedVariantId ?? null,
-    }));
-  } catch {
-    localStorage.removeItem(STORAGE_KEY);
-    return [];
-  }
-};
 
 function SearchResultCard({
   product,
@@ -376,7 +352,8 @@ export function BulkOrderToolNative() {
   const [search, setSearch] = useState('');
   const [results, setResults] = useState<BulkOrderProduct[]>([]);
   const [searchLoading, setSearchLoading] = useState(false);
-  const [lines, setLines] = useState<BulkLine[]>(getSavedBulkLines);
+  const [lines, setLines] = useState<BulkLine[]>([]);
+  const [storageReady, setStorageReady] = useState(false);
   const [deadline, setDeadline] = useState(defaultRfqDeadline());
   const [buyerNotes, setBuyerNotes] = useState('');
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -386,13 +363,30 @@ export function BulkOrderToolNative() {
   const isBuyer = hasUserRole(user, 'buyer');
 
   useEffect(() => {
-    if (!isWebStorageAvailable()) return;
-    if (!lines.length) {
-      localStorage.removeItem(STORAGE_KEY);
-      return;
-    }
-    localStorage.setItem(STORAGE_KEY, JSON.stringify(lines.map((line) => ({ ...line, variantsLoading: false }))));
-  }, [lines]);
+    let mounted = true;
+
+    void loadBulkOrderLines().then((saved) => {
+      if (!mounted) return;
+      setLines(
+        saved.map((line) => ({
+          ...line,
+          variantOptions: line.variantOptions ?? [],
+          variantsLoading: line.hasVariants && !(line.variantOptions?.length),
+          selectedVariantId: line.selectedVariantId ?? null,
+        }))
+      );
+      setStorageReady(true);
+    });
+
+    return () => {
+      mounted = false;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!storageReady) return;
+    void saveBulkOrderLines(lines);
+  }, [lines, storageReady]);
 
   useEffect(() => {
     if (!message) return;
@@ -465,6 +459,17 @@ export function BulkOrderToolNative() {
     });
     return [...map.values()];
   }, [validatedLines]);
+
+  useEffect(() => {
+    if (!storageReady) return;
+    lines.forEach((line) => {
+      if (line.hasVariants && line.variantOptions.length === 0 && !line.variantsLoading && line.slug) {
+        void loadProductVariants(line.key, line.slug);
+      }
+    });
+    // Restore variant pickers once after hydration.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [storageReady]);
 
   const loadProductVariants = async (key: string, slug: string) => {
     if (!slug) return;
@@ -690,6 +695,12 @@ export function BulkOrderToolNative() {
       return;
     }
 
+    const invalidQty = validatedLines.some((line) => line.quantityNum < line.moq);
+    if (invalidQty) {
+      setMessage({ type: 'error', text: t('bulk_order.moq_error') });
+      return;
+    }
+
     setSubmitting(true);
     setMessage(null);
     let sent = 0;
@@ -708,9 +719,9 @@ export function BulkOrderToolNative() {
             })
           )
           .join('\n');
-        await apiPost('/rfq', {
+        await createRfq({
           product_name: t('bulk_order.rfq_product_name', { count: group.length }),
-          category_id: group[0].categoryId,
+          category_id: group[0].categoryId!,
           quantity: group.reduce((sum, line) => sum + line.quantityNum, 0),
           unit: group[0].unitLabel || 'piece',
           specifications: `${spec}${buyerNotes ? t('bulk_order.rfq_buyer_notes', { notes: buyerNotes }) : ''}`.slice(
@@ -720,16 +731,22 @@ export function BulkOrderToolNative() {
           deadline: `${deadline}T23:59:59`,
           currency: 'MMK',
           broadcast: false,
-          seller_ids: [group[0].sellerId],
+          seller_ids: [group[0].sellerId!],
         });
         sent += 1;
       }
 
       setMessage({ type: 'success', text: t('bulk_order.rfq_sent', { n: sent }) });
       setLines([]);
-      if (isWebStorageAvailable()) localStorage.removeItem(STORAGE_KEY);
-    } catch {
-      setMessage({ type: 'error', text: t('bulk_order.rfq_failed') });
+      setTimeout(() => router.push('/buyer/dashboard?tab=rfq' as const), 1200);
+    } catch (error) {
+      const text =
+        error instanceof ApiError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : t('bulk_order.rfq_failed');
+      setMessage({ type: 'error', text });
     } finally {
       setSubmitting(false);
     }
@@ -812,7 +829,6 @@ export function BulkOrderToolNative() {
                     <Pressable
                       onPress={() => {
                         setLines([]);
-                        if (isWebStorageAvailable()) localStorage.removeItem(STORAGE_KEY);
                         setMessage({ type: 'success', text: t('bulk_order.cleared') });
                       }}>
                       <Text className="font-sans text-xs text-red-600 dark:text-red-400">

@@ -114,7 +114,7 @@ function ReviewCard({
               <Text className="mt-1 font-sans text-sm leading-5 text-blue-700 dark:text-blue-300">
                 {review.reply}
               </Text>
-              <Pressable className="mt-2 self-start">
+              <Pressable className="mt-2 self-start opacity-60">
                 <Text className="font-sans text-sm font-medium text-blue-600 dark:text-blue-400">
                   {t('seller.reviews.edit_response', 'Edit response')}
                 </Text>
@@ -123,10 +123,13 @@ function ReviewCard({
           </View>
         </View>
       ) : (
-        <Pressable className="mt-4 flex-row items-center gap-1 self-start">
+        <Pressable className="mt-4 flex-row items-center gap-1 self-start opacity-60">
           <Feather name="corner-up-left" color="#2563eb" size={16} />
           <Text className="font-sans text-sm font-medium text-blue-600 dark:text-blue-400">
             {t('seller.reviews.reply_to_review', 'Reply to review')}
+          </Text>
+          <Text className="font-sans text-xs text-gray-400 dark:text-slate-500">
+            ({t('seller.reviews.reply_web_only', 'manage on web')})
           </Text>
         </Pressable>
       )}

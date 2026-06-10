@@ -6,9 +6,8 @@ import { useEffect, useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 import Animated, { FadeInUp, SlideInUp, SlideOutUp } from 'react-native-reanimated';
 
-/** Matches Pyonea home/categories grid column widths. */
-export const CATEGORY_CARD_WIDTH_CLASS =
-  'w-[48%] sm:w-[31%] md:w-[23%] lg:w-[15%]';
+/** Full width inside a CSS grid parent — do not use percentage widths with flex-wrap. */
+export const CATEGORY_CARD_WIDTH_CLASS = 'w-full min-w-0';
 
 const GRADIENT_CLASSES = [
   'from-green-400 to-emerald-600',

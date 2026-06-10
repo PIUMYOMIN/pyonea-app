@@ -16,7 +16,9 @@ import {
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { NativeDateField } from '@/components/ui/native-date-field';
 import {
+  ApiError,
   deleteSellerAccount,
+  submitSellerDocumentsForVerification,
   updateSellerPassword,
   updateSellerProfile,
   updateSellerSettings,
@@ -433,6 +435,7 @@ export function SellerSettingsNative({
   const [deleteText, setDeleteText] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
+  const [submittingVerification, setSubmittingVerification] = useState(false);
 
   const activeSettings = useMemo(
     () => SETTINGS_TABS.find((tab) => tab.key === activeTab) || SETTINGS_TABS[0],
@@ -512,6 +515,34 @@ export function SellerSettingsNative({
       setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Document upload failed.' });
     } finally {
       setUploading(null);
+    }
+  };
+
+  const submitForVerification = async () => {
+    if (!allRequiredDocumentsUploaded) {
+      setMessage({ type: 'error', text: 'Upload all required documents before submitting for verification.' });
+      return;
+    }
+
+    setSubmittingVerification(true);
+    setMessage(null);
+    try {
+      const result = await submitSellerDocumentsForVerification();
+      await onRefresh();
+      setMessage({
+        type: 'success',
+        text: `${result.message} Review usually takes 1–3 business days.`,
+      });
+    } catch (error) {
+      const text =
+        error instanceof ApiError
+          ? error.message
+          : error instanceof Error
+            ? error.message
+            : 'Failed to submit documents for verification.';
+      setMessage({ type: 'error', text });
+    } finally {
+      setSubmittingVerification(false);
     }
   };
 
@@ -650,6 +681,27 @@ export function SellerSettingsNative({
   const requiredDocumentCount = documentItems.filter((item) => item.required).length;
   const uploadedRequiredDocumentCount = documentItems.filter((item) => item.required && item.fileUrl).length;
   const allRequiredDocumentsUploaded = uploadedRequiredDocumentCount === requiredDocumentCount;
+  const verificationStatus = (store?.verificationStatus || '').toLowerCase();
+  const documentsSubmitted = Boolean(store?.documentsSubmitted);
+  const isVerified = verificationStatus === 'verified';
+  const isRejected = verificationStatus === 'rejected' || store?.documentStatus === 'rejected';
+  const isUnderReview =
+    documentsSubmitted &&
+    !isVerified &&
+    !isRejected &&
+    (verificationStatus === 'under_review' || verificationStatus === 'pending' || !verificationStatus);
+  const canSubmitForVerification = allRequiredDocumentsUploaded && !documentsSubmitted && !isVerified && !isUnderReview;
+  const verificationStatusLabel = isVerified
+    ? 'Verified'
+    : isRejected
+      ? 'Rejected'
+      : isUnderReview
+        ? 'Under admin review'
+        : documentsSubmitted
+          ? 'Submitted'
+          : allRequiredDocumentsUploaded
+            ? 'Ready to submit'
+            : 'Documents incomplete';
 
   return (
     <KeyboardAvoidingView
@@ -874,6 +926,101 @@ export function SellerSettingsNative({
                     onUpload={() => void uploadDocument(item.type)}
                   />
                 ))}
+
+                <View
+                  className={`rounded-xl border p-4 ${
+                    isVerified
+                      ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
+                      : isRejected
+                        ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
+                        : isUnderReview
+                          ? 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20'
+                          : 'border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-900/40'
+                  }`}
+                >
+                  <View className="flex-row items-start gap-3">
+                    <View
+                      className={`h-10 w-10 items-center justify-center rounded-full ${
+                        isVerified
+                          ? 'bg-green-100 dark:bg-green-900/40'
+                          : isRejected
+                            ? 'bg-red-100 dark:bg-red-900/40'
+                            : isUnderReview
+                              ? 'bg-blue-100 dark:bg-blue-900/40'
+                              : 'bg-gray-100 dark:bg-slate-700'
+                      }`}
+                    >
+                      <Feather
+                        name={
+                          isVerified
+                            ? 'award'
+                            : isRejected
+                              ? 'x-circle'
+                              : isUnderReview
+                                ? 'clock'
+                                : 'send'
+                        }
+                        color={
+                          isVerified
+                            ? '#16a34a'
+                            : isRejected
+                              ? '#dc2626'
+                              : isUnderReview
+                                ? '#2563eb'
+                                : '#64748b'
+                        }
+                        size={18}
+                      />
+                    </View>
+                    <View className="min-w-0 flex-1 gap-2">
+                      <Text className="font-sans text-sm font-bold text-gray-900 dark:text-slate-100">
+                        Verification status: {verificationStatusLabel}
+                      </Text>
+                      {store?.documentsSubmittedAt ? (
+                        <Text className="font-sans text-xs leading-5 text-gray-500 dark:text-slate-400">
+                          Submitted {new Date(store.documentsSubmittedAt).toLocaleString()}
+                        </Text>
+                      ) : null}
+                      {isRejected && store?.documentRejectionReason ? (
+                        <Text className="font-sans text-xs leading-5 text-red-700 dark:text-red-300">
+                          Rejection reason: {store.documentRejectionReason}
+                        </Text>
+                      ) : null}
+                      {isUnderReview ? (
+                        <Text className="font-sans text-xs leading-5 text-blue-700 dark:text-blue-300">
+                          Your documents are in the admin verification queue. You will be notified when review is complete.
+                        </Text>
+                      ) : null}
+                      {canSubmitForVerification ? (
+                        <Text className="font-sans text-xs leading-5 text-gray-600 dark:text-slate-300">
+                          All required files are uploaded. Submit them to admin for KYC review.
+                        </Text>
+                      ) : null}
+                      {!canSubmitForVerification && !isUnderReview && !isVerified && !isRejected && !allRequiredDocumentsUploaded ? (
+                        <Text className="font-sans text-xs leading-5 text-gray-600 dark:text-slate-300">
+                          Complete the required uploads above, then submit for verification.
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+
+                  {canSubmitForVerification ? (
+                    <Pressable
+                      onPress={() => void submitForVerification()}
+                      disabled={submittingVerification}
+                      className="mt-4 flex-row items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 disabled:opacity-60"
+                    >
+                      {submittingVerification ? (
+                        <ActivityIndicator color="#ffffff" />
+                      ) : (
+                        <Feather name="send" color="#ffffff" size={16} />
+                      )}
+                      <Text className="font-sans text-sm font-bold text-white">
+                        {submittingVerification ? 'Submitting...' : 'Submit for verification'}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
               </View>
             </View>
           ) : null}

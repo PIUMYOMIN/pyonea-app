@@ -15,12 +15,13 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppLayout } from '@/components/layout/app-layout';
-import { SITE_CONTAINER_CLASS } from '@/constants/layout';
+import { SITE_CONTAINER_CLASS, PRODUCT_LIST_GRID_CLASS } from '@/constants/layout';
 import {
   CardSkeleton,
   ProductListCard,
   PRODUCT_CARD_ROW_CLASS,
 } from '@/components/marketplace-list-screen';
+import { LazyMountWhenVisible } from '@/components/ui/lazy-mount-when-visible';
 import { useTheme } from '@/context/theme';
 import { useAppTranslation } from '@/i18n';
 import {
@@ -398,7 +399,7 @@ export function ProductListNative() {
   ].filter(Boolean).length;
   const mutedIconColor = isDark ? '#94a3b8' : '#64748b';
   const queryKey = `${searchQuery}|${selectedCategory}|${minPrice}|${maxPrice}|${sortBy}|${sortOrder}`;
-  const productColumns = width >= 1024 ? 4 : width >= 640 ? 3 : 2;
+  const productColumns = width >= 1280 ? 4 : width >= 640 ? 3 : 2;
   const productRows = useMemo(() => {
     const rows: HomeProduct[][] = [];
     for (let index = 0; index < products.length; index += productColumns) {
@@ -746,7 +747,7 @@ export function ProductListNative() {
               ) : null}
 
               {loading && products.length === 0 ? (
-                <View className="flex-row flex-wrap gap-3 sm:gap-4">
+                <View className={PRODUCT_LIST_GRID_CLASS}>
                   {Array.from({ length: 8 }).map((_, index) => (
                     <CardSkeleton key={`product-skeleton-${index}`} />
                   ))}
@@ -757,14 +758,15 @@ export function ProductListNative() {
                   keyExtractor={(_, index) => `product-row-${index}`}
                   renderItem={({ item: row, index: rowIndex }) => {
                     const emptySlots = Math.max(0, productColumns - row.length);
-                    return (
-                      <View className="mb-3 flex-row items-stretch gap-3 sm:mb-4 sm:gap-4">
+                    const eagerRow = rowIndex < 2;
+                    const rowContent = (
+                      <View className="product-list-row mb-3 flex-row items-stretch gap-3 sm:mb-4 sm:gap-4">
                         {row.map((product) => (
                           <ProductListCard
                             key={String(product.id)}
                             product={product}
                             className={PRODUCT_CARD_ROW_CLASS}
-                            imagePriority={rowIndex < 2}
+                            imagePriority={eagerRow}
                           />
                         ))}
                         {Array.from({ length: emptySlots }).map((_, index) => (
@@ -776,12 +778,32 @@ export function ProductListNative() {
                         ))}
                       </View>
                     );
+                    const rowPlaceholder = (
+                      <View className="product-list-row mb-3 flex-row items-stretch gap-3 sm:mb-4 sm:gap-4">
+                        {Array.from({ length: productColumns }).map((_, index) => (
+                          <CardSkeleton
+                            key={`product-row-placeholder-${index}`}
+                            className={PRODUCT_CARD_ROW_CLASS}
+                          />
+                        ))}
+                      </View>
+                    );
+
+                    if (Platform.OS === 'web' && !eagerRow) {
+                      return (
+                        <LazyMountWhenVisible placeholder={rowPlaceholder}>
+                          {rowContent}
+                        </LazyMountWhenVisible>
+                      );
+                    }
+
+                    return rowContent;
                   }}
                   scrollEnabled={false}
                   showsVerticalScrollIndicator={false}
-                  initialNumToRender={4}
-                  maxToRenderPerBatch={2}
-                  windowSize={5}
+                  initialNumToRender={Platform.OS === 'web' ? 3 : 4}
+                  maxToRenderPerBatch={Platform.OS === 'web' ? 1 : 2}
+                  windowSize={Platform.OS === 'web' ? 3 : 5}
                   removeClippedSubviews={Platform.OS !== 'web'}
                   ListFooterComponent={
                     loadingMore ? (

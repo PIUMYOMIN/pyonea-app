@@ -3,9 +3,10 @@ import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { Link, type Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { FlatList, Modal, Pressable, Text, TextInput, useWindowDimensions, View } from 'react-native';
+import { Modal, Pressable, Text, TextInput, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
+import { SELLER_DIRECTORY_GRID_CLASS, SITE_CONTAINER_CLASS } from '@/constants/layout';
 import { useAppTranslation } from '@/i18n';
 import { fetchSellers, type HomeSeller } from '@/utils/native-api';
 
@@ -53,7 +54,7 @@ function SellerDirectoryCard({ seller }: { seller: HomeSeller }) {
   const storeHref = `/sellers/${seller.slug || seller.id}` as Href;
 
   return (
-    <View className="w-full overflow-hidden rounded-lg border border-gray-100 bg-white shadow-md shadow-gray-200/70 dark:border-slate-700 dark:bg-slate-800 dark:shadow-slate-900/50 sm:w-[48%] lg:w-[31%] xl:w-[23%]">
+    <View className="w-full min-w-0 overflow-hidden rounded-lg border border-gray-100 bg-white shadow-md shadow-gray-200/70 dark:border-slate-700 dark:bg-slate-800 dark:shadow-slate-900/50">
       <View className="p-3 sm:p-4">
         <View className="flex-row items-start gap-2 sm:gap-3">
           <View className="relative flex-shrink-0">
@@ -193,7 +194,7 @@ function FilterSelect({
 
 function SellerSkeleton() {
   return (
-    <View className="w-full rounded-lg border border-gray-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-800 sm:w-[48%] lg:w-[31%] xl:w-[23%]">
+    <View className="w-full min-w-0 rounded-lg border border-gray-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
       <View className="flex-row gap-3">
         <View className="h-16 w-16 rounded-full bg-gray-200 dark:bg-slate-700" />
         <View className="min-w-0 flex-1 gap-2">
@@ -223,8 +224,6 @@ export function SellersNative() {
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
-  const { width } = useWindowDimensions();
-  const sellerColumns = width >= 1280 ? 4 : width >= 1024 ? 3 : width >= 640 ? 2 : 1;
 
   const categories = useMemo(
     () => [
@@ -292,13 +291,6 @@ export function SellersNative() {
   }, [searchTerm, selectedCategory, sellers, sortOption]);
 
   const visibleSellers = filteredSellers.slice(0, visibleCount);
-  const sellerRows = useMemo(() => {
-    const rows: HomeSeller[][] = [];
-    for (let index = 0; index < visibleSellers.length; index += sellerColumns) {
-      rows.push(visibleSellers.slice(index, index + sellerColumns));
-    }
-    return rows;
-  }, [sellerColumns, visibleSellers]);
   const hasMoreSellers = visibleCount < filteredSellers.length;
 
   const loadMoreSellers = () => {
@@ -360,7 +352,7 @@ export function SellersNative() {
       <View className="min-h-screen bg-gray-50 dark:bg-slate-900">
         <View className="relative bg-green-700">
           <View className="absolute inset-0 bg-slate-900/40 dark:bg-slate-900/60" />
-          <View className="relative mx-auto w-full max-w-7xl items-center px-4 py-16 sm:px-6 sm:py-20 lg:px-8">
+          <View className={`relative ${SITE_CONTAINER_CLASS} items-center py-16 sm:py-20`}>
             <Text className="text-center font-sans text-3xl font-extrabold text-white sm:text-5xl lg:text-6xl">
               {t('sellers.title')}
             </Text>
@@ -370,7 +362,7 @@ export function SellersNative() {
           </View>
         </View>
 
-        <View className="mx-auto w-full max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+        <View className={`${SITE_CONTAINER_CLASS} py-8`}>
           <View className="rounded-lg bg-white p-6 shadow shadow-gray-200/80 dark:bg-slate-800 dark:shadow-slate-900/50">
             <View className="gap-6 md:flex-row md:items-center md:justify-between">
               <View className="min-w-0 flex-1">
@@ -420,7 +412,7 @@ export function SellersNative() {
           </View>
         </View>
 
-        <View className="mx-auto w-full max-w-7xl px-4 pb-12 sm:px-6 lg:px-8">
+        <View className={`${SITE_CONTAINER_CLASS} pb-12`}>
           <View className="mb-6 gap-2 sm:flex-row sm:items-center sm:justify-between">
             <Text className="font-sans text-2xl font-bold text-gray-900 dark:text-slate-100">
               {t('sellers.all_sellers')}{' '}
@@ -438,7 +430,7 @@ export function SellersNative() {
           </View>
 
           {loading ? (
-            <View className="flex-row flex-wrap gap-6">
+            <View className={SELLER_DIRECTORY_GRID_CLASS}>
               {Array.from({ length: 8 }).map((_, index) => (
                 <SellerSkeleton key={index} />
               ))}
@@ -462,19 +454,11 @@ export function SellersNative() {
             </View>
           ) : (
             <>
-              <FlatList
-                data={sellerRows}
-                keyExtractor={(_, index) => `seller-row-${index}`}
-                renderItem={({ item: row }) => (
-                  <View className="mb-6 flex-row gap-6">
-                    {row.map((seller) => (
-                      <SellerDirectoryCard key={String(seller.id)} seller={seller} />
-                    ))}
-                  </View>
-                )}
-                scrollEnabled={false}
-                showsVerticalScrollIndicator={false}
-              />
+              <View className={SELLER_DIRECTORY_GRID_CLASS}>
+                {visibleSellers.map((seller) => (
+                  <SellerDirectoryCard key={String(seller.id)} seller={seller} />
+                ))}
+              </View>
 
               {hasMoreSellers ? (
                 <View className="items-center py-4">
@@ -488,7 +472,7 @@ export function SellersNative() {
         </View>
 
         <View className="bg-green-700">
-          <View className="mx-auto w-full max-w-7xl gap-8 px-4 py-12 sm:px-6 lg:flex-row lg:items-center lg:justify-between lg:px-8 lg:py-16">
+          <View className={`${SITE_CONTAINER_CLASS} gap-8 py-12 lg:flex-row lg:items-center lg:justify-between lg:py-16`}>
             <View className="min-w-0 flex-1">
               <Text className="font-sans text-3xl font-extrabold text-white sm:text-4xl">
                 {t('sellers.become_seller_title')}

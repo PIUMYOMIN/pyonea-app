@@ -5,6 +5,8 @@ import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { useTheme } from '@/context/theme';
 import { useAppTranslation } from '@/i18n';
+import { useNativeAuth } from '@/context/native-auth';
+import { notificationHref } from '@/utils/notification-routing';
 import {
   clearNotifications,
   deleteNotification,
@@ -32,22 +34,6 @@ const formatRelativeTime = (
   return t('notifications.days_ago', { count: Math.floor(diff / 86400) });
 };
 
-const notificationHref = (notification: NativeNotification): Href | null => {
-  if (notification.url) return notification.url as Href;
-  if (notification.type === 'new_order') return '/seller/dashboard?tab=orders' as Href;
-  if (notification.type.startsWith('subscription_')) {
-    return '/seller/dashboard?tab=subscription' as Href;
-  }
-  if (notification.type.startsWith('rfq_')) return '/seller/dashboard?tab=rfq' as Href;
-  if (notification.orderNumber && notification.type.includes('delivery')) {
-    return `/track-order?order=${encodeURIComponent(notification.orderNumber)}` as Href;
-  }
-  if (notification.orderNumber || notification.orderId) {
-    return '/seller/dashboard?tab=orders' as Href;
-  }
-  return null;
-};
-
 function NotificationRow({
   notification,
   busy,
@@ -64,7 +50,7 @@ function NotificationRow({
   const { t } = useAppTranslation();
   const { isDark } = useTheme();
   const unread = !notification.readAt;
-  const href = notificationHref(notification);
+  const href = notificationHref(notification, 'seller');
 
   return (
     <View
@@ -232,7 +218,7 @@ export function SellerNotificationsNative() {
   };
 
   const openNotification = async (notification: NativeNotification) => {
-    const href = notificationHref(notification);
+    const href = notificationHref(notification, 'seller');
     if (!notification.readAt) await markRead(notification);
     if (href) router.push(href);
   };

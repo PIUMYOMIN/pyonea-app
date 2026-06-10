@@ -1,12 +1,13 @@
-import { OptimizedImage as Image } from "@/components/ui/optimized-image";
+import { OptimizedImage as Image, productGridImageTransition } from "@/components/ui/optimized-image";
 import Feather from "@expo/vector-icons/Feather";
 import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { Link, useRouter, type Href } from "expo-router";
-import { memo, useEffect, useRef, useState } from "react";
+import { memo, useEffect, useMemo, useRef, useState } from "react";
 import { Platform, Pressable, Text, View } from "react-native";
 
 import { AppLayout } from "@/components/layout/app-layout";
 import { SiteSection } from '@/components/layout/site-container';
+import { PRODUCT_LIST_GRID_CLASS } from '@/constants/layout';
 import { CategoryCardFromHome } from "@/components/ui/category-card";
 import { useNativeAuth } from "@/context/native-auth";
 import { useWishlistProductState } from "@/context/wishlist-context";
@@ -27,12 +28,15 @@ import {
   type SubscriptionPlan,
 } from "@/utils/native-api";
 import { emitCartCountChanged } from "@/utils/native-cart-events";
+import {
+  getProductListImageSource,
+  getProductListImageSources,
+} from "@/utils/image-optimization";
 
 const placeholderProduct = require("@/assets/images/placeholder-product.png");
 
-/** Shared product card layout classes — width only; height grows with content. */
-export const PRODUCT_CARD_GRID_CLASS =
-  "w-[47%] min-w-0 sm:w-[30.5%] lg:w-[22.5%]";
+/** Full width inside PRODUCT_LIST_GRID_CLASS — height grows with content. */
+export const PRODUCT_CARD_GRID_CLASS = "w-full min-w-0";
 
 export const PRODUCT_CARD_ROW_CLASS = "min-w-0 flex-1 self-stretch";
 
@@ -127,7 +131,7 @@ export function MarketplaceListScreen<T>({
             </Text>
           </View>
 
-          <View className="flex-row flex-wrap gap-3 sm:gap-4">
+          <View className={PRODUCT_LIST_GRID_CLASS}>
             {loading ? (
               Array.from({ length: skeletonCount }).map((_, index) => (
                 <CardSkeleton key={`skeleton-${index}`} />
@@ -202,6 +206,22 @@ function ProductListCardComponent({
     product.categoryNameMm,
     product.categoryName,
   );
+  const imageSources = useMemo(
+    () => getProductListImageSources(product.imageUrl),
+    [product.imageUrl],
+  );
+  const nativeImageSource = useMemo(
+    () => getProductListImageSource(product.imageUrl),
+    [product.imageUrl],
+  );
+  const resolvedImageSource = useMemo(() => {
+    if (Platform.OS === "web") {
+      return imageSources.length > 0 ? imageSources : placeholderProduct;
+    }
+    if (nativeImageSource) return nativeImageSource;
+    if (product.imageUrl) return { uri: product.imageUrl };
+    return placeholderProduct;
+  }, [imageSources, nativeImageSource, product.imageUrl]);
 
   const nameLineHeight = Platform.OS === "android" ? 20 : 18;
 
@@ -262,14 +282,13 @@ function ProductListCardComponent({
         <Link href={productHref} asChild>
           <Pressable className="aspect-square w-full overflow-hidden bg-gray-100 dark:bg-gray-700">
             <Image
-              source={
-                product.imageUrl ? { uri: product.imageUrl } : placeholderProduct
-              }
+              source={resolvedImageSource}
               style={{ width: "100%", height: "100%" }}
               contentFit="cover"
               loading={imagePriority ? "eager" : "lazy"}
               priority={imagePriority ? "high" : "normal"}
               recyclingKey={String(product.productId ?? product.id)}
+              transition={productGridImageTransition(imagePriority)}
             />
             <View className="absolute left-2 top-2 z-10 gap-1">
               {product.discountPct && product.discountPct > 0 ? (
@@ -453,7 +472,7 @@ export function CategoryListCard({ category }: { category: HomeCategory }) {
     <CategoryCardFromHome
       category={category}
       language={language}
-      className="w-[48%] sm:w-[31%] lg:w-[23%]"
+      className="w-full min-w-0"
     />
   );
 }

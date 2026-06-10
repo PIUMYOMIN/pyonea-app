@@ -15,6 +15,7 @@ import {
   fetchSellerDeliveries,
   formatMMK,
   setSellerOrderDeliveryMethod,
+  submitSellerDeliveryFee,
   updateSellerDeliveryStatus,
   uploadSellerDeliveryProof,
   type SellerDelivery,
@@ -46,6 +47,55 @@ const formatDate = (value: string) => {
 };
 
 const calculatePlatformFee = (weight = 5, distance = 0) => 5000 + weight * 100 + distance * 200;
+
+const isPlatformDelivery = (delivery: SellerDelivery) => delivery.deliveryMethod === 'platform';
+
+const canSubmitPlatformFee = (delivery: SellerDelivery) =>
+  isPlatformDelivery(delivery) &&
+  delivery.platformDeliveryFeeValue > 0 &&
+  !delivery.feeConfirmedAt &&
+  !delivery.feeSubmittedAt;
+
+const isPlatformFeeAwaitingAdmin = (delivery: SellerDelivery) =>
+  isPlatformDelivery(delivery) &&
+  Boolean(delivery.feeSubmittedAt) &&
+  !delivery.feeConfirmedAt;
+
+function PlatformFeeStatus({ delivery }: { delivery: SellerDelivery }) {
+  const { t } = useAppTranslation();
+
+  if (!isPlatformDelivery(delivery) || delivery.platformDeliveryFeeValue <= 0) {
+    return null;
+  }
+
+  if (delivery.feeConfirmedAt) {
+    return (
+      <View className="mt-1 self-start rounded-full bg-green-100 px-2 py-0.5 dark:bg-green-900/30">
+        <Text className="font-sans text-[10px] font-semibold text-green-800 dark:text-green-300">
+          {t('seller.delivery.fee.status_confirmed', { defaultValue: 'Fee confirmed' })}
+        </Text>
+      </View>
+    );
+  }
+
+  if (delivery.feeSubmittedAt) {
+    return (
+      <View className="mt-1 self-start rounded-full bg-amber-100 px-2 py-0.5 dark:bg-amber-900/30">
+        <Text className="font-sans text-[10px] font-semibold text-amber-800 dark:text-amber-300">
+          {t('seller.delivery.fee.status_submitted', { defaultValue: 'Awaiting admin confirmation' })}
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View className="mt-1 self-start rounded-full bg-red-100 px-2 py-0.5 dark:bg-red-900/30">
+      <Text className="font-sans text-[10px] font-semibold text-red-800 dark:text-red-300">
+        {t('seller.delivery.fee.status_pending', { defaultValue: 'Fee payment due' })}
+      </Text>
+    </View>
+  );
+}
 
 function StatusBadge({ status }: { status: string }) {
   const { t } = useAppTranslation();
@@ -98,6 +148,7 @@ function DeliveryCard({
   onMethod,
   onStatus,
   onProof,
+  onSubmitFee,
 }: {
   delivery: SellerDelivery;
   actionLoading: string | null;
@@ -105,6 +156,7 @@ function DeliveryCard({
   onMethod: () => void;
   onStatus: (status: string, notes: string) => void;
   onProof: () => void;
+  onSubmitFee: () => void;
 }) {
   const { t } = useAppTranslation();
   const isSelf = delivery.deliveryMethod === 'supplier';
@@ -150,6 +202,7 @@ function DeliveryCard({
         <Text className="font-sans text-xs font-semibold text-gray-900 dark:text-slate-100" numberOfLines={1}>
           {delivery.platformDeliveryFee || formatMMK(0)}
         </Text>
+        <PlatformFeeStatus delivery={delivery} />
         <Text className="mt-1 font-sans text-xs text-gray-500 dark:text-slate-400" numberOfLines={1}>
           {delivery.trackingNumber || 'No tracking'}
         </Text>
@@ -172,6 +225,13 @@ function DeliveryCard({
         {delivery.status === 'pending' ? (
           <Pressable onPress={onMethod} className="rounded-lg bg-blue-600 px-3 py-2">
             <Text className="font-sans text-xs font-bold text-white">{t('seller.delivery.actions.choose_method', { defaultValue: 'Choose Method' })}</Text>
+          </Pressable>
+        ) : null}
+        {canSubmitPlatformFee(delivery) ? (
+          <Pressable onPress={onSubmitFee} className="rounded-lg bg-amber-600 px-3 py-2">
+            <Text className="font-sans text-xs font-bold text-white">
+              {t('seller.delivery.actions.submit_fee', { defaultValue: 'Submit Fee' })}
+            </Text>
           </Pressable>
         ) : null}
         {delivery.status === 'awaiting_pickup' && isSelf ? (
@@ -283,11 +343,12 @@ function DeliveryMethodModal({
   );
 }
 
-function DetailModal({ delivery, onClose, onStatus, onProof, actionLoading }: {
+function DetailModal({ delivery, onClose, onStatus, onProof, onSubmitFee, actionLoading }: {
   delivery: SellerDelivery | null;
   onClose: () => void;
   onStatus: (status: string, notes: string) => void;
   onProof: () => void;
+  onSubmitFee: () => void;
   actionLoading: string | null;
 }) {
   const { t } = useAppTranslation();
@@ -315,6 +376,17 @@ function DetailModal({ delivery, onClose, onStatus, onProof, actionLoading }: {
                   <StatusBadge status={delivery.status} />
                   <Text className="font-sans text-sm text-gray-700 dark:text-slate-300">Method: {delivery.deliveryMethod === 'platform' ? 'Platform Logistics' : 'Self Delivery'}</Text>
                   <Text className="font-sans text-sm text-gray-700 dark:text-slate-300">Fee: {delivery.platformDeliveryFee}</Text>
+                  <PlatformFeeStatus delivery={delivery} />
+                  {delivery.feeSubmissionNote ? (
+                    <Text className="font-sans text-sm text-gray-600 dark:text-slate-400">
+                      {t('seller.delivery.fee.note_label', { defaultValue: 'Payment note' })}: {delivery.feeSubmissionNote}
+                    </Text>
+                  ) : null}
+                  {delivery.feeSubmittedAt ? (
+                    <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">
+                      {t('seller.delivery.fee.submitted_at', { defaultValue: 'Submitted' })}: {formatDate(delivery.feeSubmittedAt)}
+                    </Text>
+                  ) : null}
                   <Text className="font-sans text-sm text-gray-700 dark:text-slate-300">Tracking: {delivery.trackingNumber || 'Not assigned'}</Text>
                   {delivery.courierName ? <Text className="font-sans text-sm text-gray-700 dark:text-slate-300">Courier: {delivery.courierName}</Text> : null}
                 </View>
@@ -349,6 +421,22 @@ function DetailModal({ delivery, onClose, onStatus, onProof, actionLoading }: {
               </View>
             ) : null}
 
+            {canSubmitPlatformFee(delivery) ? (
+              <Pressable onPress={onSubmitFee} className="mt-6 rounded-lg bg-amber-600 py-3">
+                <Text className="text-center font-sans text-sm font-medium text-white">
+                  {t('seller.delivery.actions.submit_fee', { defaultValue: 'Submit platform delivery fee' })}
+                </Text>
+              </Pressable>
+            ) : null}
+            {isPlatformFeeAwaitingAdmin(delivery) ? (
+              <View className="mt-6 rounded-lg border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
+                <Text className="font-sans text-sm leading-6 text-amber-800 dark:text-amber-200">
+                  {t('seller.delivery.fee.awaiting_admin', {
+                    defaultValue: 'Your fee payment was submitted. Admin will confirm before platform dispatch proceeds.',
+                  })}
+                </Text>
+              </View>
+            ) : null}
             {delivery.status === 'in_transit' && isSelf ? (
               <Pressable disabled={loading} onPress={() => onStatus('out_for_delivery', 'Out for delivery to customer')} className="mt-6 rounded-lg bg-orange-500 py-3 disabled:opacity-50">
                 <Text className="text-center font-sans text-sm font-medium text-white">{loading ? 'Updating...' : 'Mark as Out for Delivery'}</Text>
@@ -479,6 +567,98 @@ function ProofModal({ delivery, actionLoading, onClose, onUpload, onMessage }: {
   );
 }
 
+function FeeSubmitModal({
+  delivery,
+  actionLoading,
+  onClose,
+  onSubmit,
+}: {
+  delivery: SellerDelivery | null;
+  actionLoading: string | null;
+  onClose: () => void;
+  onSubmit: (note: string) => void;
+}) {
+  const { t } = useAppTranslation();
+  const [note, setNote] = useState('');
+
+  if (!delivery) return null;
+
+  return (
+    <Modal visible={Boolean(delivery)} transparent animationType="fade" onRequestClose={onClose}>
+      <View className="flex-1 bg-black/50 px-4 py-8">
+        <View className="mx-auto w-full max-w-lg rounded-2xl bg-white shadow-xl dark:bg-slate-800">
+          <View className="flex-row items-start justify-between border-b border-gray-100 px-5 py-4 dark:border-slate-700">
+            <View className="flex-row items-center gap-3">
+              <View className="h-10 w-10 items-center justify-center rounded-xl bg-amber-50 dark:bg-amber-900/20">
+                <Feather name="dollar-sign" color="#d97706" size={18} />
+              </View>
+              <View>
+                <Text className="font-sans text-base font-semibold text-gray-900 dark:text-white">
+                  {t('seller.delivery.fee.title', { defaultValue: 'Submit platform delivery fee' })}
+                </Text>
+                <Text className="mt-0.5 font-sans text-xs text-gray-500 dark:text-slate-400">#{delivery.order.orderNumber}</Text>
+              </View>
+            </View>
+            <Pressable onPress={onClose}>
+              <Feather name="x-circle" color="#94a3b8" size={22} />
+            </Pressable>
+          </View>
+          <View className="gap-4 px-5 py-5">
+            <Text className="font-sans text-xs leading-5 text-gray-500 dark:text-slate-400">
+              {t('seller.delivery.fee.description', {
+                defaultValue:
+                  'After paying the quoted platform logistics fee (bank transfer or mobile wallet), submit your payment reference so admin can confirm dispatch.',
+              })}
+            </Text>
+            <View className="rounded-xl border border-amber-200 bg-amber-50 p-4 dark:border-amber-800 dark:bg-amber-900/20">
+              <Text className="font-sans text-xs font-semibold uppercase text-amber-800 dark:text-amber-200">
+                {t('seller.delivery.fee.amount_label', { defaultValue: 'Quoted fee' })}
+              </Text>
+              <Text className="mt-1 font-sans text-lg font-bold text-amber-900 dark:text-amber-100">
+                {delivery.platformDeliveryFee}
+              </Text>
+            </View>
+            <View>
+              <Text className="mb-1 font-sans text-xs font-bold uppercase text-gray-600 dark:text-slate-400">
+                {t('seller.delivery.fee.note_label', { defaultValue: 'Payment note / reference' })}
+              </Text>
+              <TextInput
+                value={note}
+                onChangeText={setNote}
+                multiline
+                textAlignVertical="top"
+                className="min-h-24 rounded-xl border border-gray-300 bg-white px-3 py-2.5 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                placeholder={t('seller.delivery.fee.note_placeholder', {
+                  defaultValue: 'e.g. KBZ Pay ref 123456789, paid on 9 Jun',
+                })}
+                placeholderTextColor="#9ca3af"
+              />
+            </View>
+          </View>
+          <View className="flex-row gap-3 px-5 pb-5">
+            <Pressable onPress={onClose} className="flex-1 rounded-xl border border-gray-300 py-2.5 dark:border-slate-600">
+              <Text className="text-center font-sans text-sm font-medium text-gray-700 dark:text-slate-300">
+                {t('seller.delivery.actions.cancel', { defaultValue: 'Cancel' })}
+              </Text>
+            </Pressable>
+            <Pressable
+              disabled={actionLoading === String(delivery.id)}
+              onPress={() => onSubmit(note)}
+              className="flex-1 rounded-xl bg-amber-600 py-2.5 disabled:opacity-50"
+            >
+              <Text className="text-center font-sans text-sm font-semibold text-white">
+                {actionLoading === String(delivery.id)
+                  ? t('seller.delivery.fee.submitting', { defaultValue: 'Submitting...' })
+                  : t('seller.delivery.fee.submit', { defaultValue: 'Submit to admin' })}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export function DeliveryManagementNative({ onRefresh }: { onRefresh?: () => Promise<void> }) {
   const { t } = useAppTranslation();
   const [deliveries, setDeliveries] = useState<SellerDelivery[]>([]);
@@ -487,6 +667,7 @@ export function DeliveryManagementNative({ onRefresh }: { onRefresh?: () => Prom
   const [selectedDelivery, setSelectedDelivery] = useState<SellerDelivery | null>(null);
   const [methodDelivery, setMethodDelivery] = useState<SellerDelivery | null>(null);
   const [proofDelivery, setProofDelivery] = useState<SellerDelivery | null>(null);
+  const [feeDelivery, setFeeDelivery] = useState<SellerDelivery | null>(null);
   const [actionLoading, setActionLoading] = useState<string | null>(null);
 
   const load = useCallback(async () => {
@@ -518,6 +699,7 @@ export function DeliveryManagementNative({ onRefresh }: { onRefresh?: () => Prom
     if (!next) return;
     setDeliveries((current) => current.map((item) => (String(item.id) === String(next.id) ? next : item)));
     setSelectedDelivery((current) => (current && String(current.id) === String(next.id) ? next : current));
+    setFeeDelivery((current) => (current && String(current.id) === String(next.id) ? next : current));
   };
 
   const updateStatus = async (delivery: SellerDelivery, status: string, notes: string) => {
@@ -573,6 +755,34 @@ export function DeliveryManagementNative({ onRefresh }: { onRefresh?: () => Prom
     } finally {
       setActionLoading(null);
     }
+  };
+
+  const submitPlatformFee = async (note: string) => {
+    if (!feeDelivery) return;
+    setActionLoading(String(feeDelivery.id));
+    try {
+      const next = await submitSellerDeliveryFee(feeDelivery.id, note);
+      replaceDelivery(next);
+      await onRefresh?.();
+      setFeeDelivery(null);
+      setMessage({
+        type: 'success',
+        text: t('seller.delivery.fee.success', {
+          defaultValue: 'Platform delivery fee submitted for admin review.',
+        }),
+      });
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: error instanceof Error ? error.message : t('seller.delivery.fee.failed', { defaultValue: 'Failed to submit delivery fee.' }),
+      });
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const openFeeSubmit = (delivery: SellerDelivery) => {
+    setFeeDelivery(delivery);
   };
 
   if (loading) {
@@ -638,6 +848,7 @@ export function DeliveryManagementNative({ onRefresh }: { onRefresh?: () => Prom
                   onMethod={() => setMethodDelivery(delivery)}
                   onStatus={(status, notes) => updateStatus(delivery, status, notes)}
                   onProof={() => setProofDelivery(delivery)}
+                  onSubmitFee={() => openFeeSubmit(delivery)}
                 />
               ))}
             </View>
@@ -665,6 +876,9 @@ export function DeliveryManagementNative({ onRefresh }: { onRefresh?: () => Prom
           setProofDelivery(selectedDelivery);
           setSelectedDelivery(null);
         }}
+        onSubmitFee={() => {
+          if (selectedDelivery) openFeeSubmit(selectedDelivery);
+        }}
       />
       <ProofModal
         delivery={proofDelivery}
@@ -672,6 +886,12 @@ export function DeliveryManagementNative({ onRefresh }: { onRefresh?: () => Prom
         onClose={() => setProofDelivery(null)}
         onUpload={uploadProof}
         onMessage={setMessage}
+      />
+      <FeeSubmitModal
+        delivery={feeDelivery}
+        actionLoading={actionLoading}
+        onClose={() => setFeeDelivery(null)}
+        onSubmit={submitPlatformFee}
       />
     </View>
   );

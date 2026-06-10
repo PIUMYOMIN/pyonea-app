@@ -71,6 +71,7 @@ export function ProductDetailSecondarySections({
   reviews,
   sellerHref,
   canReview,
+  hasReviewed = false,
   submittingReview,
   reviewMessage,
   onSubmitReview,
@@ -81,6 +82,7 @@ export function ProductDetailSecondarySections({
   reviews: ProductReview[];
   sellerHref: Href;
   canReview: boolean;
+  hasReviewed?: boolean;
   submittingReview: boolean;
   reviewMessage?: { type: 'success' | 'error' | 'info'; text: string } | null;
   onSubmitReview: (rating: number, comment: string) => Promise<boolean>;
@@ -144,17 +146,23 @@ export function ProductDetailSecondarySections({
           <Text className="font-sans text-xl font-bold text-gray-900 dark:text-slate-100 sm:text-2xl">
             {t('productDetail.customer_reviews')} ({product.reviewCount || reviews.length})
           </Text>
-          <Pressable
-            onPress={() => {
-              if (onWriteReviewPress && !onWriteReviewPress()) return;
-              setFormOpen((current) => !current);
-            }}
-            className="self-start rounded-md bg-green-600 px-4 py-2"
-          >
-            <Text className="font-sans text-sm font-semibold text-white">
-              {t('productDetail.write_review')}
+          {canReview ? (
+            <Pressable
+              onPress={() => {
+                if (onWriteReviewPress && !onWriteReviewPress()) return;
+                setFormOpen((current) => !current);
+              }}
+              className="self-start rounded-md bg-green-600 px-4 py-2"
+            >
+              <Text className="font-sans text-sm font-semibold text-white">
+                {t('productDetail.write_review')}
+              </Text>
+            </Pressable>
+          ) : hasReviewed ? (
+            <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">
+              {t('productDetail.already_reviewed')}
             </Text>
-          </Pressable>
+          ) : null}
         </View>
 
         {formOpen ? (

@@ -7,6 +7,7 @@ import { ActivityIndicator, Linking, Pressable, ScrollView, Text, TextInput, Vie
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { ProductListCard } from '@/components/marketplace-list-screen';
+import { PRODUCT_LIST_GRID_CLASS } from '@/constants/layout';
 import { SocialSharePanel } from '@/components/ui/social-share-panel';
 import { useNativeAuth } from '@/context/native-auth';
 import { useAppTranslation } from '@/i18n';
@@ -14,6 +15,7 @@ import {
   fetchSellerDeliveryAreas,
   fetchSellerProfile,
   fetchSellerReviews,
+  computeReviewStatsFromReviews,
   submitSellerReview,
   type HomeProduct,
   type SellerDeliveryArea,
@@ -116,11 +118,11 @@ function SellerSkeleton() {
             <View className="h-4 w-1/2 rounded bg-gray-200 dark:bg-slate-800" />
             <View className="h-20 rounded bg-gray-200 dark:bg-slate-800" />
           </View>
-          <View className="mt-8 flex-row flex-wrap gap-3">
+          <View className={`mt-8 ${PRODUCT_LIST_GRID_CLASS}`}>
             {Array.from({ length: 6 }).map((_, index) => (
               <View
                 key={`seller-profile-skeleton-${index}`}
-                className="h-48 w-[48%] rounded-2xl bg-gray-200 dark:bg-slate-800 sm:w-[31%] lg:w-[23%]"
+                className="h-48 w-full min-w-0 rounded-2xl bg-gray-200 dark:bg-slate-800"
               />
             ))}
           </View>
@@ -519,6 +521,14 @@ export function SellerProfileNative({
   const hasInitialSeller = Boolean(initialProfile?.seller);
   const isBuyer = hasUserRole(user, 'buyer');
   const canWriteReview = isAuthenticated && isBuyer && !isOwnStore;
+  const hasReviewedSeller = useMemo(
+    () =>
+      Boolean(
+        user?.id &&
+          reviews.some((review) => review.userId && String(review.userId) === String(user.id))
+      ),
+    [reviews, user?.id]
+  );
 
   useEffect(() => {
     const controller = new AbortController();
@@ -562,6 +572,23 @@ export function SellerProfileNative({
   }, [seller?.imageUrl]);
 
   useEffect(() => {
+    if (activeTab !== 'reviews' || !slug || !seller?.reviews) return;
+
+    const controller = new AbortController();
+    const perPage = Math.min(Math.max(seller.reviews, 1), 100);
+
+    void fetchSellerReviews(slug, 1, controller.signal, perPage)
+      .then((result) => {
+        if (!controller.signal.aborted) {
+          setReviewStats(computeReviewStatsFromReviews(result.reviews));
+        }
+      })
+      .catch(() => undefined);
+
+    return () => controller.abort();
+  }, [activeTab, seller?.reviews, slug]);
+
+  useEffect(() => {
     if (!slug) return;
 
     const controller = new AbortController();
@@ -602,6 +629,11 @@ export function SellerProfileNative({
 
     if (isOwnStore) {
       setReviewMessage({ type: 'error', text: 'You cannot review your own store.' });
+      return;
+    }
+
+    if (hasReviewedSeller) {
+      setReviewMessage({ type: 'error', text: 'You have already reviewed this seller.' });
       return;
     }
 
@@ -666,7 +698,11 @@ export function SellerProfileNative({
       ? Object.values(seller.policies).some((policy) => Boolean(policy))
       : false;
 
-    return tabKeys.filter((tab) => tab !== 'policies' || hasPolicies);
+    return tabKeys.filter((tab) => {
+      if (tab === 'policies' && !hasPolicies) return false;
+      if (tab === 'reviews' && seller?.showReviews === false) return false;
+      return true;
+    });
   }, [seller]);
 
   useEffect(() => {
@@ -849,7 +885,9 @@ export function SellerProfileNative({
           <View className="mb-6 flex-row flex-wrap gap-3">
             <StatChip icon="shopping-bag" value={formatK(seller.products)} label="Products" />
             <StatChip icon="users" value={formatK(seller.followers)} label="Followers" />
-            <StatChip icon="message-circle" value={formatK(seller.reviews)} label="Reviews" />
+            {seller.showReviews !== false ? (
+              <StatChip icon="message-circle" value={formatK(seller.reviews)} label="Reviews" />
+            ) : null}
             <StatChip icon="calendar" value={seller.memberSince || 'New'} label="Member since" />
           </View>
 
@@ -913,7 +951,7 @@ export function SellerProfileNative({
 
           {activeTab === 'products' ? (
             products.length > 0 ? (
-              <View className="flex-row flex-wrap gap-3 sm:gap-4">
+              <View className={PRODUCT_LIST_GRID_CLASS}>
                 {products.map((product) => (
                   <ProductListCard key={String(product.id)} product={product} />
                 ))}

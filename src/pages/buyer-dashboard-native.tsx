@@ -28,6 +28,7 @@ import {
 import { useTheme } from '@/context/theme';
 import { useWishlist } from '@/context/wishlist-context';
 import { useAppTranslation } from '@/i18n';
+import { BuyerRfqNative } from '@/components/buyer/buyer-rfq-native';
 import {
   cancelBuyerOrder,
   clearCartItems,
@@ -1523,6 +1524,7 @@ export function BuyerDashboardNative() {
       {activeTab === 'history' ? <HistoryPanel orders={orders} /> : null}
       {activeTab === 'cart' ? <CartPanel /> : null}
       {activeTab === 'wishlist' ? <WishlistPanel /> : null}
+      {activeTab === 'rfq' ? <BuyerRfqNative /> : null}
       {activeTab === 'settings' ? (
         <SettingsPanel
           key={user?.id || 'buyer'}

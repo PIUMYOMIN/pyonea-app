@@ -6,6 +6,7 @@ import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'rea
 import { useNativeAuth } from '@/context/native-auth';
 import { useTheme } from '@/context/theme';
 import { useAppTranslation } from '@/i18n';
+import { notificationHref } from '@/utils/notification-routing';
 import {
   clearNotifications,
   deleteNotification,
@@ -32,22 +33,6 @@ const formatRelativeTime = (value: string, t: (key: string, options?: Record<str
   return t('notifications.days_ago', { count: Math.floor(diff / 86400) });
 };
 
-const notificationHref = (notification: NativeNotification): Href | null => {
-  if (notification.url) return notification.url as Href;
-  if (notification.type === 'new_order') return '/seller/dashboard?tab=orders' as Href;
-  if (notification.type === 'subscription_request') return '/admin/dashboard?tab=subscriptions' as Href;
-  if (notification.type === 'platform_logistics_requested') {
-    return '/admin/dashboard?tab=platform-logistics' as Href;
-  }
-  if (notification.type.startsWith('subscription_')) return '/seller/dashboard?tab=subscription' as Href;
-  if (notification.type.startsWith('rfq_')) return '/rfq' as Href;
-  if (notification.orderNumber && notification.type.includes('delivery')) {
-    return `/track-order?order=${encodeURIComponent(notification.orderNumber)}` as Href;
-  }
-  if (notification.orderNumber || notification.orderId) return '/buyer/dashboard?tab=orders' as Href;
-  return null;
-};
-
 function NotificationPanel({
   visible,
   onClose,
@@ -62,6 +47,7 @@ function NotificationPanel({
   const router = useRouter();
   const { t } = useAppTranslation();
   const { isDark } = useTheme();
+  const { user } = useNativeAuth();
   const [items, setItems] = useState<NativeNotification[]>([]);
   const [filter, setFilter] = useState<NotificationFilter>('all');
   const [page, setPage] = useState(1);
@@ -129,7 +115,7 @@ function NotificationPanel({
   };
 
   const openNotification = async (notification: NativeNotification) => {
-    const href = notificationHref(notification);
+    const href = notificationHref(notification, user?.type);
     if (!href) {
       await markRead(notification);
       return;
@@ -247,7 +233,7 @@ function NotificationPanel({
               <View>
                 {items.map((notification) => {
                   const unread = !notification.readAt;
-                  const href = notificationHref(notification);
+                  const href = notificationHref(notification, user?.type);
                   return (
                     <Pressable
                       key={String(notification.id)}

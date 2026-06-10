@@ -5,7 +5,7 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
-import { SITE_CONTAINER_CLASS } from '@/constants/layout';
+import { HOME_CATEGORY_GRID_CLASS, PRODUCT_LIST_GRID_CLASS, SITE_CONTAINER_CLASS } from '@/constants/layout';
 import { useCartCount } from '@/context/cart-count-context';
 import { CategoryListCard, ProductListCard } from '@/components/marketplace-list-screen';
 import { useAppTranslation } from '@/i18n';
@@ -412,11 +412,11 @@ function EmptyCartRecommendations({
     return (
       <View className="mt-10 w-full gap-6">
         <View className="h-6 w-48 self-center rounded bg-gray-200 dark:bg-slate-700" />
-        <View className="flex-row flex-wrap gap-3 sm:gap-4">
+        <View className={PRODUCT_LIST_GRID_CLASS}>
           {Array.from({ length: 4 }).map((_, index) => (
             <View
               key={`cart-rec-loading-${index}`}
-              className="h-[320px] w-[47%] rounded-xl bg-gray-100 dark:bg-slate-800 sm:w-[30.5%] lg:w-[22.5%]"
+              className="h-[320px] w-full min-w-0 rounded-xl bg-gray-100 dark:bg-slate-800"
             />
           ))}
         </View>
@@ -451,7 +451,7 @@ function EmptyCartRecommendations({
               </Pressable>
             </Link>
           </View>
-          <View className="flex-row flex-wrap gap-3 sm:gap-4">
+          <View className={PRODUCT_LIST_GRID_CLASS}>
             {products.slice(0, 8).map((product, index) => (
               <ProductListCard
                 key={String(product.id)}
@@ -484,7 +484,7 @@ function EmptyCartRecommendations({
               </Pressable>
             </Link>
           </View>
-          <View className="flex-row flex-wrap gap-3 sm:gap-4">
+          <View className={HOME_CATEGORY_GRID_CLASS}>
             {categories.slice(0, 6).map((category) => (
               <CategoryListCard key={String(category.id)} category={category} />
             ))}

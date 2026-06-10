@@ -145,7 +145,8 @@ function RfqCard({
   onQuote: () => void;
 }) {
   const { t } = useAppTranslation();
-  const needsQuote = rfq.status === 'open' && !rfq.myQuote;
+  const needsQuote =
+    (rfq.status === 'open' || rfq.status === 'quoted') && !rfq.myQuote;
 
   return (
     <View className="w-full gap-2 md:w-[48%] xl:w-[31%]">
@@ -354,7 +355,10 @@ function DetailModal({
                 {t('rfq.toolbar.refresh')}
               </Text>
             </Pressable>
-            {data.status === 'open' && !data.myQuote ? (
+            {data.status !== 'cancelled' &&
+            data.status !== 'closed' &&
+            (data.status === 'open' || data.status === 'quoted') &&
+            !data.myQuote ? (
               <Pressable
                 onPress={() => onQuote(data)}
                 className="flex-row items-center gap-2 rounded-xl bg-indigo-600 px-5 py-2.5"

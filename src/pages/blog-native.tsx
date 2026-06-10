@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
+import { BLOG_POST_GRID_CLASS, SITE_CONTAINER_CLASS } from '@/constants/layout';
 import { useAppTranslation } from '@/i18n';
 import { fetchBlogPagePosts, type BlogPost } from '@/utils/native-api';
 
@@ -33,7 +34,7 @@ function BlogCard({ post }: { post: BlogPost }) {
 
   return (
     <Link href={`/blog/${post.slug}` as Href} asChild>
-      <Pressable className="w-full overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm shadow-gray-200/70 dark:border-slate-800 dark:bg-slate-900 dark:shadow-slate-950/40 md:w-[48%] lg:w-[31.5%]">
+      <Pressable className="w-full min-w-0 overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm shadow-gray-200/70 dark:border-slate-800 dark:bg-slate-900 dark:shadow-slate-950/40">
         <View className="aspect-[16/9] overflow-hidden bg-gray-100 dark:bg-slate-800">
           <Image
             source={post.imageUrl ? { uri: post.imageUrl } : fallbackImage}
@@ -223,7 +224,7 @@ export function BlogNative() {
     <AppLayout>
       <View className="min-h-screen bg-gray-50 dark:bg-slate-950">
         <View className="border-b border-gray-100 bg-white dark:border-slate-800 dark:bg-slate-900">
-          <View className="mx-auto w-full max-w-7xl px-4 py-12 sm:px-6 lg:px-8">
+          <View className={`${SITE_CONTAINER_CLASS} py-12`}>
             <View className="max-w-3xl">
               <Text className="font-sans text-sm font-semibold uppercase tracking-wide text-green-700 dark:text-green-300">
                 {t('blog_page.label')}
@@ -277,7 +278,7 @@ export function BlogNative() {
           </View>
         </View>
 
-        <View className="mx-auto w-full max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <View className={`${SITE_CONTAINER_CLASS} py-10`}>
           {error ? (
             <View className="mb-6 rounded-lg border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
               <Text className="font-sans text-sm text-red-700 dark:text-red-300">{error}</Text>
@@ -299,7 +300,7 @@ export function BlogNative() {
           ) : (
             <View className="gap-10">
               {featured ? <FeaturedPost post={featured} /> : null}
-              <View className="flex-row flex-wrap gap-6">
+              <View className={BLOG_POST_GRID_CLASS}>
                 {remaining.map((post) => (
                   <BlogCard key={String(post.id)} post={post} />
                 ))}

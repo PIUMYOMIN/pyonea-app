@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, Text, TextInput, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
-import { SITE_CONTAINER_6XL_CLASS } from '@/constants/layout';
+import { LOCAL_DEALS_GRID_CLASS, SITE_CONTAINER_6XL_CLASS } from '@/constants/layout';
 import { useAppTranslation } from '@/i18n';
 import { fetchLocalDealsPage, type LocalDeal } from '@/utils/native-api';
 
@@ -22,7 +22,7 @@ const regions = [
 
 function DealSkeleton() {
   return (
-    <View className="w-full overflow-hidden rounded-xl border border-gray-200 dark:border-slate-600 md:w-[48%]">
+    <View className="w-full min-w-0 overflow-hidden rounded-xl border border-gray-200 dark:border-slate-600">
       <View className="h-24 bg-gray-200 dark:bg-slate-600" />
       <View className="gap-3 p-4">
         <View className="h-4 w-3/4 rounded bg-gray-200 dark:bg-slate-600" />
@@ -42,7 +42,7 @@ function LocalDealCard({ deal, onOpen }: { deal: LocalDeal; onOpen: (deal: Local
   const { t } = useAppTranslation();
 
   return (
-    <View className="w-full overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-slate-600 dark:bg-slate-800/80 md:w-[48%]">
+    <View className="w-full min-w-0 overflow-hidden rounded-xl border border-gray-200 bg-white dark:border-slate-600 dark:bg-slate-800/80">
       <View className="bg-green-700 p-4">
         <View className="flex-row items-start justify-between gap-2">
           <Text className="min-w-0 flex-1 font-sans text-lg font-bold leading-6 text-white" numberOfLines={2}>
@@ -330,7 +330,7 @@ export function LocalDealsNative() {
             </View>
 
             {loading ? (
-              <View className="flex-row flex-wrap gap-4">
+              <View className={LOCAL_DEALS_GRID_CLASS}>
                 {[1, 2, 3, 4].map((item) => (
                   <DealSkeleton key={item} />
                 ))}
@@ -349,7 +349,7 @@ export function LocalDealsNative() {
                 <Text className="mb-4 font-sans text-sm text-gray-500 dark:text-slate-400">
                   {showingLabel}
                 </Text>
-                <View className="flex-row flex-wrap gap-4">
+                <View className={LOCAL_DEALS_GRID_CLASS}>
                   {deals.map((deal) => (
                     <LocalDealCard key={String(deal.id)} deal={deal} onOpen={openDeal} />
                   ))}

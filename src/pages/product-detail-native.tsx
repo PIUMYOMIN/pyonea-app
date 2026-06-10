@@ -357,6 +357,14 @@ export function ProductDetailNative({
   const messageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const hasInitialProduct = Boolean(initialProduct);
   const isBuyer = hasUserRole(user, 'buyer');
+  const hasReviewedProduct = useMemo(
+    () =>
+      Boolean(
+        user?.id &&
+          reviews.some((review) => review.userId && String(review.userId) === String(user.id))
+      ),
+    [reviews, user?.id]
+  );
   const savedToWishlist = product ? isInWishlist(product.id) : false;
 
   const showMessage = (type: 'success' | 'error' | 'info', text: string) => {
@@ -647,7 +655,7 @@ export function ProductDetailNative({
     );
   };
 
-  const canReview = isAuthenticated && isBuyer;
+  const canReview = isAuthenticated && isBuyer && !hasReviewedProduct;
 
   const handleWriteReviewPress = () => {
     if (!isAuthenticated) {
@@ -657,6 +665,11 @@ export function ProductDetailNative({
 
     if (!isBuyer) {
       setReviewMessage({ type: 'error', text: t('productDetail.only_buyers_review') });
+      return false;
+    }
+
+    if (hasReviewedProduct) {
+      setReviewMessage({ type: 'error', text: t('productDetail.already_reviewed') });
       return false;
     }
 
@@ -1162,6 +1175,7 @@ export function ProductDetailNative({
               reviews={reviews}
               sellerHref={sellerHref}
               canReview={canReview}
+              hasReviewed={hasReviewedProduct}
               submittingReview={submittingReview}
               reviewMessage={reviewMessage}
               onSubmitReview={handleSubmitReview}
