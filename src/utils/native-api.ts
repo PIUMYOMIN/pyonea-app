@@ -148,6 +148,8 @@ export type AnnouncementPayload = {
   starts_at?: string;
   ends_at?: string;
   sort_order?: number;
+  image?: NativeUploadFile | null;
+  remove_image?: boolean;
 };
 
 export type ProductDetail = {
@@ -1649,12 +1651,18 @@ export const setStoredAuthToken = async (token: string | null) => {
 export class ApiError extends Error {
   status: number;
   errors?: unknown;
+  /** Machine-readable backend error code, e.g. "product_limit_reached". */
+  code?: string;
+  /** Extra error payload from the backend (e.g. plan limit details). */
+  data?: unknown;
 
-  constructor(message: string, status: number, errors?: unknown) {
+  constructor(message: string, status: number, errors?: unknown, code?: string, data?: unknown) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.errors = errors;
+    this.code = code;
+    this.data = data;
   }
 }
 
@@ -1735,7 +1743,7 @@ const parseApiResponse = async <T>(response: Response, path: string): Promise<T>
       getString(data.message) ||
       getString(data.error) ||
       `API request failed (${response.status}) for ${path}`;
-    throw new ApiError(message, response.status, data.errors);
+    throw new ApiError(message, response.status, data.errors, getString(data.error) || undefined, data.data);
   }
 
   return payload as T;
@@ -3524,11 +3532,39 @@ export async function fetchAdminAnnouncements(signal?: AbortSignal): Promise<Ann
   return announcementData(payload).map(mapAnnouncement);
 }
 
+// The backend accepts the announcement image only as part of the multipart
+// store/update request, so saves always go through FormData (PHP cannot parse
+// multipart PUT bodies, hence the _method spoofing on update).
+const buildAnnouncementFormData = (payload: AnnouncementPayload) => {
+  const form = new FormData();
+  form.append('title', payload.title);
+  form.append('content', payload.content || '');
+  form.append('type', payload.type || 'announcement');
+  form.append('display_style', payload.display_style || 'popup_card');
+  form.append('cta_label', payload.cta_label || '');
+  form.append('cta_url', payload.cta_url || '');
+  form.append('cta_style', payload.cta_style || 'primary');
+  form.append('banner_link_url', payload.banner_link_url || '');
+  form.append('banner_aspect_ratio', payload.banner_aspect_ratio || '16:9');
+  form.append('badge_label', payload.badge_label || '');
+  form.append('badge_color', payload.badge_color || 'green');
+  form.append('target_audience', payload.target_audience || 'all');
+  form.append('is_active', payload.is_active ? '1' : '0');
+  form.append('show_once', payload.show_once ? '1' : '0');
+  form.append('delay_seconds', String(payload.delay_seconds ?? 0));
+  form.append('starts_at', payload.starts_at || '');
+  form.append('ends_at', payload.ends_at || '');
+  form.append('sort_order', String(payload.sort_order ?? 0));
+  if (payload.image?.uri) appendNativeFile(form, 'image', payload.image);
+  if (payload.remove_image) form.append('remove_image', '1');
+  return form;
+};
+
 export async function createAdminAnnouncement(
   body: AnnouncementPayload,
   signal?: AbortSignal
 ): Promise<Announcement | null> {
-  const payload = await apiPost('/admin/announcements', body, signal);
+  const payload = await apiPostForm('/admin/announcements', buildAnnouncementFormData(body), signal);
   const data = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
   return isRecord(data) ? mapAnnouncement(data) : null;
 }
@@ -3538,7 +3574,9 @@ export async function updateAdminAnnouncement(
   body: AnnouncementPayload,
   signal?: AbortSignal
 ): Promise<Announcement | null> {
-  const payload = await apiPut(`/admin/announcements/${encodeURIComponent(String(id))}`, body, signal);
+  const form = buildAnnouncementFormData(body);
+  form.append('_method', 'PUT');
+  const payload = await apiPostForm(`/admin/announcements/${encodeURIComponent(String(id))}`, form, signal);
   const data = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
   return isRecord(data) ? mapAnnouncement(data) : null;
 }
@@ -4977,7 +5015,12 @@ export async function fetchCheckoutSellerPolicies(
   const policies: (CheckoutSellerPolicy | null)[] = await Promise.all(
     uniqueSlugs.map(async (slug) => {
       try {
-        const payload = await apiGet(`/sellers/${encodeURIComponent(slug)}`, signal);
+        const payload = await withDataCache(
+          `api:seller-profile:${slug}`,
+          DATA_CACHE_TTL.checkoutStatic,
+          (requestSignal) => apiGet(`/sellers/${encodeURIComponent(slug)}`, requestSignal),
+          signal,
+        );
         const data = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
         const seller = isRecord(data) && isRecord(data.seller) ? data.seller : data;
         if (!isRecord(seller)) return null;

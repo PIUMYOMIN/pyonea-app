@@ -538,7 +538,7 @@ export function SellerListCard({ seller }: { seller: HomeSeller }) {
           <View className="relative flex-shrink-0">
             {seller.imageUrl ? (
               <OptimizedImage
-                source={{ uri: seller.imageUrl }}
+                source={{ uri: getThumbUrl(seller.imageUrl, 160) }}
                 style={{ width: 56, height: 56, borderRadius: 28 }}
                 contentFit="cover"
                 className="border-2 border-gray-200 dark:border-slate-600"
@@ -690,7 +690,7 @@ export function BlogPostCard({ post }: { post: BlogPost }) {
       <View className="aspect-[16/9] bg-gray-100">
         {post.imageUrl ? (
           <OptimizedImage
-            source={{ uri: post.imageUrl }}
+            source={{ uri: getThumbUrl(post.imageUrl, 480) }}
             style={{ width: "100%", height: "100%" }}
             contentFit="cover"
           />

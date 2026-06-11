@@ -15,6 +15,7 @@ import {
   removeWishlistItem,
   type HomeProduct,
 } from '@/utils/native-api';
+import { getThumbUrl } from '@/utils/image-thumbs';
 
 const placeholderProduct = require('@/assets/images/placeholder-product.png');
 
@@ -55,7 +56,7 @@ function WishlistCard({
         <Link href={href} asChild>
           <Pressable className="h-20 w-20 overflow-hidden rounded-lg bg-gray-100 dark:bg-slate-700">
             <Image
-              source={product.imageUrl ? { uri: product.imageUrl } : placeholderProduct}
+              source={product.imageUrl ? { uri: getThumbUrl(product.imageUrl, 160) } : placeholderProduct}
               className="h-full w-full"
               contentFit="cover"
             />

@@ -51,6 +51,7 @@ import {
   type CheckoutProfile,
   type CheckoutSellerPolicy,
 } from "@/utils/native-api";
+import { getThumbUrl } from "@/utils/image-thumbs";
 import { emitCartCountChanged } from "@/utils/native-cart-events";
 
 const CheckoutLocationSelect = lazy(() =>
@@ -139,7 +140,7 @@ function CheckoutItem({ item }: { item: CartItem }) {
     <View className="flex-row gap-3 border-b border-gray-100 py-4 dark:border-slate-800">
       <View className="h-16 w-16 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800">
         <Image
-          source={item.imageUrl ? { uri: item.imageUrl } : placeholderProduct}
+          source={item.imageUrl ? { uri: getThumbUrl(item.imageUrl, 160) } : placeholderProduct}
           className="h-full w-full"
           contentFit="contain"
         />

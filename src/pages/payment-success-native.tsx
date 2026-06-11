@@ -15,6 +15,7 @@ import {
   type PaymentReceiptOrder,
   type TrackedOrderItem,
 } from '@/utils/native-api';
+import { getThumbUrl } from '@/utils/image-thumbs';
 
 import { BRAND_LOGO, BRAND_LOGO_PUBLIC_URL } from '@/constants/brand';
 
@@ -63,6 +64,76 @@ const formatPaymentMethod = (value: string, fallback: string) => {
     .split('_')
     .map((part) => part.charAt(0).toUpperCase() + part.slice(1))
     .join(' ');
+};
+
+/** Renders the receipt markup offscreen and saves it as a real multi-page A4 PDF. */
+const generateReceiptPdf = async (css: string, bodyHtml: string, fileName: string) => {
+  const [{ jsPDF }, { default: html2canvas }] = await Promise.all([
+    import('jspdf'),
+    import('html2canvas'),
+  ]);
+
+  const mount = document.createElement('div');
+  mount.className = 'pyo-slip';
+  mount.style.cssText =
+    'position:fixed;left:-10000px;top:0;width:760px;background:#ffffff;pointer-events:none;';
+  mount.innerHTML = `<style>${css}\n.pyo-slip .receipt { box-shadow: none !important; }</style>${bodyHtml}`;
+  document.body.appendChild(mount);
+
+  try {
+    await document.fonts?.ready;
+    await Promise.all(
+      Array.from(mount.querySelectorAll('img')).map((img) =>
+        img.complete
+          ? Promise.resolve()
+          : new Promise((resolve) => {
+              img.onload = () => resolve(undefined);
+              img.onerror = () => resolve(undefined);
+            }),
+      ),
+    );
+
+    const target = mount.querySelector('.receipt') as HTMLElement;
+    const canvas = await html2canvas(target, {
+      scale: 2,
+      useCORS: true,
+      logging: false,
+      backgroundColor: '#ffffff',
+      windowWidth: 900,
+      width: target.scrollWidth,
+      height: target.scrollHeight,
+    });
+
+    const imgData = canvas.toDataURL('image/png');
+    const pdf = new jsPDF('p', 'mm', 'a4');
+    const margin = 10;
+    const pageWidth = pdf.internal.pageSize.getWidth();
+    const pageHeight = pdf.internal.pageSize.getHeight();
+    const usableHeight = pageHeight - margin * 2;
+    const imgWidth = pageWidth - margin * 2;
+    const imgHeight = (canvas.height * imgWidth) / canvas.width;
+
+    if (imgHeight <= usableHeight) {
+      pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
+    } else {
+      let heightLeft = imgHeight;
+      let position = margin;
+
+      pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+      heightLeft -= usableHeight;
+
+      while (heightLeft > 0) {
+        position = margin - (imgHeight - heightLeft);
+        pdf.addPage();
+        pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
+        heightLeft -= usableHeight;
+      }
+    }
+
+    pdf.save(fileName);
+  } finally {
+    mount.remove();
+  }
 };
 
 function MetaBox({ label, value }: { label: string; value: string }) {
@@ -138,7 +209,7 @@ function ReceiptItem({ item, emptyValue }: { item: TrackedOrderItem; emptyValue:
       <View className="flex-row flex-1 gap-3">
         <View className="h-14 w-14 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800">
           <Image
-            source={item.imageUrl ? { uri: item.imageUrl } : placeholderProduct}
+            source={item.imageUrl ? { uri: getThumbUrl(item.imageUrl, 160) } : placeholderProduct}
             className="h-full w-full"
             contentFit="contain"
           />
@@ -290,50 +361,42 @@ export function PaymentSuccessNative() {
           .join('')
       : `<tr><td colspan="4" class="empty">${escapeHtml(t('payment_success.no_items'))}</td></tr>`;
 
-    const html = `
-      <!doctype html>
-      <html>
-        <head>
-          <meta charset="utf-8" />
-          <meta name="viewport" content="width=device-width,initial-scale=1" />
-          <title>${escapeHtml(t('payment_success.receipt_title_with_order', { orderNumber: order.orderNumber }))}</title>
-          <style>
-            * { box-sizing: border-box; }
-            body { margin: 0; padding: 24px; background: #f3f4f6; color: #111827; font-family: Arial, "Noto Sans Myanmar", sans-serif; }
-            .receipt { max-width: 760px; margin: 0 auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 18px; overflow: hidden; box-shadow: 0 20px 45px rgba(15, 23, 42, .08); }
-            .header { display: flex; justify-content: space-between; gap: 24px; padding: 24px 26px; border-bottom: 3px solid #16a34a; }
-            .brand { display: flex; gap: 12px; align-items: flex-start; }
-            .brand img { width: 58px; height: 58px; object-fit: contain; }
-            .brand h1 { margin: 2px 0 4px; font-size: 22px; font-weight: 800; }
-            .brand p, .muted { margin: 0; color: #6b7280; font-size: 11px; line-height: 1.55; }
-            .title { text-align: right; min-width: 190px; }
-            .title h2 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
-            .paid { display: inline-block; margin-top: 10px; padding: 7px 13px; border-radius: 999px; background: #dcfce7; color: #15803d; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
-            .body { padding: 24px 26px 22px; }
-            .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
-            .box { padding: 11px 12px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb; }
-            .box span { display: block; color: #6b7280; font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
-            .box strong { display: block; margin-top: 5px; font-size: 12px; }
-            .parties { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 20px 0; }
-            .party { min-height: 116px; padding: 14px; border: 1px solid #e5e7eb; border-radius: 12px; }
-            .party h3 { margin: 0 0 10px; font-size: 13px; }
-            .party p { margin: 4px 0; color: #374151; font-size: 12px; line-height: 1.45; }
-            table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11px; }
-            th { padding: 9px 8px; border-bottom: 1px solid #d1d5db; background: #f3f4f6; color: #374151; font-size: 10px; font-weight: 800; text-transform: uppercase; text-align: left; }
-            td { padding: 10px 8px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
-            td span { display: block; margin-top: 4px; color: #6b7280; font-size: 10px; }
-            th:nth-child(n+2), td:nth-child(n+2) { text-align: right; white-space: nowrap; }
-            .empty { text-align: center !important; color: #6b7280; }
-            .summary { width: min(100%, 320px); margin: 20px 0 0 auto; }
-            .row { display: flex; justify-content: space-between; gap: 16px; padding: 7px 0; color: #4b5563; font-size: 12px; }
-            .row strong { color: #111827; }
-            .total { margin-top: 8px; padding-top: 12px; border-top: 1px solid #d1d5db; font-size: 15px; font-weight: 800; }
-            .total strong { color: #15803d; font-size: 17px; }
-            .footer { margin-top: 24px; padding-top: 14px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 10px; }
-            @media print { body { padding: 0; background: #fff; } .receipt { border: 0; border-radius: 0; box-shadow: none; } }
-          </style>
-        </head>
-        <body>
+    const receiptCss = `
+      .pyo-slip, .pyo-slip * { box-sizing: border-box; }
+      .pyo-slip { color: #111827; font-family: Arial, "Noto Sans Myanmar", sans-serif; }
+      .pyo-slip .receipt { max-width: 760px; margin: 0 auto; background: #fff; border: 1px solid #e5e7eb; border-radius: 18px; overflow: hidden; box-shadow: 0 20px 45px rgba(15, 23, 42, .08); }
+      .pyo-slip .header { display: flex; justify-content: space-between; gap: 24px; padding: 24px 26px; border-bottom: 3px solid #16a34a; }
+      .pyo-slip .brand { display: flex; gap: 12px; align-items: flex-start; }
+      .pyo-slip .brand img { width: 58px; height: 58px; object-fit: contain; }
+      .pyo-slip .brand h1 { margin: 2px 0 4px; font-size: 22px; font-weight: 800; }
+      .pyo-slip .brand p, .pyo-slip .muted { margin: 0; color: #6b7280; font-size: 11px; line-height: 1.55; }
+      .pyo-slip .title { text-align: right; min-width: 190px; }
+      .pyo-slip .title h2 { margin: 0; font-size: 18px; font-weight: 800; letter-spacing: .06em; text-transform: uppercase; }
+      .pyo-slip .paid { display: inline-block; margin-top: 10px; padding: 7px 13px; border-radius: 999px; background: #dcfce7; color: #15803d; font-size: 11px; font-weight: 800; letter-spacing: .08em; text-transform: uppercase; }
+      .pyo-slip .body { padding: 24px 26px 22px; }
+      .pyo-slip .grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; margin-bottom: 18px; }
+      .pyo-slip .box { padding: 11px 12px; border: 1px solid #e5e7eb; border-radius: 10px; background: #f9fafb; }
+      .pyo-slip .box span { display: block; color: #6b7280; font-size: 9px; font-weight: 800; letter-spacing: .12em; text-transform: uppercase; }
+      .pyo-slip .box strong { display: block; margin-top: 5px; font-size: 12px; }
+      .pyo-slip .parties { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin: 20px 0; }
+      .pyo-slip .party { min-height: 116px; padding: 14px; border: 1px solid #e5e7eb; border-radius: 12px; }
+      .pyo-slip .party h3 { margin: 0 0 10px; font-size: 13px; }
+      .pyo-slip .party p { margin: 4px 0; color: #374151; font-size: 12px; line-height: 1.45; }
+      .pyo-slip table { width: 100%; border-collapse: collapse; margin-top: 8px; font-size: 11px; }
+      .pyo-slip th { padding: 9px 8px; border-bottom: 1px solid #d1d5db; background: #f3f4f6; color: #374151; font-size: 10px; font-weight: 800; text-transform: uppercase; text-align: left; }
+      .pyo-slip td { padding: 10px 8px; border-bottom: 1px solid #e5e7eb; vertical-align: top; }
+      .pyo-slip td span { display: block; margin-top: 4px; color: #6b7280; font-size: 10px; }
+      .pyo-slip th:nth-child(n+2), .pyo-slip td:nth-child(n+2) { text-align: right; white-space: nowrap; }
+      .pyo-slip .empty { text-align: center !important; color: #6b7280; }
+      .pyo-slip .summary { width: min(100%, 320px); margin: 20px 0 0 auto; }
+      .pyo-slip .row { display: flex; justify-content: space-between; gap: 16px; padding: 7px 0; color: #4b5563; font-size: 12px; }
+      .pyo-slip .row strong { color: #111827; }
+      .pyo-slip .total { margin-top: 8px; padding-top: 12px; border-top: 1px solid #d1d5db; font-size: 15px; font-weight: 800; }
+      .pyo-slip .total strong { color: #15803d; font-size: 17px; }
+      .pyo-slip .footer { margin-top: 24px; padding-top: 14px; border-top: 1px solid #e5e7eb; text-align: center; color: #6b7280; font-size: 10px; }
+    `;
+
+    const receiptBody = `
           <main class="receipt">
             <section class="header">
               <div class="brand">
@@ -379,28 +442,40 @@ export function PaymentSuccessNative() {
               </div>
             </section>
           </main>
-          <script>window.addEventListener('load', function () { window.focus(); window.print(); });</script>
-        </body>
-      </html>
     `;
 
     try {
+      await generateReceiptPdf(receiptCss, receiptBody, `pyonea-payment-slip-${order.orderNumber}.pdf`);
+    } catch {
+      // Fall back to the browser print dialog (user can still "Save as PDF" there).
+      const printHtml = `
+        <!doctype html>
+        <html>
+          <head>
+            <meta charset="utf-8" />
+            <meta name="viewport" content="width=device-width,initial-scale=1" />
+            <title>${escapeHtml(t('payment_success.receipt_title_with_order', { orderNumber: order.orderNumber }))}</title>
+            <style>
+              body { margin: 0; padding: 24px; background: #f3f4f6; }
+              ${receiptCss}
+              @media print { body { padding: 0; background: #fff; } .pyo-slip .receipt { border: 0; border-radius: 0; box-shadow: none; } }
+            </style>
+          </head>
+          <body>
+            <div class="pyo-slip">${receiptBody}</div>
+            <script>window.addEventListener('load', function () { window.focus(); window.print(); });</script>
+          </body>
+        </html>
+      `;
+
       const printWindow = window.open('', '_blank', 'noopener,noreferrer,width=900,height=900');
       if (!printWindow) {
-        const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-        const url = URL.createObjectURL(blob);
-        const link = document.createElement('a');
-        link.href = url;
-        link.download = `pyonea-payment-slip-${order.orderNumber}.html`;
-        document.body.appendChild(link);
-        link.click();
-        link.remove();
-        URL.revokeObjectURL(url);
+        window.alert(t('payment_success.pdf_failed'));
         return;
       }
 
       printWindow.document.open();
-      printWindow.document.write(html);
+      printWindow.document.write(printHtml);
       printWindow.document.close();
     } finally {
       setDownloading(false);

@@ -7,6 +7,7 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 import { AppLayout } from '@/components/layout/app-layout';
 import { useAppTranslation } from '@/i18n';
 import { trackOrder, type TrackedOrder } from '@/utils/native-api';
+import { getThumbUrl } from '@/utils/image-thumbs';
 
 const orderSteps = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
 const deliverySteps = [
@@ -313,7 +314,7 @@ function OrderResults({ order, onReset }: { order: TrackedOrder; onReset: () => 
               <View key={String(item.id)} className="flex-row items-center gap-4 border-b border-gray-50 py-3 last:border-b-0 dark:border-slate-700">
                 <View className="h-14 w-14 overflow-hidden rounded-lg border border-gray-200 bg-gray-100 dark:border-slate-600 dark:bg-slate-700">
                   {item.imageUrl ? (
-                    <Image source={{ uri: item.imageUrl }} className="h-full w-full" contentFit="cover" />
+                    <Image source={{ uri: getThumbUrl(item.imageUrl, 160) }} className="h-full w-full" contentFit="cover" />
                   ) : (
                     <View className="h-full w-full items-center justify-center">
                       <Feather name="package" color="#94a3b8" size={20} />

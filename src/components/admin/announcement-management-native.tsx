@@ -21,7 +21,10 @@ import {
   type Announcement,
   type AnnouncementDisplayStyle,
   type AnnouncementPayload,
+  type NativeUploadFile,
 } from '@/utils/native-api';
+import { clearAnnouncementCache } from '@/components/ui/announcement-native';
+import { pickImagesFromLibrary } from '@/utils/native-image-picker';
 
 const types = ['announcement', 'promotion', 'newsletter', 'advertisement', 'sponsorship'];
 const audiences = ['all', 'guests', 'buyers', 'sellers'];
@@ -197,6 +200,9 @@ function AnnouncementForm({
   draft,
   saving,
   message,
+  imagePreviewUrl,
+  onPickImage,
+  onRemoveImage,
   onClose,
   onSave,
   onDraft,
@@ -206,12 +212,16 @@ function AnnouncementForm({
   draft: Draft;
   saving: boolean;
   message: string;
+  imagePreviewUrl: string;
+  onPickImage: () => void;
+  onRemoveImage: () => void;
   onClose: () => void;
   onSave: () => void;
   onDraft: (draft: Draft) => void;
 }) {
   const update = <K extends keyof Draft>(key: K, value: Draft[K]) =>
     onDraft({ ...draft, [key]: value });
+  const needsImage = draft.displayStyle !== 'popup_card';
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -247,6 +257,45 @@ function AnnouncementForm({
               options={displayStyles}
               onChange={(value) => update('displayStyle', value as AnnouncementDisplayStyle)}
             />
+
+            <View>
+              <Text className="mb-2 font-sans text-xs font-bold uppercase text-gray-500 dark:text-slate-400">
+                Image{needsImage ? ' (required for banner styles)' : ' (optional)'}
+              </Text>
+              <View className="flex-row items-center gap-3">
+                <View className="h-20 w-32 items-center justify-center overflow-hidden rounded-xl border border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-950">
+                  {imagePreviewUrl ? (
+                    <Image source={{ uri: imagePreviewUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+                  ) : (
+                    <Feather name="image" color="#94a3b8" size={22} />
+                  )}
+                </View>
+                <View className="gap-2">
+                  <Pressable
+                    onPress={onPickImage}
+                    className="flex-row items-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 dark:border-slate-700">
+                    <Feather name="upload" color="#16a34a" size={15} />
+                    <Text className="font-sans text-sm font-bold text-gray-700 dark:text-slate-200">
+                      {imagePreviewUrl ? 'Change image' : 'Upload image'}
+                    </Text>
+                  </Pressable>
+                  {imagePreviewUrl ? (
+                    <Pressable
+                      onPress={onRemoveImage}
+                      className="flex-row items-center gap-2 rounded-xl border border-red-200 px-4 py-2.5 dark:border-red-800">
+                      <Feather name="trash-2" color="#ef4444" size={15} />
+                      <Text className="font-sans text-sm font-bold text-red-600 dark:text-red-400">Remove</Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              </View>
+              {needsImage && !imagePreviewUrl ? (
+                <Text className="mt-2 font-sans text-xs text-amber-600 dark:text-amber-400">
+                  Popup banners and page banners are image-only — they will not be shown to visitors without an image.
+                </Text>
+              ) : null}
+            </View>
+
             <PillSelect label="Audience" value={draft.targetAudience} options={audiences} onChange={(value) => update('targetAudience', value)} />
 
             <View className="gap-4 sm:flex-row">
@@ -354,8 +403,34 @@ export function AnnouncementManagementNative() {
   const [formMessage, setFormMessage] = useState('');
   const [editing, setEditing] = useState<Announcement | null>(null);
   const [draft, setDraft] = useState<Draft>(emptyDraft);
+  const [imageFile, setImageFile] = useState<NativeUploadFile | null>(null);
+  const [removeImage, setRemoveImage] = useState(false);
   const [formOpen, setFormOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Announcement | null>(null);
+
+  const imagePreviewUrl = imageFile
+    ? imageFile.uri
+    : !removeImage && editing?.imageUrl
+      ? editing.imageUrl
+      : '';
+
+  const pickImage = async () => {
+    const result = await pickImagesFromLibrary({ allowsMultipleSelection: false });
+    if (result.rejected > 0) {
+      setFormMessage('Image rejected. Use JPEG, PNG, or WebP under 4 MB.');
+    }
+    const file = result.accepted[0];
+    if (file) {
+      setImageFile(file);
+      setRemoveImage(false);
+      setFormMessage('');
+    }
+  };
+
+  const handleRemoveImage = () => {
+    setImageFile(null);
+    setRemoveImage(true);
+  };
 
   const counts = useMemo(
     () => ({
@@ -386,6 +461,8 @@ export function AnnouncementManagementNative() {
   const openCreate = () => {
     setEditing(null);
     setDraft(emptyDraft);
+    setImageFile(null);
+    setRemoveImage(false);
     setFormMessage('');
     setFormOpen(true);
   };
@@ -393,6 +470,8 @@ export function AnnouncementManagementNative() {
   const openEdit = (item: Announcement) => {
     setEditing(item);
     setDraft(toDraft(item));
+    setImageFile(null);
+    setRemoveImage(false);
     setFormMessage('');
     setFormOpen(true);
   };
@@ -402,17 +481,27 @@ export function AnnouncementManagementNative() {
       setFormMessage('Title is required.');
       return;
     }
+    if (draft.displayStyle !== 'popup_card' && !imageFile && !(editing?.imageUrl && !removeImage)) {
+      setFormMessage('Popup banners and page banners need an image. Upload one or switch to Popup Card.');
+      return;
+    }
 
     setSaving(true);
     setFormMessage('');
     try {
+      const payload: AnnouncementPayload = {
+        ...toPayload(draft),
+        image: imageFile,
+        remove_image: removeImage && !imageFile,
+      };
       if (editing) {
-        await updateAdminAnnouncement(editing.id, toPayload(draft));
+        await updateAdminAnnouncement(editing.id, payload);
         setMessage('Announcement updated.');
       } else {
-        await createAdminAnnouncement(toPayload(draft));
+        await createAdminAnnouncement(payload);
         setMessage('Announcement created.');
       }
+      clearAnnouncementCache();
       setFormOpen(false);
       await load();
     } catch (error) {
@@ -426,6 +515,7 @@ export function AnnouncementManagementNative() {
     setBusyId(item.id);
     try {
       await toggleAdminAnnouncement(item.id);
+      clearAnnouncementCache();
       setItems((current) =>
         current.map((next) => (next.id === item.id ? { ...next, isActive: !next.isActive } : next))
       );
@@ -441,6 +531,7 @@ export function AnnouncementManagementNative() {
     setBusyId(deleteTarget.id);
     try {
       await deleteAdminAnnouncement(deleteTarget.id);
+      clearAnnouncementCache();
       setItems((current) => current.filter((item) => item.id !== deleteTarget.id));
       setDeleteTarget(null);
       setMessage('Announcement deleted.');
@@ -570,6 +661,9 @@ export function AnnouncementManagementNative() {
         draft={draft}
         saving={saving}
         message={formMessage}
+        imagePreviewUrl={imagePreviewUrl}
+        onPickImage={() => void pickImage()}
+        onRemoveImage={handleRemoveImage}
         onClose={() => setFormOpen(false)}
         onSave={() => void save()}
         onDraft={setDraft}

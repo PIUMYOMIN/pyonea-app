@@ -52,6 +52,7 @@ import {
   type HomeProduct,
   type TrackedOrder,
 } from '@/utils/native-api';
+import { getThumbUrl } from '@/utils/image-thumbs';
 
 const placeholderProduct = require('@/assets/images/placeholder-product.png');
 
@@ -612,7 +613,7 @@ function CompactCartItem({
       <Link href={productHref} asChild>
         <Pressable className="h-16 w-16 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800">
           <Image
-            source={item.imageUrl ? { uri: item.imageUrl } : placeholderProduct}
+            source={item.imageUrl ? { uri: getThumbUrl(item.imageUrl, 160) } : placeholderProduct}
             className="h-full w-full"
             contentFit="contain"
           />
@@ -857,7 +858,7 @@ function WishlistPanel() {
                     <Link href={`/products/${product.id}` as Href} asChild>
                       <Pressable className="h-16 w-16 overflow-hidden rounded-lg bg-gray-100 dark:bg-slate-800">
                         <Image
-                          source={product.imageUrl ? { uri: product.imageUrl } : placeholderProduct}
+                          source={product.imageUrl ? { uri: getThumbUrl(product.imageUrl, 160) } : placeholderProduct}
                           className="h-full w-full"
                           contentFit="cover"
                         />

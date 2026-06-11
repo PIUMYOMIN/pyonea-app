@@ -24,6 +24,7 @@ import {
   type SellerReview,
   type SellerReviewStats,
 } from '@/utils/native-api';
+import { getThumbUrl } from '@/utils/image-thumbs';
 import { hasUserRole } from '@/utils/auth-routing';
 import { buildSocialSharePayload } from '@/utils/social-share';
 
@@ -798,7 +799,7 @@ export function SellerProfileNative({
               <View className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-2xl border-4 border-white bg-white shadow-lg dark:border-slate-950 dark:bg-slate-800 sm:h-28 sm:w-28">
                 {seller.imageUrl && !logoError ? (
                   <Image
-                    source={{ uri: seller.imageUrl }}
+                    source={{ uri: getThumbUrl(seller.imageUrl, 300) }}
                     style={{ width: '100%', height: '100%' }}
                     contentFit="cover"
                     onError={() => setLogoError(true)}

@@ -54,7 +54,7 @@ export function DashboardTopNav({
 }: DashboardTopNavProps) {
   const router = useRouter();
   const pathname = usePathname() || "/";
-  const params = useGlobalSearchParams<Record<string, string | string[] | undefined>>();
+  const params = useGlobalSearchParams() as Record<string, string | string[] | undefined>;
   const { user, logout } = useNativeAuth();
   const { isDark, toggleTheme } = useTheme();
   const { i18n, language, t } = useAppTranslation();

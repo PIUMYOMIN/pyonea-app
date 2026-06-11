@@ -6,11 +6,24 @@ import { Linking, Modal, Pressable, Text, View } from 'react-native';
 
 import { SITE_CONTAINER_CLASS } from '@/constants/layout';
 import { useNativeAuth } from '@/context/native-auth';
+import { getThumbUrl } from '@/utils/image-thumbs';
 import { fetchAnnouncements, type Announcement } from '@/utils/native-api';
 
 const ANNOUNCEMENT_CACHE_TTL_MS = 5 * 60 * 1000;
 let cachedAnnouncements: Announcement[] | null = null;
 let announcementCacheAt = 0;
+
+/** Invalidate the public announcement cache (e.g. after an admin edit). */
+export function clearAnnouncementCache() {
+  cachedAnnouncements = null;
+  announcementCacheAt = 0;
+}
+
+// AnnouncementNative remounts with every page navigation (it lives inside each
+// page's AppLayout), so per-session state must live at module level. Otherwise
+// popups reappear and dismissed banners come back on every navigation.
+const sessionShownPopupIds = new Set<string | number>();
+const sessionDismissedBannerIds = new Set<string | number>();
 
 async function loadAnnouncements(signal?: AbortSignal) {
   if (cachedAnnouncements && Date.now() - announcementCacheAt < ANNOUNCEMENT_CACHE_TTL_MS) {
@@ -59,10 +72,12 @@ const storage = {
 const seenKey = (announcement: Announcement) =>
   `ann_seen_${announcement.id}_${new Date().toDateString()}`;
 
+// Mirrors the backend scopeForAudience: guests see 'all' + 'guests',
+// authenticated users see 'all' + their own type.
 const isForAudience = (announcement: Announcement, userType?: string) => {
   if (announcement.targetAudience === 'all') return true;
   if (announcement.targetAudience === 'guests') return !userType;
-  if (announcement.targetAudience === 'buyers') return !userType || userType === 'buyer';
+  if (announcement.targetAudience === 'buyers') return userType === 'buyer';
   if (announcement.targetAudience === 'sellers') return userType === 'seller';
   return true;
 };
@@ -122,7 +137,7 @@ function PageBanner({
           onPress={() => openLink(announcement.bannerLinkUrl)}
           className="relative overflow-hidden rounded-xl bg-gray-100 dark:bg-slate-800"
           style={{ aspectRatio: aspectRatio(announcement.bannerAspectRatio) }}>
-          <Image source={{ uri: announcement.imageUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+          <Image source={{ uri: getThumbUrl(announcement.imageUrl, 800) }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
           <AnnouncementBadge announcement={announcement} />
           <Pressable
             onPress={(event) => {
@@ -159,7 +174,7 @@ function PopupContent({
         }}
         className="w-full max-w-3xl overflow-hidden rounded-2xl bg-white shadow-xl dark:bg-slate-900"
         style={{ aspectRatio: aspectRatio(announcement.bannerAspectRatio) }}>
-        <Image source={{ uri: announcement.imageUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+        <Image source={{ uri: getThumbUrl(announcement.imageUrl, 800) }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
         <AnnouncementBadge announcement={announcement} />
         <Pressable
           onPress={(event) => {
@@ -183,7 +198,7 @@ function PopupContent({
 
       {announcement.imageUrl ? (
         <View className="relative h-56 bg-gray-100 dark:bg-slate-800">
-          <Image source={{ uri: announcement.imageUrl }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
+          <Image source={{ uri: getThumbUrl(announcement.imageUrl, 480) }} style={{ width: '100%', height: '100%' }} contentFit="cover" />
           <AnnouncementBadge announcement={announcement} />
         </View>
       ) : null}
@@ -225,7 +240,7 @@ function PopupContent({
 export function AnnouncementNative() {
   const { user } = useNativeAuth();
   const [items, setItems] = useState<Announcement[]>([]);
-  const [dismissed, setDismissed] = useState<(string | number)[]>([]);
+  const [dismissed, setDismissed] = useState<(string | number)[]>(() => [...sessionDismissedBannerIds]);
   const [popup, setPopup] = useState<Announcement | null>(null);
   const userType = user?.type || user?.roles?.[0];
 
@@ -264,17 +279,22 @@ export function AnnouncementNative() {
   useEffect(() => {
     const nextPopup = eligible.find((item) => {
       if (item.displayStyle === 'page_banner') return false;
+      if (sessionShownPopupIds.has(item.id)) return false;
       if (item.showOnce && storage.get(seenKey(item))) return false;
       return true;
     });
 
     if (!nextPopup) return;
-    const timeout = setTimeout(() => setPopup(nextPopup), Math.max(nextPopup.delaySeconds, 0) * 1000);
+    const timeout = setTimeout(() => {
+      sessionShownPopupIds.add(nextPopup.id);
+      setPopup(nextPopup);
+    }, Math.max(nextPopup.delaySeconds, 0) * 1000);
     return () => clearTimeout(timeout);
   }, [eligible]);
 
   const dismissBanner = () => {
     if (!pageBanner) return;
+    sessionDismissedBannerIds.add(pageBanner.id);
     setDismissed((current) => [...current, pageBanner.id]);
     if (pageBanner.showOnce) storage.set(seenKey(pageBanner), '1');
   };

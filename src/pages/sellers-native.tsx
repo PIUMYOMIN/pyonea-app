@@ -9,6 +9,7 @@ import { AppLayout } from '@/components/layout/app-layout';
 import { SELLER_DIRECTORY_GRID_CLASS, SITE_CONTAINER_CLASS } from '@/constants/layout';
 import { useAppTranslation } from '@/i18n';
 import { fetchSellers, type HomeSeller } from '@/utils/native-api';
+import { getThumbUrl } from '@/utils/image-thumbs';
 
 function SellerStarRow({ rating, reviews }: { rating: number; reviews: number }) {
   const { t } = useAppTranslation();
@@ -60,7 +61,7 @@ function SellerDirectoryCard({ seller }: { seller: HomeSeller }) {
           <View className="relative flex-shrink-0">
             {seller.imageUrl ? (
               <Image
-                source={{ uri: seller.imageUrl }}
+                source={{ uri: getThumbUrl(seller.imageUrl, 160) }}
                 style={{ width: 64, height: 64, borderRadius: 32 }}
                 contentFit="cover"
                 className="border-2 border-gray-200 dark:border-slate-600"

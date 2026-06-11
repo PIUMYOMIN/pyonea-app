@@ -1,7 +1,7 @@
 import { Feather } from '@expo/vector-icons';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { router, type Href } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -25,6 +25,14 @@ import {
   pickImagesFromLibrary,
 } from '@/utils/native-image-picker';
 import {
+  clearProductDraft,
+  loadProductDraft,
+  loadProductDraftImages,
+  saveProductDraft,
+  saveProductDraftImages,
+} from '@/utils/product-draft-storage';
+import {
+  ApiError,
   createSellerProduct,
   fetchAdminProductForEdit,
   fetchSellerProductCategories,
@@ -117,6 +125,15 @@ type Option = {
 function toStringValue(value: string | number | null | undefined) {
   if (value === null || value === undefined) return '';
   return String(value);
+}
+
+function isRecordOfErrorLists(value: unknown): value is Record<string, string[]> {
+  return (
+    typeof value === 'object' &&
+    value !== null &&
+    !Array.isArray(value) &&
+    Object.values(value).every((entry) => Array.isArray(entry))
+  );
 }
 
 function buildCategoryOptions(categories: SellerProductCategory[], language: string): Option[] {
@@ -343,6 +360,7 @@ function ProductImagePreviewGrid({
   onRemove,
   onChangeAngle,
   onPreview,
+  onMove,
   t,
   isDark,
 }: {
@@ -351,6 +369,7 @@ function ProductImagePreviewGrid({
   onRemove: (index: number) => void;
   onChangeAngle: (index: number, angle: string) => void;
   onPreview: (url: string) => void;
+  onMove: (index: number, direction: -1 | 1) => void;
   t: (key: string, options?: Record<string, unknown>) => string;
   isDark: boolean;
 }) {
@@ -397,6 +416,12 @@ function ProductImagePreviewGrid({
             </View>
             <View className="flex-row items-center justify-between border-t border-gray-100 bg-white px-1 py-1 dark:border-slate-700 dark:bg-slate-900">
               <Pressable
+                disabled={index === 0}
+                onPress={() => onMove(index, -1)}
+                className="h-7 flex-1 items-center justify-center rounded-md disabled:opacity-30">
+                <Feather name="chevron-left" size={14} color={isDark ? '#94a3b8' : '#64748b'} />
+              </Pressable>
+              <Pressable
                 onPress={() => onSetPrimary(index)}
                 className="h-7 flex-1 items-center justify-center rounded-md">
                 <Feather
@@ -414,6 +439,12 @@ function ProductImagePreviewGrid({
                 onPress={() => onRemove(index)}
                 className="h-7 flex-1 items-center justify-center rounded-md">
                 <Feather name="trash-2" size={14} color="#dc2626" />
+              </Pressable>
+              <Pressable
+                disabled={index === images.length - 1}
+                onPress={() => onMove(index, 1)}
+                className="h-7 flex-1 items-center justify-center rounded-md disabled:opacity-30">
+                <Feather name="chevron-right" size={14} color={isDark ? '#94a3b8' : '#64748b'} />
               </Pressable>
             </View>
           </View>
@@ -732,6 +763,8 @@ export function ProductFormNative({
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [error, setError] = useState('');
+  const [limitError, setLimitError] = useState(false);
+  const [categoriesError, setCategoriesError] = useState(false);
   const [success, setSuccess] = useState('');
   const [imageUrl, setImageUrl] = useState('');
   const [specKey, setSpecKey] = useState('');
@@ -740,6 +773,8 @@ export function ProductFormNative({
   const [clearImagesModal, setClearImagesModal] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
 
+  const scrollRef = useRef<ScrollView>(null);
+  const draftRestoredRef = useRef(false);
   const categoryOptions = useMemo(() => buildCategoryOptions(categories, language), [categories, language]);
   const editing = Boolean(productId);
   const savedProductId = form.id || productId || null;
@@ -748,40 +783,83 @@ export function ProductFormNative({
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
+  const loadCategories = useCallback(async (signal?: AbortSignal) => {
+    setCategoriesError(false);
+    try {
+      const nextCategories = await fetchSellerProductCategories(signal);
+      if (!signal?.aborted) setCategories(nextCategories);
+    } catch {
+      if (!signal?.aborted) setCategoriesError(true);
+    }
+  }, []);
+
   useEffect(() => {
     const controller = new AbortController();
 
     const load = async () => {
       try {
         setError('');
-        const [nextCategories, productResult] = await Promise.all([
-          fetchSellerProductCategories(controller.signal),
+        const [productResult] = await Promise.all([
           productId
             ? (isAdminMode ? fetchAdminProductForEdit : fetchSellerProductForEdit)(
                 productId,
                 controller.signal,
               )
             : Promise.resolve(null),
+          loadCategories(controller.signal),
         ]);
         if (controller.signal.aborted) return;
-        setCategories(nextCategories);
         if (productResult) {
           setForm({ ...emptyForm, ...productResult.product });
           setImages(productResult.images);
           setCompletedSteps(new Set([1, 2, 3, 4]));
+        } else if (!productId) {
+          // Restore the auto-saved draft for new listings.
+          const [draft, draftImages] = await Promise.all([
+            loadProductDraft(),
+            loadProductDraftImages(),
+          ]);
+          if (controller.signal.aborted) return;
+          if (draft) setForm({ ...emptyForm, ...draft });
+          if (draftImages.length) setImages(draftImages);
         }
       } catch (nextError) {
         if (!controller.signal.aborted) {
           setError(nextError instanceof Error ? nextError.message : 'Failed to load product form.');
         }
       } finally {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!controller.signal.aborted) {
+          draftRestoredRef.current = true;
+          setLoading(false);
+        }
       }
     };
 
     load();
     return () => controller.abort();
-  }, [isAdminMode, productId]);
+  }, [isAdminMode, loadCategories, productId]);
+
+  // Auto-save draft (new listings only), debounced.
+  useEffect(() => {
+    if (editing || !draftRestoredRef.current) return;
+    const timer = setTimeout(() => {
+      void saveProductDraft(form);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [editing, form]);
+
+  useEffect(() => {
+    if (editing || !draftRestoredRef.current) return;
+    const timer = setTimeout(() => {
+      void saveProductDraftImages(images);
+    }, 600);
+    return () => clearTimeout(timer);
+  }, [editing, images]);
+
+  // Match legacy behavior: jump back to the top when the step changes.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+  }, [currentStep]);
 
   const validateStep = (step: number) => {
     if (step === 1) return Boolean(form.name_en && form.description_en && form.category_id && form.product_type);
@@ -880,6 +958,16 @@ export function ProductFormNative({
     });
   };
 
+  const moveImage = (index: number, direction: -1 | 1) => {
+    setImages((prev) => {
+      const target = index + direction;
+      if (target < 0 || target >= prev.length) return prev;
+      const next = [...prev];
+      [next[index], next[target]] = [next[target], next[index]];
+      return next;
+    });
+  };
+
   const addSpecification = () => {
     if (!specKey.trim() || !specValue.trim()) return;
     setForm((prev) => ({
@@ -917,14 +1005,31 @@ export function ProductFormNative({
   });
 
   const saveCore = async () => {
-    if (!validateStep(1) || !validateStep(2) || !validateStep(3)) {
+    if (saving || isUploadingImages) return;
+    if (!validateStep(1) || !validateStep(3)) {
       setError('Please complete required product details, pricing, and at least one product image.');
+      return;
+    }
+
+    const priceNumber = parseFloat(String(form.price));
+    if (!Number.isFinite(priceNumber) || String(form.price) === '') {
+      setError(t('product_form.errors.valid_price', 'Please enter a valid price.'));
+      return;
+    }
+    const moqNumber = parseInt(String(form.moq), 10);
+    if (!Number.isFinite(moqNumber) || moqNumber < 1) {
+      setError(t('product_form.errors.valid_moq', 'Please enter a valid minimum order quantity (MOQ).'));
+      return;
+    }
+    if (!Number.isFinite(parseInt(String(form.category_id), 10))) {
+      setError(t('product_form.errors.select_category', 'Please select a category.'));
       return;
     }
 
     try {
       setSaving(true);
       setError('');
+      setLimitError(false);
       const result =
         editing && productId
           ? isAdminMode
@@ -935,6 +1040,7 @@ export function ProductFormNative({
       setForm((prev) => ({ ...prev, ...result.product, id: savedId || prev.id }));
       if (result.images.length) setImages(result.images);
       setCompletedSteps(new Set([1, 2, 3, 4]));
+      if (!editing) void clearProductDraft();
 
       if (isAdminMode) {
         setSuccess(t('admin.productManagement.notifications.updated', 'Product updated successfully.'));
@@ -945,7 +1051,18 @@ export function ProductFormNative({
       setCurrentStep(5);
       setSuccess(editing ? 'Product updated! Now review options and variants.' : 'Product created! Now define your options and variants.');
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : 'Something went wrong while saving the product.');
+      if (nextError instanceof ApiError) {
+        if (nextError.code === 'product_limit_reached' || nextError.code === 'plan_product_limit_reached') {
+          setLimitError(true);
+          setError(nextError.message);
+        } else if (isRecordOfErrorLists(nextError.errors)) {
+          setError(Object.values(nextError.errors).flat().join(', '));
+        } else {
+          setError(nextError.message);
+        }
+      } else {
+        setError(nextError instanceof Error ? nextError.message : 'Something went wrong while saving the product.');
+      }
     } finally {
       setSaving(false);
     }
@@ -977,13 +1094,27 @@ export function ProductFormNative({
             <Field label="Description (Myanmar)" multiline value={form.description_mm} onChange={(value) => update('description_mm', value)} />
           </View>
           <View className="gap-6 md:grid md:grid-cols-2">
-            <SelectModal
-              label="Category *"
-              value={toStringValue(form.category_id)}
-              options={categoryOptions}
-              placeholder="Select a category"
-              onChange={(value) => update('category_id', value)}
-            />
+            <View className="gap-2">
+              <SelectModal
+                label="Category *"
+                value={toStringValue(form.category_id)}
+                options={categoryOptions}
+                placeholder="Select a category"
+                onChange={(value) => update('category_id', value)}
+              />
+              {categoriesError && categoryOptions.length === 0 ? (
+                <View className="flex-row items-center gap-2">
+                  <Text className="font-sans text-xs text-red-600 dark:text-red-400">
+                    {t('product_form.errors.load_categories', 'Failed to load categories.')}
+                  </Text>
+                  <Pressable onPress={() => void loadCategories()}>
+                    <Text className="font-sans text-xs font-semibold text-green-700 underline dark:text-green-400">
+                      {t('product_form.actions.try_again', 'Try again')}
+                    </Text>
+                  </Pressable>
+                </View>
+              ) : null}
+            </View>
             <SelectModal
               label="Condition *"
               value={form.condition}
@@ -1019,7 +1150,22 @@ export function ProductFormNative({
           <View className="gap-6 md:grid md:grid-cols-2">
             <Field label="Base Price (MMK)" required keyboardType="numeric" value={toStringValue(form.price)} onChange={(value) => update('price', value)} />
             <Field label="Discount Price (MMK)" keyboardType="numeric" value={toStringValue(form.discount_price)} onChange={(value) => update('discount_price', value)} />
-            <Field label="MOQ (Minimum Order Qty)" required keyboardType="numeric" value={toStringValue(form.moq)} onChange={(value) => update('moq', value)} />
+            <View className="gap-1">
+              <Field label="MOQ (Minimum Order Qty)" required keyboardType="numeric" value={toStringValue(form.moq)} onChange={(value) => update('moq', value)} />
+              <Text className="font-sans text-xs text-gray-500 dark:text-slate-500">
+                {t('product_form.hints.moq', 'Buyers must order at least this quantity.')}
+              </Text>
+              {Number(form.moq) > 1 ? (
+                <Text className="font-sans text-xs text-amber-600 dark:text-amber-400">
+                  {t('product_form.hints.valid_quantities', {
+                    defaultValue: 'Valid quantities: {{a}}, {{b}}, {{c}}... (step = MOQ)',
+                    a: Number(form.moq),
+                    b: Number(form.moq) * 2,
+                    c: Number(form.moq) * 3,
+                  })}
+                </Text>
+              ) : null}
+            </View>
             <SelectModal
               label="Quantity Unit *"
               value={form.quantity_unit}
@@ -1136,6 +1282,7 @@ export function ProductFormNative({
               t={t}
               onSetPrimary={setPrimaryImage}
               onRemove={removeImage}
+              onMove={moveImage}
               onChangeAngle={(index, angle) =>
                 setImages((prev) => prev.map((item, itemIndex) => (itemIndex === index ? { ...item, angle } : item)))
               }
@@ -1297,7 +1444,7 @@ export function ProductFormNative({
         className="flex-1"
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
         keyboardVerticalOffset={Platform.OS === 'ios' ? 72 : 0}>
-      <ScrollView className="flex-1" contentContainerClassName="px-4 py-8 md:px-8">
+      <ScrollView ref={scrollRef} className="flex-1" contentContainerClassName="px-4 py-8 md:px-8">
         <View className="mx-auto w-full max-w-4xl">
           <View className="mb-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
             <View className="flex-row items-start justify-between gap-4 border-b border-gray-200 px-6 py-5 dark:border-slate-700">
@@ -1342,9 +1489,20 @@ export function ProductFormNative({
 
           <View className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
             {error && (
-              <View className="mx-6 mt-6 flex-row gap-3 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
-                <Feather name="alert-circle" size={18} color="#dc2626" />
-                <Text className="min-w-0 flex-1 font-sans text-sm leading-6 text-red-700 dark:text-red-400">{error}</Text>
+              <View className="mx-6 mt-6 gap-3 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
+                <View className="flex-row gap-3">
+                  <Feather name="alert-circle" size={18} color="#dc2626" />
+                  <Text className="min-w-0 flex-1 font-sans text-sm leading-6 text-red-700 dark:text-red-400">{error}</Text>
+                </View>
+                {limitError && !isAdminMode ? (
+                  <Pressable
+                    onPress={() => router.push('/seller/dashboard?tab=subscription' as Href)}
+                    className="self-start rounded-lg bg-red-600 px-4 py-2">
+                    <Text className="font-sans text-sm font-semibold text-white">
+                      {t('product_form.actions.upgrade_plan', 'Upgrade plan')}
+                    </Text>
+                  </Pressable>
+                ) : null}
               </View>
             )}
             {success && (
@@ -1365,7 +1523,7 @@ export function ProductFormNative({
                   )}
                 </View>
                 {currentStep === formSteps.length ? (
-                  <Pressable disabled={saving} onPress={saveCore} className="flex-row items-center gap-2 rounded-lg bg-green-600 px-5 py-3 disabled:opacity-60">
+                  <Pressable disabled={saving || isUploadingImages} onPress={saveCore} className="flex-row items-center gap-2 rounded-lg bg-green-600 px-5 py-3 disabled:opacity-60">
                     {saving ? <ActivityIndicator color="#ffffff" /> : <Feather name="check-circle" size={17} color="#ffffff" />}
                     <Text className="font-sans text-sm font-bold text-white">
                       {saving
@@ -1394,7 +1552,9 @@ export function ProductFormNative({
         <View className="flex-1 items-center justify-center bg-black/40 px-4">
           <View className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-800">
             <Text className="font-sans text-lg font-bold text-gray-900 dark:text-slate-100">Leave without saving?</Text>
-            <Text className="mt-2 font-sans text-sm leading-6 text-gray-600 dark:text-slate-400">Your current changes may not be saved.</Text>
+            <Text className="mt-2 font-sans text-sm leading-6 text-gray-600 dark:text-slate-400">
+              {editing ? 'Your current changes may not be saved.' : 'Your draft has been auto-saved.'}
+            </Text>
             <View className="mt-5 flex-row justify-end gap-3">
               <Pressable onPress={() => setLeaveModal(false)} className="rounded-lg border border-gray-300 px-4 py-2 dark:border-slate-600">
                 <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">Keep Editing</Text>

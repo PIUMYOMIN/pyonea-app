@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
+  Modal,
   Platform,
   Pressable,
   Share,
@@ -36,6 +37,7 @@ import {
   type CartResult,
   type ProductVariant,
 } from '@/utils/native-api';
+import { getThumbUrl } from '@/utils/image-thumbs';
 import { emitCartCountChanged } from '@/utils/native-cart-events';
 import {
   loadBulkOrderLines,
@@ -99,7 +101,7 @@ function SearchResultCard({
     <View className="flex-row gap-3 rounded-xl border border-gray-100 p-3 dark:border-slate-600">
       <View className="h-14 w-14 overflow-hidden rounded-lg bg-gray-100 dark:bg-slate-700">
         <Image
-          source={product.imageUrl ? { uri: product.imageUrl } : require('@/assets/images/placeholder-product.png')}
+          source={product.imageUrl ? { uri: getThumbUrl(product.imageUrl, 160) } : require('@/assets/images/placeholder-product.png')}
           className="h-full w-full"
           contentFit="cover"
         />
@@ -171,7 +173,7 @@ function BulkLineCard({
       <View className="flex-row gap-3">
         <View className="h-12 w-12 overflow-hidden rounded-lg bg-gray-100 dark:bg-slate-700">
           <Image
-            source={line.imageUrl ? { uri: line.imageUrl } : require('@/assets/images/placeholder-product.png')}
+            source={line.imageUrl ? { uri: getThumbUrl(line.imageUrl, 160) } : require('@/assets/images/placeholder-product.png')}
             className="h-full w-full"
             contentFit="cover"
           />
@@ -351,6 +353,149 @@ function BulkOrderToast({
   );
 }
 
+function ClearAllModal({
+  visible,
+  count,
+  onClose,
+  onConfirm,
+}: {
+  visible: boolean;
+  count: number;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const { t } = useAppTranslation();
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View className="flex-1 items-center justify-center bg-black/50 p-4">
+        <View className="w-full max-w-sm rounded-2xl bg-white p-6 dark:bg-slate-900">
+          <View className="mb-3 h-11 w-11 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/30">
+            <Feather name="trash-2" color="#dc2626" size={20} />
+          </View>
+          <Text className="font-sans text-lg font-bold text-gray-950 dark:text-slate-100">
+            {t('bulk_order.clear_confirm_title', { defaultValue: 'Clear all items?' })}
+          </Text>
+          <Text className="mt-2 font-sans text-sm leading-6 text-gray-600 dark:text-slate-400">
+            {t('bulk_order.clear_confirm_text', {
+              defaultValue: 'This removes all {{count}} item(s) from your bulk order list. This cannot be undone.',
+              count,
+            })}
+          </Text>
+          <View className="mt-5 gap-3 sm:flex-row sm:justify-end">
+            <Pressable
+              onPress={onClose}
+              className="rounded-lg border border-gray-200 px-4 py-2.5 dark:border-slate-700">
+              <Text className="text-center font-sans text-sm font-semibold text-gray-700 dark:text-slate-200">
+                {t('bulk_order.clear_keep', { defaultValue: 'Keep items' })}
+              </Text>
+            </Pressable>
+            <Pressable onPress={onConfirm} className="rounded-lg bg-red-600 px-4 py-2.5">
+              <Text className="text-center font-sans text-sm font-semibold text-white">
+                {t('bulk_order.clear', { defaultValue: 'Clear all' })}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
+function SendRfqConfirmModal({
+  visible,
+  sellers,
+  total,
+  deadline,
+  submitting,
+  onClose,
+  onConfirm,
+}: {
+  visible: boolean;
+  sellers: { sellerId: string | number; sellerLabel: string; count: number }[];
+  total: number;
+  deadline: string;
+  submitting: boolean;
+  onClose: () => void;
+  onConfirm: () => void;
+}) {
+  const { t } = useAppTranslation();
+
+  return (
+    <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
+      <View className="flex-1 items-center justify-center bg-black/50 p-4">
+        <View className="w-full max-w-md rounded-2xl bg-white p-6 dark:bg-slate-900">
+          <View className="mb-3 h-11 w-11 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+            <Feather name="send" color="#16a34a" size={19} />
+          </View>
+          <Text className="font-sans text-lg font-bold text-gray-950 dark:text-slate-100">
+            {t('bulk_order.rfq_confirm_title', { defaultValue: 'Send RFQs to sellers?' })}
+          </Text>
+          <Text className="mt-2 font-sans text-sm leading-6 text-gray-600 dark:text-slate-400">
+            {t('bulk_order.rfq_confirm_text', {
+              defaultValue: 'One RFQ will be created per seller with your line items in the specification.',
+            })}
+          </Text>
+
+          <View className="mt-4 rounded-xl border border-gray-100 bg-gray-50 p-3 dark:border-slate-700 dark:bg-slate-800">
+            {sellers.map((seller) => (
+              <View key={String(seller.sellerId)} className="flex-row items-center gap-2 py-1">
+                <Feather name="briefcase" color="#94a3b8" size={13} />
+                <Text
+                  className="min-w-0 flex-1 font-sans text-xs text-gray-700 dark:text-slate-300"
+                  numberOfLines={1}>
+                  {t('bulk_order.rfq_preview_line', {
+                    seller: seller.sellerLabel,
+                    count: seller.count,
+                  })}
+                </Text>
+              </View>
+            ))}
+            <View className="mt-2 flex-row items-center justify-between border-t border-gray-200 pt-2 dark:border-slate-700">
+              <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">
+                {t('bulk_order.deadline')}
+              </Text>
+              <Text className="font-sans text-xs font-semibold text-gray-900 dark:text-slate-100">
+                {deadline}
+              </Text>
+            </View>
+            <View className="mt-1 flex-row items-center justify-between">
+              <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">
+                {t('bulk_order.estimated_total')}
+              </Text>
+              <Text className="font-sans text-sm font-bold text-green-700 dark:text-green-400">
+                {formatMMK(total)}
+              </Text>
+            </View>
+          </View>
+
+          <View className="mt-5 gap-3 sm:flex-row sm:justify-end">
+            <Pressable
+              onPress={onClose}
+              disabled={submitting}
+              className="rounded-lg border border-gray-200 px-4 py-2.5 dark:border-slate-700">
+              <Text className="text-center font-sans text-sm font-semibold text-gray-700 dark:text-slate-200">
+                {t('bulk_order.rfq_confirm_cancel', { defaultValue: 'Review again' })}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={onConfirm}
+              disabled={submitting}
+              className="flex-row items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-2.5 disabled:opacity-50">
+              {submitting ? <ActivityIndicator color="#ffffff" size="small" /> : null}
+              <Text className="text-center font-sans text-sm font-semibold text-white">
+                {submitting
+                  ? t('bulk_order.sending')
+                  : t('bulk_order.rfq_confirm_send', { defaultValue: 'Send {{n}} RFQ(s)', n: sellers.length })}
+              </Text>
+            </Pressable>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+}
+
 export function BulkOrderToolNative() {
   const { t } = useAppTranslation();
   const router = useRouter();
@@ -365,6 +510,8 @@ export function BulkOrderToolNative() {
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [cartSubmitting, setCartSubmitting] = useState(false);
+  const [clearConfirmVisible, setClearConfirmVisible] = useState(false);
+  const [rfqConfirmVisible, setRfqConfirmVisible] = useState(false);
 
   const isBuyer = hasUserRole(user, 'buyer');
 
@@ -686,17 +833,21 @@ export function BulkOrderToolNative() {
     setMessage({ type: 'success', text: t('bulk_order.csv_saved') });
   };
 
-  const sendRfqs = async () => {
-    if (!validatedLines.length) return;
-    if (!requireBuyer('bulk_order.rfq_buyers_only')) return;
+  const buildRfqGroups = () => {
     const groups = new Map<string, typeof validatedLines>();
     validatedLines.forEach((line) => {
       if (!line.sellerId || !line.categoryId) return;
       const key = String(line.sellerId);
       groups.set(key, [...(groups.get(key) || []), line]);
     });
+    return groups;
+  };
 
-    if (groups.size === 0) {
+  const openRfqConfirm = () => {
+    if (!validatedLines.length) return;
+    if (!requireBuyer('bulk_order.rfq_buyers_only')) return;
+
+    if (buildRfqGroups().size === 0) {
       setMessage({ type: 'error', text: t('bulk_order.rfq_no_groups') });
       return;
     }
@@ -704,6 +855,16 @@ export function BulkOrderToolNative() {
     const invalidQty = validatedLines.some((line) => line.quantityNum < line.moq);
     if (invalidQty) {
       setMessage({ type: 'error', text: t('bulk_order.moq_error') });
+      return;
+    }
+
+    setRfqConfirmVisible(true);
+  };
+
+  const sendRfqs = async () => {
+    const groups = buildRfqGroups();
+    if (groups.size === 0) {
+      setRfqConfirmVisible(false);
       return;
     }
 
@@ -742,6 +903,7 @@ export function BulkOrderToolNative() {
         sent += 1;
       }
 
+      setRfqConfirmVisible(false);
       setMessage({ type: 'success', text: t('bulk_order.rfq_sent', { n: sent }) });
       setLines([]);
       setTimeout(() => router.push('/buyer/dashboard?tab=rfq' as const), 1200);
@@ -752,6 +914,7 @@ export function BulkOrderToolNative() {
           : error instanceof Error
             ? error.message
             : t('bulk_order.rfq_failed');
+      setRfqConfirmVisible(false);
       setMessage({ type: 'error', text });
     } finally {
       setSubmitting(false);
@@ -802,7 +965,7 @@ export function BulkOrderToolNative() {
                 <View className="mt-4 gap-3">
                   {searchLoading ? (
                     <View className="items-center py-8">
-                      <Feather name="loader" color="#9ca3af" size={28} />
+                      <ActivityIndicator color="#16a34a" size="large" />
                     </View>
                   ) : search.trim() && results.length === 0 ? (
                     <Text className="py-8 text-center font-sans text-sm text-gray-500 dark:text-slate-400">
@@ -833,11 +996,10 @@ export function BulkOrderToolNative() {
                   </View>
                   {lines.length > 0 ? (
                     <Pressable
-                      onPress={() => {
-                        setLines([]);
-                        setMessage({ type: 'success', text: t('bulk_order.cleared') });
-                      }}>
-                      <Text className="font-sans text-xs text-red-600 dark:text-red-400">
+                      onPress={() => setClearConfirmVisible(true)}
+                      className="flex-row items-center gap-1 rounded-lg border border-red-200 px-2.5 py-1.5 dark:border-red-900/50">
+                      <Feather name="trash-2" color="#dc2626" size={13} />
+                      <Text className="font-sans text-xs font-medium text-red-600 dark:text-red-400">
                         {t('bulk_order.clear')}
                       </Text>
                     </Pressable>
@@ -968,7 +1130,7 @@ export function BulkOrderToolNative() {
 
                 <View className="mt-4 gap-2 sm:flex-row sm:items-center">
                   <Pressable
-                    onPress={sendRfqs}
+                    onPress={openRfqConfirm}
                     disabled={submitting || !lines.length}
                     className="flex-row items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 opacity-100 disabled:opacity-50">
                     <Feather name="send" color="#ffffff" size={18} />
@@ -990,6 +1152,26 @@ export function BulkOrderToolNative() {
         </View>
       </View>
       </KeyboardAvoidingView>
+
+      <ClearAllModal
+        visible={clearConfirmVisible}
+        count={lines.length}
+        onClose={() => setClearConfirmVisible(false)}
+        onConfirm={() => {
+          setLines([]);
+          setClearConfirmVisible(false);
+          setMessage({ type: 'success', text: t('bulk_order.cleared') });
+        }}
+      />
+      <SendRfqConfirmModal
+        visible={rfqConfirmVisible}
+        sellers={bySeller}
+        total={total}
+        deadline={deadline}
+        submitting={submitting}
+        onClose={() => setRfqConfirmVisible(false)}
+        onConfirm={() => void sendRfqs()}
+      />
     </AppLayout>
   );
 }

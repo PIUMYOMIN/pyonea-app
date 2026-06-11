@@ -23,6 +23,7 @@ import {
   type HomeCategory,
   type HomeProduct,
 } from '@/utils/native-api';
+import { getThumbUrl } from '@/utils/image-thumbs';
 import { emitCartCountChanged } from '@/utils/native-cart-events';
 import { getScreenCache, setScreenCache } from '@/utils/screen-cache';
 
@@ -174,7 +175,7 @@ function CartItemRow({
         <Link href={productHref} asChild>
           <Pressable className="h-24 w-24 flex-shrink-0 overflow-hidden rounded-md border border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800">
             <Image
-              source={item.imageUrl ? { uri: item.imageUrl } : placeholderProduct}
+              source={item.imageUrl ? { uri: getThumbUrl(item.imageUrl, 160) } : placeholderProduct}
               className="h-full w-full"
               contentFit="contain"
             />
@@ -560,12 +561,12 @@ export function CartNative() {
     if (pathname !== '/cart') return;
 
     const controller = new AbortController();
-    if (!cartSnapshot) {
-      setLoading(true);
-    }
+    // No cartSnapshot dependency: loadCart emits a fresh snapshot object,
+    // which would re-trigger this effect and refetch the cart in a loop.
+    // The initial loading state already accounts for a missing snapshot.
     void loadCart(controller.signal);
     return () => controller.abort();
-  }, [cartSnapshot, loadCart, pathname]);
+  }, [loadCart, pathname]);
 
   useEffect(() => {
     const controller = new AbortController();

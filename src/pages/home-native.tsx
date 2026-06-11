@@ -31,6 +31,7 @@ import {
   type HomeProduct,
   type HomeSeller,
 } from '@/utils/native-api';
+import { getThumbUrl } from '@/utils/image-thumbs';
 import { getScreenCache, setScreenCache } from '@/utils/screen-cache';
 
 const HOME_CACHE_KEY = 'home-feed';
@@ -130,7 +131,7 @@ function SellerCard({ seller }: { seller: HomeSeller }) {
           <View className="relative flex-shrink-0">
             {seller.imageUrl ? (
               <Image
-                source={{ uri: seller.imageUrl }}
+                source={{ uri: getThumbUrl(seller.imageUrl, 160) }}
                 style={{ width: 56, height: 56, borderRadius: 28 }}
                 contentFit="cover"
                 className="border-2 border-gray-200 dark:border-slate-600"
