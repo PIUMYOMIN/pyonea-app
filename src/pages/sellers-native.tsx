@@ -2,10 +2,16 @@ import Feather from '@expo/vector-icons/Feather';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { Link, type Href } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useState } from 'react';
+import { ActivityIndicator, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
+import {
+  chunkMarketplaceItems,
+  isMarketplaceWeb,
+  MarketplaceGridRow,
+  useSellerDirectoryColumns,
+} from '@/components/marketplace/marketplace-grid';
 import { SELLER_DIRECTORY_GRID_CLASS, SITE_CONTAINER_CLASS } from '@/constants/layout';
 import { useAppTranslation } from '@/i18n';
 import { fetchSellers, type HomeSeller } from '@/utils/native-api';
@@ -215,6 +221,49 @@ function SellerSkeleton() {
 
 const SELLERS_PER_PAGE = 12;
 
+function SellerDirectoryGrid({
+  sellers,
+  loading,
+}: {
+  sellers: HomeSeller[];
+  loading: boolean;
+}) {
+  const columns = useSellerDirectoryColumns();
+  const rows = useMemo(() => chunkMarketplaceItems(sellers, columns), [columns, sellers]);
+
+  if (isMarketplaceWeb) {
+    return (
+      <View className={SELLER_DIRECTORY_GRID_CLASS}>
+        {loading
+          ? Array.from({ length: 8 }).map((_, index) => <SellerSkeleton key={index} />)
+          : sellers.map((seller) => <SellerDirectoryCard key={String(seller.id)} seller={seller} />)}
+      </View>
+    );
+  }
+
+  if (loading) {
+    return (
+      <View className="gap-3">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <SellerSkeleton key={index} />
+        ))}
+      </View>
+    );
+  }
+
+  return (
+    <View>
+      {rows.map((row, rowIndex) => (
+        <MarketplaceGridRow key={`seller-directory-row-${rowIndex}`} columns={columns}>
+          {row.map((seller) => (
+            <SellerDirectoryCard key={String(seller.id)} seller={seller} />
+          ))}
+        </MarketplaceGridRow>
+      ))}
+    </View>
+  );
+}
+
 export function SellersNative() {
   const { t } = useAppTranslation();
   const [sellers, setSellers] = useState<HomeSeller[]>([]);
@@ -225,6 +274,7 @@ export function SellersNative() {
   const [showFilters, setShowFilters] = useState(false);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(false);
+  const isNative = Platform.OS !== 'web';
 
   const categories = useMemo(
     () => [
@@ -249,25 +299,31 @@ export function SellersNative() {
     [t]
   );
 
-  useEffect(() => {
-    const controller = new AbortController();
-    void fetchSellers(controller.signal)
+  const loadSellers = useCallback((signal?: AbortSignal) => {
+    setLoading(true);
+    setError(false);
+
+    return fetchSellers(signal)
       .then((nextSellers) => {
-        if (controller.signal.aborted) return;
+        if (signal?.aborted) return;
         setSellers(nextSellers);
         setError(false);
       })
       .catch(() => {
-        if (controller.signal.aborted) return;
+        if (signal?.aborted) return;
         setSellers([]);
         setError(true);
       })
       .finally(() => {
-        if (!controller.signal.aborted) setLoading(false);
+        if (!signal?.aborted) setLoading(false);
       });
-
-    return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    const controller = new AbortController();
+    void loadSellers(controller.signal);
+    return () => controller.abort();
+  }, [loadSellers]);
 
   const filteredSellers = useMemo(() => {
     const search = searchTerm.trim().toLowerCase();
@@ -336,8 +392,7 @@ export function SellersNative() {
             </Text>
             <Pressable
               onPress={() => {
-                setLoading(true);
-                setError(false);
+                void loadSellers();
               }}
               className="mt-6 rounded-md bg-green-600 px-4 py-2">
               <Text className="font-sans text-sm font-medium text-white">{t('sellers.try_again')}</Text>
@@ -354,10 +409,16 @@ export function SellersNative() {
         <View className="relative bg-green-700">
           <View className="absolute inset-0 bg-slate-900/40 dark:bg-slate-900/60" />
           <View className={`relative ${SITE_CONTAINER_CLASS} items-center py-16 sm:py-20`}>
-            <Text className="text-center font-sans text-3xl font-extrabold text-white sm:text-5xl lg:text-6xl">
+            <Text
+              className={`text-center font-sans font-extrabold text-white ${
+                isNative ? 'text-2xl' : 'text-3xl sm:text-5xl lg:text-6xl'
+              }`}>
               {t('sellers.title')}
             </Text>
-            <Text className="mt-6 max-w-3xl text-center font-sans text-xl text-green-100">
+            <Text
+              className={`mt-4 max-w-3xl text-center font-sans text-green-100 sm:mt-6 ${
+                isNative ? 'text-base leading-6' : 'text-xl'
+              }`}>
               {t('sellers.subtitle')}
             </Text>
           </View>
@@ -430,12 +491,18 @@ export function SellersNative() {
             ) : null}
           </View>
 
+          {loading || visibleSellers.length === 0 ? null : (
+            <Text className="mb-3 font-sans text-sm text-gray-500 dark:text-slate-400 md:hidden">
+              {t('sellers.showing_results', {
+                start: 1,
+                end: Math.min(visibleCount, filteredSellers.length),
+                total: filteredSellers.length,
+              })}
+            </Text>
+          )}
+
           {loading ? (
-            <View className={SELLER_DIRECTORY_GRID_CLASS}>
-              {Array.from({ length: 8 }).map((_, index) => (
-                <SellerSkeleton key={index} />
-              ))}
-            </View>
+            <SellerDirectoryGrid sellers={[]} loading />
           ) : visibleSellers.length === 0 ? (
             <View className="items-center rounded-lg bg-white p-12 shadow shadow-gray-200/80 dark:bg-slate-800 dark:shadow-slate-900/50">
               <View className="h-12 w-12 items-center justify-center rounded-full bg-gray-100 dark:bg-slate-800">
@@ -455,17 +522,21 @@ export function SellersNative() {
             </View>
           ) : (
             <>
-              <View className={SELLER_DIRECTORY_GRID_CLASS}>
-                {visibleSellers.map((seller) => (
-                  <SellerDirectoryCard key={String(seller.id)} seller={seller} />
-                ))}
-              </View>
+              <SellerDirectoryGrid sellers={visibleSellers} loading={false} />
 
               {hasMoreSellers ? (
                 <View className="items-center py-4">
-                  <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">
-                    {t('notifications.loading')}
-                  </Text>
+                  {isNative ? (
+                    <Pressable
+                      onPress={loadMoreSellers}
+                      className="min-w-[180px] items-center rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
+                      <Text className="font-sans text-sm font-bold text-green-700 dark:text-green-300">
+                        {t('sellers.load_more', { defaultValue: 'Load more sellers' })}
+                      </Text>
+                    </Pressable>
+                  ) : (
+                    <ActivityIndicator color="#16a34a" />
+                  )}
                 </View>
               ) : null}
             </>

@@ -4,7 +4,7 @@ import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { Link, type Href } from 'expo-router';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentProps, ReactNode } from 'react';
-import { Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { ActivityIndicator, Platform, Pressable, Text, useWindowDimensions, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
 import {
@@ -21,6 +21,7 @@ import {
   ProductMarketplaceGrid,
   useSellerGridColumns,
 } from '@/components/marketplace/marketplace-grid';
+import { LocalDealCard } from '@/components/marketplace-list-screen';
 import {
   CategoryCardFromHome,
   CategoryCardSkeleton,
@@ -31,10 +32,12 @@ import { hasUserRole } from '@/utils/auth-routing';
 import {
   fetchFeaturedProducts,
   fetchHomeCategories,
+  fetchLocalDeals,
   fetchTopSellers,
   type HomeCategory,
   type HomeProduct,
   type HomeSeller,
+  type LocalDeal,
 } from '@/utils/native-api';
 import { getThumbUrl } from '@/utils/image-thumbs';
 import { getScreenCache, setScreenCache } from '@/utils/screen-cache';
@@ -46,9 +49,20 @@ type HomeFeedCache = {
   categories: HomeCategory[];
   products: HomeProduct[];
   sellers: HomeSeller[];
+  deals: LocalDeal[];
 };
 
+const HOME_FEATURED_LIMIT = isMarketplaceWeb ? 8 : 12;
+const HOME_SELLER_LIMIT = isMarketplaceWeb ? 4 : 6;
+const HOME_DEAL_PREVIEW_COUNT = 4;
+
 type FeatherIconName = ComponentProps<typeof Feather>['name'];
+
+type QuickLink = {
+  href: Href;
+  labelKey: string;
+  icon: FeatherIconName;
+};
 
 const values = [
   {
@@ -90,6 +104,27 @@ type HomeErrorState = {
   products?: string;
   sellers?: string;
 };
+
+function QuickAccessRow({ links }: { links: QuickLink[] }) {
+  const { t } = useAppTranslation();
+
+  return (
+    <View className="flex-row flex-wrap gap-2">
+      {links.map((link) => (
+        <Link key={String(link.href)} href={link.href} asChild>
+          <Pressable className="min-w-[47%] flex-1 flex-row items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-3 dark:border-slate-700 dark:bg-slate-900">
+            <View className="h-9 w-9 items-center justify-center rounded-lg bg-green-50 dark:bg-green-900/30">
+              <Feather name={link.icon} color="#16a34a" size={18} />
+            </View>
+            <Text className="flex-1 font-sans text-sm font-semibold text-gray-900 dark:text-slate-100">
+              {t(link.labelKey)}
+            </Text>
+          </Pressable>
+        </Link>
+      ))}
+    </View>
+  );
+}
 
 function ArrowLink({ href, label }: { href: Href; label: string }) {
   return (
@@ -296,12 +331,23 @@ export default function HomeNative() {
   const [categories, setCategories] = useState<HomeCategory[]>(cachedFeed?.categories ?? []);
   const [products, setProducts] = useState<HomeProduct[]>(cachedFeed?.products ?? []);
   const [sellers, setSellers] = useState<HomeSeller[]>(cachedFeed?.sellers ?? []);
+  const [deals, setDeals] = useState<LocalDeal[]>(cachedFeed?.deals ?? []);
   const [loading, setLoading] = useState<LoadingState>({
     categories: !cachedFeed,
     products: !cachedFeed,
     sellers: !cachedFeed,
   });
+  const [dealsLoading, setDealsLoading] = useState(!cachedFeed && Platform.OS !== 'web');
   const [errors, setErrors] = useState<HomeErrorState>({});
+  const quickLinks = useMemo<QuickLink[]>(
+    () => [
+      { href: '/local-deals', labelKey: 'home.quick_local_deals', icon: 'tag' },
+      { href: '/track-order', labelKey: 'home.quick_track_order', icon: 'package' },
+      { href: '/compare', labelKey: 'home.quick_compare', icon: 'shuffle' },
+      { href: '/sellers', labelKey: 'home.quick_sellers', icon: 'users' },
+    ],
+    [],
+  );
   const isSeller = hasUserRole(user, 'seller');
   const isBuyer = hasUserRole(user, 'buyer');
   const isAdmin = hasUserRole(user, 'admin');
@@ -356,7 +402,7 @@ export default function HomeNative() {
         setLoading((current) => ({ ...current, categories: false }));
       });
 
-    const productsPromise = fetchFeaturedProducts(controller.signal)
+    const productsPromise = fetchFeaturedProducts(controller.signal, HOME_FEATURED_LIMIT)
       .then((result) => {
         if (controller.signal.aborted) return;
         nextProducts = result;
@@ -374,7 +420,7 @@ export default function HomeNative() {
         setLoading((current) => ({ ...current, products: false }));
       });
 
-    const sellersPromise = fetchTopSellers(controller.signal)
+    const sellersPromise = fetchTopSellers(controller.signal, HOME_SELLER_LIMIT)
       .then((result) => {
         if (controller.signal.aborted) return;
         nextSellers = result;
@@ -392,17 +438,39 @@ export default function HomeNative() {
         setLoading((current) => ({ ...current, sellers: false }));
       });
 
-    void Promise.all([categoriesPromise, productsPromise, sellersPromise]).then(() => {
-      if (controller.signal.aborted || !nextCategories || !nextProducts || !nextSellers) return;
+    const dealsPromise =
+      Platform.OS === 'web'
+        ? Promise.resolve(null)
+        : fetchLocalDeals(controller.signal)
+            .then((result) => {
+              if (controller.signal.aborted) return null;
+              const preview = result.slice(0, HOME_DEAL_PREVIEW_COUNT);
+              setDeals(preview);
+              setDealsLoading(false);
+              return preview;
+            })
+            .catch((error) => {
+              if (controller.signal.aborted) return null;
+              console.error('Failed to fetch local deals:', error);
+              setDeals([]);
+              setDealsLoading(false);
+              return [] as LocalDeal[];
+            });
 
-      setScreenCache<HomeFeedCache>(HOME_CACHE_KEY, {
-        categories: nextCategories,
-        products: nextProducts,
-        sellers: nextSellers,
-      });
-      setScreenCache('home-feed:products', nextProducts);
-      setScreenCache('home-feed:categories', nextCategories);
-    });
+    void Promise.all([categoriesPromise, productsPromise, sellersPromise, dealsPromise]).then(
+      ([, , , nextDeals]) => {
+        if (controller.signal.aborted || !nextCategories || !nextProducts || !nextSellers) return;
+
+        setScreenCache<HomeFeedCache>(HOME_CACHE_KEY, {
+          categories: nextCategories,
+          products: nextProducts,
+          sellers: nextSellers,
+          deals: nextDeals ?? [],
+        });
+        setScreenCache('home-feed:products', nextProducts);
+        setScreenCache('home-feed:categories', nextCategories);
+      },
+    );
 
     return () => controller.abort();
     // Fetch once per mount; cachedFeed is a mount-time snapshot.
@@ -459,6 +527,17 @@ export default function HomeNative() {
           </View>
         </View>
 
+        {!isMarketplaceWeb ? (
+          <SectionShell tone="muted">
+            <Text className="font-sans text-lg font-black text-gray-950 dark:text-slate-100">
+              {t('home.quick_access', { defaultValue: 'Explore the app' })}
+            </Text>
+            <View className="mt-4">
+              <QuickAccessRow links={quickLinks} />
+            </View>
+          </SectionShell>
+        ) : null}
+
         <SectionShell>
           <View className="items-center">
             <Text className="text-center font-sans text-xl font-black text-gray-950 dark:text-slate-100 sm:text-2xl md:text-3xl">
@@ -494,6 +573,32 @@ export default function HomeNative() {
             )}
           </View>
         </SectionShell>
+
+        {!isMarketplaceWeb ? (
+          <SectionShell>
+            <View className="gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
+              <Text className="font-sans text-xl font-black text-gray-950 dark:text-slate-100 sm:text-2xl md:text-3xl">
+                {t('home.local_deals', { defaultValue: 'Local Deals' })}
+              </Text>
+              <ArrowLink href="/local-deals" label={t('home.view_all')} />
+            </View>
+            <View className="mt-8 sm:mt-10">
+              {dealsLoading ? (
+                <View className="items-center py-10">
+                  <ActivityIndicator color="#16a34a" />
+                </View>
+              ) : deals.length > 0 ? (
+                <View className="flex-row flex-wrap justify-between gap-y-4">
+                  {deals.map((deal) => (
+                    <LocalDealCard key={String(deal.id)} deal={deal} />
+                  ))}
+                </View>
+              ) : (
+                <EmptyState message={t('localDeals.empty', { defaultValue: 'No deals available right now.' })} />
+              )}
+            </View>
+          </SectionShell>
+        ) : null}
 
         <SectionShell tone="muted">
           <View className="gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0">

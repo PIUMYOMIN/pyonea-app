@@ -52,6 +52,7 @@ function NativeGallery({
           contentFit="contain"
           loading="eager"
           priority="high"
+          recyclingKey={currentImage}
           accessibilityLabel={alt}
         />
         {discountPct > 0 && discountLabel ? (
@@ -112,7 +113,9 @@ function NativeGallery({
                   source={{ uri: getThumbUrl(image, 160) }}
                   style={{ width: '100%', height: '100%' }}
                   contentFit="cover"
+                  loading={index === activeImage ? 'eager' : 'lazy'}
                   priority={index === activeImage ? 'high' : 'low'}
+                  recyclingKey={image}
                 />
               </Pressable>
             ))}

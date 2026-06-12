@@ -56,7 +56,7 @@ export function DashboardTopNav({
   const pathname = usePathname() || "/";
   const params = useGlobalSearchParams() as Record<string, string | string[] | undefined>;
   const { user, logout } = useNativeAuth();
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
   const { i18n, language, t } = useAppTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
   const [languageOpen, setLanguageOpen] = useState(false);
@@ -147,17 +147,6 @@ export function DashboardTopNav({
             ) : null}
 
             <NativeNotificationBell compact />
-
-            <Pressable
-              onPress={toggleTheme}
-              className="h-10 w-10 items-center justify-center rounded-xl border border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-950"
-            >
-              <Feather
-                name={isDark ? "sun" : "moon"}
-                color={isDark ? "#fde68a" : "#475569"}
-                size={18}
-              />
-            </Pressable>
 
             <View className="relative">
               <Pressable

@@ -1,3 +1,4 @@
+import { File as ExpoFile } from 'expo-file-system';
 import * as SecureStore from 'expo-secure-store';
 import { Platform } from 'react-native';
 
@@ -2434,9 +2435,37 @@ export type NativeUploadFile = {
   type: string;
 };
 
-const appendNativeFile = (form: FormData, field: string, file: NativeUploadFile) => {
-  form.append(field, file as unknown as Blob);
+const MIME_EXTENSION: Record<string, string> = {
+  'image/jpeg': 'jpg',
+  'image/jpg': 'jpg',
+  'image/png': 'png',
+  'image/webp': 'webp',
 };
+
+const normalizeUploadMimeType = (type: string) => (type === 'image/jpg' ? 'image/jpeg' : type);
+
+const ensureUploadFileName = (name: string, mimeType: string) => {
+  if (/\.(jpe?g|png|webp|gif)$/i.test(name)) return name;
+  const extension = MIME_EXTENSION[mimeType] || 'jpg';
+  const base = name.replace(/\.[^.]+$/, '') || 'upload';
+  return `${base}.${extension}`;
+};
+
+/** Append a picked image/file for multipart upload (Expo fetch needs Blob/File, not RN uri objects). */
+export async function appendNativeFile(form: FormData, field: string, file: NativeUploadFile) {
+  const mimeType = normalizeUploadMimeType(file.type || 'image/jpeg');
+  const fileName = ensureUploadFileName(file.name || 'upload', mimeType);
+
+  if (Platform.OS === 'web') {
+    const response = await fetch(file.uri);
+    const blob = await response.blob();
+    const webMimeType = normalizeUploadMimeType(file.type || blob.type || mimeType);
+    form.append(field, new File([blob], fileName, { type: webMimeType }));
+    return;
+  }
+
+  form.append(field, new ExpoFile(file.uri), fileName);
+}
 
 export async function updateSellerStoreIdentity(
   payload: SellerStoreIdentityPayload,
@@ -2449,13 +2478,13 @@ export async function updateSellerStoreIdentity(
 
 export async function uploadSellerStoreLogo(file: NativeUploadFile, signal?: AbortSignal): Promise<void> {
   const form = new FormData();
-  appendNativeFile(form, 'logo', file);
+  await appendNativeFile(form, 'logo', file);
   await apiPostForm('/seller/logo', form, signal);
 }
 
 export async function uploadSellerStoreBanner(file: NativeUploadFile, signal?: AbortSignal): Promise<void> {
   const form = new FormData();
-  appendNativeFile(form, 'banner', file);
+  await appendNativeFile(form, 'banner', file);
   await apiPostForm('/seller/banner', form, signal);
 }
 
@@ -2466,7 +2495,7 @@ export async function uploadSellerVerificationDocument(
 ): Promise<void> {
   const form = new FormData();
   form.append('document_type', documentType);
-  appendNativeFile(form, 'document', file);
+  await appendNativeFile(form, 'document', file);
   await apiPostForm('/seller/onboarding/documents', form, signal);
 }
 
@@ -3234,7 +3263,7 @@ export async function importSellerProductsBulk(
 ): Promise<SellerBulkImportResult> {
   const form = new FormData();
   if (isRecord(file) && typeof file.uri === 'string') {
-    appendNativeFile(form, 'file', file);
+    await appendNativeFile(form, 'file', file);
   } else {
     form.append('file', file as Blob, filename);
   }
@@ -3535,7 +3564,7 @@ export async function fetchAdminAnnouncements(signal?: AbortSignal): Promise<Ann
 // The backend accepts the announcement image only as part of the multipart
 // store/update request, so saves always go through FormData (PHP cannot parse
 // multipart PUT bodies, hence the _method spoofing on update).
-const buildAnnouncementFormData = (payload: AnnouncementPayload) => {
+const buildAnnouncementFormData = async (payload: AnnouncementPayload) => {
   const form = new FormData();
   form.append('title', payload.title);
   form.append('content', payload.content || '');
@@ -3555,7 +3584,7 @@ const buildAnnouncementFormData = (payload: AnnouncementPayload) => {
   form.append('starts_at', payload.starts_at || '');
   form.append('ends_at', payload.ends_at || '');
   form.append('sort_order', String(payload.sort_order ?? 0));
-  if (payload.image?.uri) appendNativeFile(form, 'image', payload.image);
+  if (payload.image?.uri) await appendNativeFile(form, 'image', payload.image);
   if (payload.remove_image) form.append('remove_image', '1');
   return form;
 };
@@ -3564,7 +3593,7 @@ export async function createAdminAnnouncement(
   body: AnnouncementPayload,
   signal?: AbortSignal
 ): Promise<Announcement | null> {
-  const payload = await apiPostForm('/admin/announcements', buildAnnouncementFormData(body), signal);
+  const payload = await apiPostForm('/admin/announcements', await buildAnnouncementFormData(body), signal);
   const data = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
   return isRecord(data) ? mapAnnouncement(data) : null;
 }
@@ -3574,7 +3603,7 @@ export async function updateAdminAnnouncement(
   body: AnnouncementPayload,
   signal?: AbortSignal
 ): Promise<Announcement | null> {
-  const form = buildAnnouncementFormData(body);
+  const form = await buildAnnouncementFormData(body);
   form.append('_method', 'PUT');
   const payload = await apiPostForm(`/admin/announcements/${encodeURIComponent(String(id))}`, form, signal);
   const data = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
@@ -4307,19 +4336,23 @@ export async function fetchCategoryDetail(
   );
 }
 
-export async function fetchFeaturedProducts(signal?: AbortSignal): Promise<HomeProduct[]> {
+export async function fetchFeaturedProducts(
+  signal?: AbortSignal,
+  limit = 8
+): Promise<HomeProduct[]> {
+  const perPage = Math.max(limit, 8);
   return withDataCache(
-    'api:featured-products',
+    `api:featured-products:${limit}`,
     DATA_CACHE_TTL.products,
     async (requestSignal) => {
       const payload = await apiGet(
-        '/products?featured=true&per_page=20&fields=id,name_en,name_mm,slug_en,price,selling_price,effective_discount_pct,discount_percentage,image,images,average_rating,review_count,quantity,is_active,moq,min_order_unit,category_id,seller_id,is_on_sale,is_new,seller,category',
+        `/products?featured=true&per_page=${perPage}&fields=id,name_en,name_mm,slug_en,price,selling_price,effective_discount_pct,discount_percentage,image,images,average_rating,review_count,quantity,is_active,moq,min_order_unit,category_id,seller_id,is_on_sale,is_new,seller,category`,
         requestSignal
       );
 
       return getArrayPayload(payload)
         .filter(isRecord)
-        .slice(0, 8)
+        .slice(0, limit)
         .map((product, index) => ({ ...mapHomeProduct(product, index), isNew: index < 3 }));
     },
     signal,
@@ -4586,15 +4619,15 @@ export async function fetchMoreProductsFromSeller(
     .map(mapHomeProduct);
 }
 
-export async function fetchTopSellers(signal?: AbortSignal): Promise<HomeSeller[]> {
+export async function fetchTopSellers(signal?: AbortSignal, limit = 4): Promise<HomeSeller[]> {
   const payload = await apiGet(
-    '/sellers?top=true&limit=4&fields=id,store_name,store_slug,business_name,business_type,category,city,user,reviews_avg_rating,reviews_count,products_count,total_products,status,is_verified,logo,profile_image,store_logo',
+    `/sellers?top=true&limit=${Math.max(limit, 4)}&fields=id,store_name,store_slug,business_name,business_type,category,city,user,reviews_avg_rating,reviews_count,products_count,total_products,status,is_verified,logo,profile_image,store_logo`,
     signal
   );
 
   return getArrayPayload(payload)
     .filter(isRecord)
-    .slice(0, 4)
+    .slice(0, limit)
     .map(mapHomeSeller);
 }
 
@@ -7453,7 +7486,7 @@ export async function uploadSellerDeliveryProof(
 ): Promise<SellerDelivery | null> {
   const form = new FormData();
   if (isRecord(proofFile) && typeof proofFile.uri === 'string') {
-    appendNativeFile(form, 'delivery_proof', proofFile);
+    await appendNativeFile(form, 'delivery_proof', proofFile);
   } else {
     form.append('delivery_proof', proofFile as Blob);
   }
@@ -8494,7 +8527,7 @@ const mapAdminManagedCategory = (category: UnknownRecord): AdminManagedCategory 
   };
 };
 
-const buildAdminCategoryFormData = (payload: AdminCategoryFormPayload, mode: 'create' | 'edit') => {
+const buildAdminCategoryFormData = async (payload: AdminCategoryFormPayload, mode: 'create' | 'edit') => {
   const form = new FormData();
   form.append('name_en', payload.name_en);
   form.append('name_mm', payload.name_mm || '');
@@ -8505,7 +8538,7 @@ const buildAdminCategoryFormData = (payload: AdminCategoryFormPayload, mode: 'cr
   form.append('is_active', payload.is_active ? '1' : '0');
 
   if (payload.image?.uri) {
-    appendNativeFile(form, 'image', payload.image);
+    await appendNativeFile(form, 'image', payload.image);
   } else if (mode === 'edit' && payload.removeImage) {
     form.append('image', '');
   }
@@ -8527,7 +8560,7 @@ export async function createAdminCategory(
   payload: AdminCategoryFormPayload,
   signal?: AbortSignal
 ): Promise<void> {
-  await apiPostForm('/admin/categories', buildAdminCategoryFormData(payload, 'create'), signal);
+  await apiPostForm('/admin/categories', await buildAdminCategoryFormData(payload, 'create'), signal);
 }
 
 export async function updateAdminCategory(
@@ -8535,7 +8568,7 @@ export async function updateAdminCategory(
   payload: AdminCategoryFormPayload,
   signal?: AbortSignal
 ): Promise<void> {
-  const form = buildAdminCategoryFormData(payload, 'edit');
+  const form = await buildAdminCategoryFormData(payload, 'edit');
   form.append('_method', 'PUT');
   await apiPostForm(`/admin/categories/${encodeURIComponent(String(categoryId))}`, form, signal);
 }

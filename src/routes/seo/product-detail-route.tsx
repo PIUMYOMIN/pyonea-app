@@ -1,5 +1,4 @@
 import { useGlobalSearchParams, useLoaderData, useLocalSearchParams, type ErrorBoundaryProps } from 'expo-router';
-import { Pressable, Text, View } from 'react-native';
 
 import { NativeSeo } from '@/components/SEO/native-seo';
 import { SITE_PUBLIC_URL } from '@/config/native';
@@ -91,25 +90,12 @@ export async function loader(_request: unknown, params: Record<string, string | 
   return loadSeoDataWithRetry(`product ${slug}`, () => fetchProductDetail(slug));
 }
 
-export function ErrorBoundary({ retry }: ErrorBoundaryProps) {
+export function ErrorBoundary(_props: ErrorBoundaryProps) {
   const { slug } = useLocalSearchParams<{ slug?: string | string[] }>();
   const productSlug = firstParam(slug) || '';
 
-  return (
-    <View className="flex-1 bg-gray-50 dark:bg-slate-950">
-      <View className="border-b border-amber-200 bg-amber-50 px-4 py-3 dark:border-amber-800 dark:bg-amber-900/20">
-        <View className="mx-auto w-full max-w-7xl gap-2 sm:flex-row sm:items-center sm:justify-between">
-          <Text className="font-sans text-sm font-semibold text-amber-800 dark:text-amber-200">
-            Product data is refreshing. The page will load from the API.
-          </Text>
-          <Pressable onPress={retry} className="self-start rounded-lg bg-amber-600 px-3 py-2">
-            <Text className="font-sans text-xs font-bold text-white">Retry loader</Text>
-          </Pressable>
-        </View>
-      </View>
-      <ProductDetailNative slug={productSlug} />
-    </View>
-  );
+  // SEO loader failed during export/navigation — render the page normally from the API.
+  return <ProductDetailNative slug={productSlug} />;
 }
 
 export default function ProductDetailRoute() {

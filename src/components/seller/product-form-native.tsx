@@ -30,6 +30,7 @@ import {
   loadProductDraftImages,
   saveProductDraft,
   saveProductDraftImages,
+  shouldAutoSaveProductDraft,
 } from '@/utils/product-draft-storage';
 import {
   ApiError,
@@ -120,6 +121,7 @@ type Option = {
   value: string;
   label: string;
   description?: string;
+  disabled?: boolean;
 };
 
 function toStringValue(value: string | number | null | undefined) {
@@ -136,19 +138,51 @@ function isRecordOfErrorLists(value: unknown): value is Record<string, string[]>
   );
 }
 
-function buildCategoryOptions(categories: SellerProductCategory[], language: string): Option[] {
+function categoryLabel(
+  item: Pick<SellerProductCategory, 'name' | 'nameEn' | 'nameMm'>,
+  language: string,
+) {
+  return language === 'my' ? item.nameMm || item.nameEn || item.name : item.nameEn || item.name;
+}
+
+function buildCategoryOptions(
+  categories: SellerProductCategory[],
+  language: string,
+  parentHint: string,
+): Option[] {
   return categories.flatMap((parent) => {
-    const parentName = language === 'my' ? parent.nameMm || parent.nameEn || parent.name : parent.nameEn || parent.name;
+    const parentName = categoryLabel(parent, language);
     if (!parent.children.length) {
       return [{ value: String(parent.id), label: parentName }];
     }
 
-    return parent.children.map((child) => ({
-      value: String(child.id),
-      label: language === 'my' ? child.nameMm || child.nameEn || child.name : child.nameEn || child.name,
-      description: parentName,
-    }));
+    return [
+      {
+        value: `parent-${parent.id}`,
+        label: parentName,
+        description: parentHint,
+        disabled: true,
+      },
+      ...parent.children.map((child) => ({
+        value: String(child.id),
+        label: categoryLabel(child, language),
+        description: parentName,
+      })),
+    ];
   });
+}
+
+function formatUploadError(error: unknown, fallback: string) {
+  if (!(error instanceof ApiError)) {
+    return error instanceof Error ? error.message : fallback;
+  }
+
+  if (isRecordOfErrorLists(error.errors)) {
+    const messages = Object.values(error.errors).flat().filter(Boolean);
+    if (messages.length) return messages.join(' ');
+  }
+
+  return error.message || fallback;
 }
 
 function Field({
@@ -303,6 +337,23 @@ function SelectModal({
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
               {options.map((option) => {
+                if (option.disabled) {
+                  return (
+                    <View
+                      key={option.value}
+                      className="mb-2 mt-1 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/50">
+                      <Text className="font-sans text-sm font-bold text-gray-700 dark:text-slate-200">
+                        {option.label}
+                      </Text>
+                      {option.description ? (
+                        <Text className="mt-1 font-sans text-xs text-gray-500 dark:text-slate-400">
+                          {option.description}
+                        </Text>
+                      ) : null}
+                    </View>
+                  );
+                }
+
                 const selectedOption = value === option.value;
                 return (
                   <Pressable
@@ -316,10 +367,14 @@ function SelectModal({
                         ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
                         : 'border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-800'
                     }`}>
-                    <Text className="font-sans text-sm font-semibold text-gray-900 dark:text-slate-100">{option.label}</Text>
-                    {option.description && (
-                      <Text className="mt-1 font-sans text-xs text-gray-500 dark:text-slate-400">{option.description}</Text>
-                    )}
+                    <Text className="font-sans text-sm font-semibold text-gray-900 dark:text-slate-100">
+                      {option.label}
+                    </Text>
+                    {option.description ? (
+                      <Text className="mt-1 font-sans text-xs text-gray-500 dark:text-slate-400">
+                        {option.description}
+                      </Text>
+                    ) : null}
                   </Pressable>
                 );
               })}
@@ -775,9 +830,25 @@ export function ProductFormNative({
 
   const scrollRef = useRef<ScrollView>(null);
   const draftRestoredRef = useRef(false);
-  const categoryOptions = useMemo(() => buildCategoryOptions(categories, language), [categories, language]);
+  const draftPersistRef = useRef(true);
+  const categoryOptions = useMemo(
+    () =>
+      buildCategoryOptions(
+        categories,
+        language,
+        t('product_form.category_parent_hint', { defaultValue: 'Select a subcategory below' }),
+      ),
+    [categories, language, t],
+  );
   const editing = Boolean(productId);
   const savedProductId = form.id || productId || null;
+  const hasCreatedProductId = Boolean(!editing && toStringValue(form.id));
+  const canAutoSaveDraft = shouldAutoSaveProductDraft({
+    isEditingExisting: editing,
+    draftRestored: draftRestoredRef.current,
+    draftPersistEnabled: draftPersistRef.current,
+    hasCreatedProductId,
+  });
 
   const update = <K extends keyof SellerProductFormData>(key: K, value: SellerProductFormData[K]) => {
     setForm((prev) => ({ ...prev, [key]: value }));
@@ -792,6 +863,12 @@ export function ProductFormNative({
       if (!signal?.aborted) setCategoriesError(true);
     }
   }, []);
+
+  useEffect(() => {
+    if (!productId) {
+      draftPersistRef.current = true;
+    }
+  }, [productId]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -839,22 +916,42 @@ export function ProductFormNative({
     return () => controller.abort();
   }, [isAdminMode, loadCategories, productId]);
 
-  // Auto-save draft (new listings only), debounced.
+  // Auto-save draft (new listings only), debounced — stops after successful create (legacy parity).
   useEffect(() => {
-    if (editing || !draftRestoredRef.current) return;
+    if (!canAutoSaveDraft) return;
     const timer = setTimeout(() => {
+      if (
+        !shouldAutoSaveProductDraft({
+          isEditingExisting: editing,
+          draftRestored: draftRestoredRef.current,
+          draftPersistEnabled: draftPersistRef.current,
+          hasCreatedProductId: Boolean(!editing && toStringValue(form.id)),
+        })
+      ) {
+        return;
+      }
       void saveProductDraft(form);
     }, 600);
     return () => clearTimeout(timer);
-  }, [editing, form]);
+  }, [canAutoSaveDraft, editing, form]);
 
   useEffect(() => {
-    if (editing || !draftRestoredRef.current) return;
+    if (!canAutoSaveDraft) return;
     const timer = setTimeout(() => {
+      if (
+        !shouldAutoSaveProductDraft({
+          isEditingExisting: editing,
+          draftRestored: draftRestoredRef.current,
+          draftPersistEnabled: draftPersistRef.current,
+          hasCreatedProductId: Boolean(!editing && toStringValue(form.id)),
+        })
+      ) {
+        return;
+      }
       void saveProductDraftImages(images);
     }, 600);
     return () => clearTimeout(timer);
-  }, [editing, images]);
+  }, [canAutoSaveDraft, editing, images, form.id]);
 
   // Match legacy behavior: jump back to the top when the step changes.
   useEffect(() => {
@@ -911,7 +1008,7 @@ export function ProductFormNative({
       for (let index = 0; index < files.length; index += 1) {
         const file = files[index];
         const formData = new FormData();
-        appendUploadFile(formData, 'image', file);
+        await appendUploadFile(formData, 'image', file);
         formData.append('angle', imageAngles[images.length + uploaded.length] || 'default');
         const uploadTargetId = form.id || productId;
         const result =
@@ -930,7 +1027,7 @@ export function ProductFormNative({
       }
       if (uploaded.length) setImages((current) => [...current, ...uploaded]);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : 'Failed to upload images.');
+      setError(formatUploadError(nextError, t('product_form.errors.upload_images', 'Failed to upload images.')));
     } finally {
       setIsUploadingImages(false);
     }
@@ -1037,10 +1134,13 @@ export function ProductFormNative({
             : await updateSellerProduct(productId, payload())
           : await createSellerProduct(payload());
       const savedId = toStringValue(result.product.id || productId);
+      if (!editing) {
+        draftPersistRef.current = false;
+        await clearProductDraft();
+      }
       setForm((prev) => ({ ...prev, ...result.product, id: savedId || prev.id }));
       if (result.images.length) setImages(result.images);
       setCompletedSteps(new Set([1, 2, 3, 4]));
-      if (!editing) void clearProductDraft();
 
       if (isAdminMode) {
         setSuccess(t('admin.productManagement.notifications.updated', 'Product updated successfully.'));
@@ -1068,7 +1168,9 @@ export function ProductFormNative({
     }
   };
 
-  const finish = () => {
+  const finish = async () => {
+    draftPersistRef.current = false;
+    await clearProductDraft();
     setSuccess('All done. Your product listing is ready.');
     setTimeout(() => router.replace(dashboardHref), 900);
   };
@@ -1407,7 +1509,7 @@ export function ProductFormNative({
                 </View>
               </View>
 
-              <Pressable onPress={finish} className="self-end flex-row items-center gap-2 rounded-lg bg-green-600 px-8 py-3">
+              <Pressable onPress={() => void finish()} className="self-end flex-row items-center gap-2 rounded-lg bg-green-600 px-8 py-3">
                 <Feather name="check-circle" size={18} color="#ffffff" />
                 <Text className="font-sans text-sm font-bold text-white">
                   {t('product_form.actions.finish_listing', 'Done - Finish Listing')}

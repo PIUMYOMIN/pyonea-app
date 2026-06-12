@@ -80,6 +80,4 @@ export async function pickImageFromCamera(options: PickImageOptions = {}) {
   return validateImages([toUploadFile(result.assets[0], 'pyonea-camera-photo.jpg')]);
 }
 
-export function appendUploadFile(form: FormData, field: string, file: NativeUploadFile) {
-  form.append(field, file as unknown as Blob);
-}
+export { appendNativeFile as appendUploadFile } from '@/utils/native-api';

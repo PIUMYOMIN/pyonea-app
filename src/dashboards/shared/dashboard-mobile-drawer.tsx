@@ -34,7 +34,7 @@ export function DashboardMobileDrawer({
   drawerFooter,
   widthClassName = 'w-72',
 }: DashboardMobileDrawerProps) {
-  const { isDark, toggleTheme } = useTheme();
+  const { isDark } = useTheme();
   const isSeller = navVariant === 'seller';
 
   const handleTab = (tab: string) => {
@@ -131,19 +131,6 @@ export function DashboardMobileDrawer({
 
           {drawerFooter ? (
             <View className="border-t border-gray-100 p-4 dark:border-slate-800">{drawerFooter}</View>
-          ) : null}
-          {navVariant === 'list' ? (
-            <View
-              className={`${drawerFooter ? 'border-t border-gray-100 p-4 dark:border-slate-800' : 'p-4 pt-0'}`}>
-              <Pressable
-                onPress={toggleTheme}
-                className="flex-row items-center justify-center gap-2 rounded-xl border border-gray-200 px-4 py-2.5 dark:border-slate-700">
-                <Feather name={isDark ? 'sun' : 'moon'} color={isDark ? '#fde68a' : '#64748b'} size={16} />
-                <Text className="font-sans text-sm font-semibold text-gray-600 dark:text-slate-300">
-                  {isDark ? 'Light mode' : 'Dark mode'}
-                </Text>
-              </Pressable>
-            </View>
           ) : null}
         </View>
       </View>

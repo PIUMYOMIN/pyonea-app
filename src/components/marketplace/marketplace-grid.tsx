@@ -7,7 +7,7 @@ import {
   ProductListRow,
   ProductListRowSkeleton,
   PRODUCT_CARD_ROW_CLASS,
-} from '@/components/marketplace-list-screen';
+} from '@/components/marketplace/product-list-cards';
 import { CategoryCardSkeleton } from '@/components/ui/category-card';
 import type { HomeProduct } from '@/utils/native-api';
 import {
@@ -45,6 +45,15 @@ export function useCategoryGridColumns() {
 export function useSellerGridColumns() {
   const { width } = useWindowDimensions();
   return useMemo(() => (width >= 1024 ? 4 : 2), [width]);
+}
+
+/** Seller directory — 1 col phone, 2 tablet, 3–4 desktop (matches pyonea Sellers.jsx). */
+export function useSellerDirectoryColumns() {
+  const { width } = useWindowDimensions();
+  return useMemo(
+    () => (width >= 1280 ? 4 : width >= 1024 ? 3 : width >= 640 ? 2 : 1),
+    [width],
+  );
 }
 
 export function MarketplaceGridRow({

@@ -25,7 +25,6 @@ import {
   useDashboardGuard,
   useDashboardTabs,
 } from '@/dashboards/shared';
-import { useTheme } from '@/context/theme';
 import { useWishlist } from '@/context/wishlist-context';
 import { useAppTranslation } from '@/i18n';
 import { BuyerRfqNative } from '@/components/buyer/buyer-rfq-native';
@@ -912,8 +911,7 @@ function WishlistPanel() {
 
 function SettingsPanel({ user, onUpdateUser }: { user: BuyerProfile | null; onUpdateUser: (user: BuyerProfile) => void }) {
   const { t } = useAppTranslation();
-  const { isDark, setDark, setLight } = useTheme();
-  const [section, setSection] = useState<'profile' | 'appearance' | 'password' | 'account'>('profile');
+  const [section, setSection] = useState<'profile' | 'password' | 'account'>('profile');
   const [profileDraft, setProfileDraft] = useState<BuyerProfilePayload>({
     name: user?.name || '',
     email: user?.email || '',
@@ -971,7 +969,6 @@ function SettingsPanel({ user, onUpdateUser }: { user: BuyerProfile | null; onUp
 
   const sections = [
     { id: 'profile' as const, label: t('buyer_dashboard.profile') },
-    { id: 'appearance' as const, label: t('buyer_dashboard.appearance') },
     { id: 'password' as const, label: t('buyer_dashboard.password') },
     { id: 'account' as const, label: t('buyer_dashboard.account') },
   ];
@@ -1042,33 +1039,6 @@ function SettingsPanel({ user, onUpdateUser }: { user: BuyerProfile | null; onUp
             </View>
           ) : null}
 
-          {section === 'appearance' ? (
-            <View>
-              <Text className="font-sans text-lg font-bold text-gray-950 dark:text-slate-100">
-                {t('buyer_dashboard.appearance')}
-              </Text>
-              <Text className="mt-1 font-sans text-sm text-gray-500 dark:text-slate-400">
-                {t('buyer_dashboard.appearance_subtitle')}
-              </Text>
-              <View className="mt-5 gap-3 sm:flex-row">
-                <ThemeButton
-                  active={!isDark}
-                  icon="sun"
-                  title={t('buyer_dashboard.light_mode')}
-                  subtitle={t('buyer_dashboard.light_mode_subtitle')}
-                  onPress={setLight}
-                />
-                <ThemeButton
-                  active={isDark}
-                  icon="moon"
-                  title={t('buyer_dashboard.dark_mode')}
-                  subtitle={t('buyer_dashboard.dark_mode_subtitle')}
-                  onPress={setDark}
-                />
-              </View>
-            </View>
-          ) : null}
-
           {section === 'password' ? (
             <View className="gap-4">
               <Text className="font-sans text-lg font-bold text-gray-950 dark:text-slate-100">
@@ -1134,36 +1104,6 @@ function Field({
         className="min-h-12 rounded-lg border border-gray-300 bg-white px-4 py-3 font-sans text-sm text-gray-900 dark:border-slate-700 dark:bg-slate-800 dark:text-slate-100"
       />
     </View>
-  );
-}
-
-function ThemeButton({
-  active,
-  icon,
-  title,
-  subtitle,
-  onPress,
-}: {
-  active: boolean;
-  icon: keyof typeof Feather.glyphMap;
-  title: string;
-  subtitle: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      onPress={onPress}
-      className={`flex-1 rounded-xl border p-4 ${
-        active ? 'border-green-500 bg-green-50 dark:bg-green-900/20' : 'border-gray-200 dark:border-slate-700'
-      }`}>
-      <View className="flex-row items-center gap-3">
-        <Feather name={icon} color={active ? '#15803d' : '#64748b'} size={21} />
-        <View>
-          <Text className="font-sans text-sm font-bold text-gray-950 dark:text-slate-100">{title}</Text>
-          <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">{subtitle}</Text>
-        </View>
-      </View>
-    </Pressable>
   );
 }
 

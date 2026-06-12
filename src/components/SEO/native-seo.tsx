@@ -62,6 +62,12 @@ const indexableRoutes: Record<string, RouteSeo> = {
     description: 'Compare Myanmar wholesale products, pricing, sellers, and product details on Pyonea.',
     priority: 0.5,
   },
+  '/local-deals': {
+    title: 'Local Deals | Pyonea',
+    description:
+      'Browse active coupon offers from verified Myanmar sellers by region. Save on wholesale orders and support local businesses.',
+    priority: 0.6,
+  },
 };
 
 const privatePrefixes = [
@@ -76,6 +82,7 @@ const privatePrefixes = [
   '/reset-password',
   '/payment-success',
   '/track-order',
+  '/account',
   '/newsletter/confirm',
 ];
 

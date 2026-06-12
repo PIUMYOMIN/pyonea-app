@@ -1,23 +1,37 @@
 const path = require("path");
 const { getDefaultConfig } = require("expo/metro-config");
+const { FileStore } = require("@expo/metro-config/build/binary-file-store");
 const { withNativeWind } = require("nativewind/metro");
 const os = require("os");
 
+const projectRoot = __dirname;
+
 /** @type {import('expo/metro-config').MetroConfig} */
-const config = getDefaultConfig(__dirname);
+const config = getDefaultConfig(projectRoot);
 
 const blockList = [
   /\.git\//,
+  /\.cursor\//,
   /\.expo-perf-check\//,
   /dist\//,
   /web-build\//,
+  /scripts\//,
+  /uploads\//,
+  /page\.html$/,
 ];
 
 config.resolver.blockList = Array.isArray(config.resolver.blockList)
   ? [...config.resolver.blockList, ...blockList]
   : blockList;
 
-config.watchFolders = [path.resolve(__dirname)];
+config.watchFolders = [projectRoot];
+
+// Keep transform cache inside the project (avoids Windows Temp EMFILE storms).
+config.cacheStores = [
+  new FileStore({
+    root: path.join(projectRoot, "node_modules", ".cache", "metro"),
+  }),
+];
 
 // jspdf's "node" build uses AMD requires that Metro cannot parse (breaks SSG export),
 // so always resolve it to the browser ES build. Its optional peers (canvg, dompurify)
@@ -37,11 +51,19 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
 };
 
 if (process.platform === "win32") {
-  // Windows can hit EMFILE when Metro opens too many files in parallel.
-  config.maxWorkers = 2;
+  // Windows can hit EMFILE when Metro opens too many cache files in parallel during HMR.
+  config.maxWorkers = 1;
   config.server = {
     ...config.server,
     useWatchman: false,
+  };
+  config.watcher = {
+    ...config.watcher,
+    healthCheck: {
+      enabled: true,
+      interval: 30000,
+      timeout: 10000,
+    },
   };
 } else {
   config.maxWorkers = Math.max(1, Math.min(4, os.availableParallelism?.() ?? os.cpus().length));

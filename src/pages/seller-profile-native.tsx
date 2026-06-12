@@ -2,8 +2,17 @@ import Feather from '@expo/vector-icons/Feather';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { Link, useRouter, type Href } from 'expo-router';
-import { useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import {
+  ActivityIndicator,
+  Linking,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { ProductMarketplaceGrid } from '@/components/marketplace/marketplace-grid';
@@ -490,6 +499,13 @@ export function SellerProfileNative({
   const { user, isAuthenticated } = useNativeAuth();
   const [seller, setSeller] = useState<SellerProfile | null>(initialProfile?.seller || null);
   const [products, setProducts] = useState<HomeProduct[]>(initialProfile?.products || []);
+  const [productPage, setProductPage] = useState(initialProfile?.currentPage || 1);
+  const [productsHasMore, setProductsHasMore] = useState(
+    (initialProfile?.currentPage || 1) < (initialProfile?.lastPage || 1),
+  );
+  const [productsLoading, setProductsLoading] = useState(false);
+  const productSentinelRef = useRef<View | null>(null);
+  const productsFetchingRef = useRef(false);
   const [reviews, setReviews] = useState<SellerReview[]>([]);
   const [reviewStats, setReviewStats] = useState<SellerReviewStats>(
     initialProfile?.reviewStats || { star1: 0, star2: 0, star3: 0, star4: 0, star5: 0 }
@@ -531,6 +547,8 @@ export function SellerProfileNative({
     const loadSeller = async () => {
       if (!hasInitialSeller) setLoading(true);
       setError('');
+      setProductPage(1);
+      setProductsHasMore(false);
 
       try {
         const profileResult = await fetchSellerProfile(slug, 1, controller.signal);
@@ -538,6 +556,8 @@ export function SellerProfileNative({
         if (!controller.signal.aborted) {
           setSeller(profileResult.seller);
           setProducts(profileResult.products);
+          setProductPage(profileResult.currentPage);
+          setProductsHasMore(profileResult.currentPage < profileResult.lastPage);
           setReviewStats(profileResult.reviewStats);
           setIsOwnStore(profileResult.isOwnStore);
           setDescriptionExpanded(false);
@@ -561,6 +581,47 @@ export function SellerProfileNative({
 
     return () => controller.abort();
   }, [hasInitialSeller, slug]);
+
+  const loadMoreProducts = useCallback(async () => {
+    if (!slug || !productsHasMore || productsFetchingRef.current) return;
+
+    productsFetchingRef.current = true;
+    setProductsLoading(true);
+    const nextPage = productPage + 1;
+
+    try {
+      const profileResult = await fetchSellerProfile(slug, nextPage);
+      const productItems = profileResult.products;
+
+      setProducts((current) => {
+        const ids = new Set(current.map((product) => String(product.id)));
+        return [...current, ...productItems.filter((product) => !ids.has(String(product.id)))];
+      });
+      setProductPage(profileResult.currentPage);
+      setProductsHasMore(profileResult.currentPage < profileResult.lastPage);
+    } catch (error) {
+      console.error('Could not load more seller products:', error);
+      setProductsHasMore(false);
+    } finally {
+      productsFetchingRef.current = false;
+      setProductsLoading(false);
+    }
+  }, [productPage, productsHasMore, slug]);
+
+  useEffect(() => {
+    if (activeTab !== 'products' || Platform.OS !== 'web' || !productSentinelRef.current) return;
+
+    const node = productSentinelRef.current as unknown as Element;
+    const observer = new IntersectionObserver(
+      ([entry]) => {
+        if (entry?.isIntersecting) void loadMoreProducts();
+      },
+      { rootMargin: '300px' },
+    );
+
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, [activeTab, loadMoreProducts, products.length]);
 
   useEffect(() => {
     setLogoError(false);
@@ -779,9 +840,11 @@ export function SellerProfileNative({
         <View className="relative h-48 overflow-hidden bg-green-600 sm:h-60">
           {seller.bannerUrl ? (
             <Image
-              source={{ uri: seller.bannerUrl }}
+              source={{ uri: getThumbUrl(seller.bannerUrl, 800) }}
               style={{ width: '100%', height: '100%' }}
               contentFit="cover"
+              loading="eager"
+              priority="high"
             />
           ) : null}
           <View className="absolute inset-0 bg-black/25" />
@@ -796,6 +859,9 @@ export function SellerProfileNative({
                     source={{ uri: getThumbUrl(seller.imageUrl, 300) }}
                     style={{ width: '100%', height: '100%' }}
                     contentFit="cover"
+                    loading="eager"
+                    priority="high"
+                    recyclingKey={seller.imageUrl}
                     onError={() => setLogoError(true)}
                   />
                 ) : (
@@ -946,7 +1012,31 @@ export function SellerProfileNative({
 
           {activeTab === 'products' ? (
             products.length > 0 ? (
-              <ProductMarketplaceGrid products={products} />
+              <View className="gap-4">
+                <ProductMarketplaceGrid products={products} imagePriorityCount={6} />
+                {productsLoading ? (
+                  <View className="items-center py-4">
+                    <ActivityIndicator color="#16a34a" />
+                  </View>
+                ) : null}
+                {Platform.OS === 'web' ? (
+                  <View ref={productSentinelRef} className="h-1 w-full" />
+                ) : productsHasMore ? (
+                  <Pressable
+                    onPress={() => void loadMoreProducts()}
+                    disabled={productsLoading}
+                    className="items-center rounded-xl border border-gray-200 bg-white px-4 py-3 dark:border-slate-700 dark:bg-slate-900">
+                    <Text className="font-sans text-sm font-bold text-green-700 dark:text-green-300">
+                      Load more products
+                    </Text>
+                  </Pressable>
+                ) : null}
+                {!productsHasMore && products.length > 0 ? (
+                  <Text className="text-center font-sans text-xs text-gray-400 dark:text-slate-500">
+                    All products from this seller are loaded.
+                  </Text>
+                ) : null}
+              </View>
             ) : (
               <View className="items-center py-16">
                 <Feather name="shopping-bag" color="#cbd5e1" size={48} />

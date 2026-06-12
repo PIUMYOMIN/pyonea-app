@@ -1,9 +1,18 @@
 import Feather from '@expo/vector-icons/Feather';
-import { useEffect, useState } from 'react';
-import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
+import { createElement, useEffect, useMemo, useState } from 'react';
+import {
+  ActivityIndicator,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  TextInput,
+  View,
+} from 'react-native';
 
 import { useAppTranslation } from '@/i18n';
-import { apiGet, apiPost } from '@/utils/native-api';
+import { ApiError, apiGet, apiPost } from '@/utils/native-api';
 
 type OptionType = 'color' | 'size' | 'text' | 'image' | 'input';
 
@@ -60,6 +69,49 @@ const slugify = (value: string) =>
 
 const isValidSlug = (value: string) => /^[a-z0-9]+(?:-[a-z0-9]+)*$/.test(value);
 
+const isValidHex = (value: string) => /^#[0-9A-Fa-f]{6}$/.test(value);
+
+const normalizeHex = (value: string) => {
+  const trimmed = value.trim();
+  if (!trimmed) return '';
+  const withHash = trimmed.startsWith('#') ? trimmed : `#${trimmed}`;
+  return withHash.length === 7 ? withHash : withHash.slice(0, 7);
+};
+
+const isRecordOfErrorLists = (value: unknown): value is Record<string, string[]> =>
+  typeof value === 'object' &&
+  value !== null &&
+  !Array.isArray(value) &&
+  Object.values(value).every((entry) => Array.isArray(entry));
+
+const formatApiError = (error: unknown, fallback: string) => {
+  if (!(error instanceof ApiError)) {
+    return error instanceof Error ? error.message : fallback;
+  }
+
+  if (isRecordOfErrorLists(error.errors)) {
+    const messages = Object.values(error.errors).flat().filter(Boolean);
+    if (messages.length) return messages.join(' ');
+  }
+
+  return error.message || fallback;
+};
+
+const cleanValueMeta = (optType: OptionType, meta: OptionValueDraft['meta']) => {
+  const cleaned: OptionValueDraft['meta'] = {};
+
+  if (optType === 'color') {
+    const hex = normalizeHex(meta.hex || '');
+    if (hex && isValidHex(hex)) cleaned.hex = hex;
+  }
+
+  if (optType === 'image' && meta.image_url?.trim()) {
+    cleaned.image_url = meta.image_url.trim();
+  }
+
+  return Object.keys(cleaned).length > 0 ? cleaned : null;
+};
+
 const getString = (value: unknown, fallback = '') => {
   if (typeof value === 'string') return value;
   if (typeof value === 'number') return String(value);
@@ -98,6 +150,30 @@ const mapOption = (option: UnknownRecord): ProductOptionDraft => ({
   values: Array.isArray(option.values) ? option.values.filter(isRecord).map(mapValue) : [],
 });
 
+function WebColorInput({
+  value,
+  onChange,
+  label,
+}: {
+  value: string;
+  onChange: (hex: string) => void;
+  label: string;
+}) {
+  if (Platform.OS !== 'web') return null;
+
+  return createElement('input', {
+    type: 'color',
+    'aria-label': label,
+    value: isValidHex(value) ? value : '#000000',
+    onChange: (event: Event) => {
+      const target = event.target as HTMLInputElement;
+      onChange(target.value);
+    },
+    className:
+      'h-10 w-12 flex-shrink-0 cursor-pointer rounded-lg border border-gray-300 bg-transparent dark:border-slate-600',
+  });
+}
+
 function OptionTypeSelect({
   value,
   onChange,
@@ -106,30 +182,67 @@ function OptionTypeSelect({
   onChange: (value: OptionType) => void;
 }) {
   const { t } = useAppTranslation();
+  const [open, setOpen] = useState(false);
+  const options = useMemo(
+    () =>
+      optionTypeKeys.map((type) => ({
+        value: type,
+        label: t(`product_form.options.types.${type}`, type),
+      })),
+    [t],
+  );
+  const selected = options.find((option) => option.value === value);
 
   return (
-    <View className="flex-row flex-wrap gap-2">
-      {optionTypeKeys.map((type) => {
-        const active = value === type;
-        return (
-          <Pressable
-            key={type}
-            onPress={() => onChange(type)}
-            className={`rounded-lg border px-3 py-2 ${
-              active
-                ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
-                : 'border-gray-300 bg-white dark:border-slate-600 dark:bg-slate-700'
-            }`}>
-            <Text
-              className={`font-sans text-xs font-bold ${
-                active ? 'text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-slate-300'
-              }`}>
-              {t(`product_form.options.types.${type}`, type)}
-            </Text>
-          </Pressable>
-        );
-      })}
-    </View>
+    <>
+      <Pressable
+        onPress={() => setOpen(true)}
+        className="min-w-[120px] flex-row items-center justify-between rounded-lg border border-gray-300 bg-white px-2.5 py-2 dark:border-slate-600 dark:bg-slate-700">
+        <Text className="font-sans text-xs font-semibold text-gray-700 dark:text-slate-200">
+          {selected?.label || value}
+        </Text>
+        <Feather name="chevron-down" size={14} color="#9ca3af" />
+      </Pressable>
+
+      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+        <View className="flex-1 justify-end bg-black/40 md:items-center md:justify-center">
+          <View className="max-h-[70%] rounded-t-3xl bg-white p-5 dark:bg-slate-900 md:w-[420px] md:rounded-2xl">
+            <View className="mb-4 flex-row items-center justify-between">
+              <Text className="font-sans text-base font-bold text-gray-900 dark:text-slate-100">
+                {t('product_form.options.type_label', 'Option type')}
+              </Text>
+              <Pressable
+                onPress={() => setOpen(false)}
+                className="h-9 w-9 items-center justify-center rounded-full bg-gray-100 dark:bg-slate-800">
+                <Feather name="x" size={16} color="#64748b" />
+              </Pressable>
+            </View>
+            <ScrollView showsVerticalScrollIndicator={false}>
+              {options.map((option) => {
+                const active = option.value === value;
+                return (
+                  <Pressable
+                    key={option.value}
+                    onPress={() => {
+                      onChange(option.value);
+                      setOpen(false);
+                    }}
+                    className={`mb-2 rounded-xl border p-3 ${
+                      active
+                        ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
+                        : 'border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-800'
+                    }`}>
+                    <Text className="font-sans text-sm font-semibold text-gray-900 dark:text-slate-100">
+                      {option.label}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+        </View>
+      </Modal>
+    </>
   );
 }
 
@@ -146,12 +259,16 @@ function ValueRow({
 }) {
   const { t } = useAppTranslation();
 
+  const pickColourLabel = t('product_form.options.pick_colour', 'Pick colour');
+
   return (
     <View className="gap-2 rounded-lg border border-gray-200 bg-white p-3 dark:border-slate-700 dark:bg-slate-800">
       <View className="gap-2 md:grid md:grid-cols-3">
         <TextInput
           value={value.label}
-          onChangeText={(label) => onChange({ ...value, label, value: value.value || slugify(label) })}
+          onChangeText={(label) =>
+            onChange({ ...value, label, value: value.value ? value.value : slugify(label) })
+          }
           placeholder={t('product_form.options.value_label_placeholder', 'Label (e.g. Red)')}
           placeholderTextColor="#9ca3af"
           className="rounded-lg border border-gray-300 bg-white px-3 py-2 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
@@ -161,19 +278,26 @@ function ValueRow({
           onChangeText={(nextValue) => onChange({ ...value, value: slugify(nextValue) })}
           placeholder={t('product_form.options.slug_placeholder', 'Slug (auto-filled)')}
           placeholderTextColor="#9ca3af"
+          autoCapitalize="none"
           className="rounded-lg border border-gray-300 bg-white px-3 py-2 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
         />
         {optType === 'color' && (
           <View className="flex-row items-center gap-2">
+            <WebColorInput
+              label={pickColourLabel}
+              value={value.meta.hex || '#000000'}
+              onChange={(hex) => onChange({ ...value, meta: { ...value.meta, hex } })}
+            />
             <View
               className="h-10 w-12 rounded-lg border border-gray-300 dark:border-slate-600"
-              style={{ backgroundColor: value.meta.hex || '#000000' }}
+              style={{ backgroundColor: isValidHex(value.meta.hex || '') ? value.meta.hex : '#000000' }}
             />
             <TextInput
               value={value.meta.hex || ''}
               onChangeText={(hex) => onChange({ ...value, meta: { ...value.meta, hex } })}
               placeholder="#000000"
               placeholderTextColor="#9ca3af"
+              autoCapitalize="none"
               className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
             />
           </View>
@@ -182,8 +306,10 @@ function ValueRow({
           <TextInput
             value={value.meta.image_url || ''}
             onChangeText={(imageUrl) => onChange({ ...value, meta: { ...value.meta, image_url: imageUrl } })}
-            placeholder={t('product_form.options.image_url', 'Image URL')}
+            placeholder={t('product_form.placeholders.image_url', 'https://…/image.jpg')}
             placeholderTextColor="#9ca3af"
+            autoCapitalize="none"
+            keyboardType="url"
             className="rounded-lg border border-gray-300 bg-white px-3 py-2 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
           />
         )}
@@ -214,43 +340,50 @@ function OptionBlock({
     onChange({ ...option, values: nextValues });
   };
 
+  const thirdColumnLabel =
+    option.type === 'color'
+      ? t('product_form.options.hex_colour', 'Hex colour')
+      : option.type === 'image'
+        ? t('product_form.options.image_url', 'Image URL')
+        : t('product_form.options.slug', 'Slug');
+
   return (
     <View className="overflow-hidden rounded-xl border border-gray-200 dark:border-slate-600">
-      <Pressable
-        onPress={() => setOpen((value) => !value)}
-        className="gap-3 bg-gray-50 px-3 py-3 dark:bg-slate-800 sm:px-4">
-        <View className="flex-row items-center gap-2">
+      <View className="gap-3 bg-gray-50 px-3 py-3 dark:bg-slate-800 sm:px-4">
+        <View className="flex-row flex-wrap items-center gap-2">
           <Feather name="move" size={16} color="#9ca3af" />
           <TextInput
             value={option.name}
             onChangeText={(name) => onChange({ ...option, name })}
             placeholder={t('product_form.options.option_name_placeholder', 'Option name (e.g. Color)')}
             placeholderTextColor="#9ca3af"
-            className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-3 py-2 font-sans text-sm font-bold text-gray-900 dark:border-slate-500 dark:bg-slate-700 dark:text-slate-100"
+            className="min-w-0 flex-[1_1_150px] rounded-lg border border-gray-300 bg-white px-3 py-2 font-sans text-sm font-bold text-gray-900 dark:border-slate-500 dark:bg-slate-700 dark:text-slate-100"
           />
+          <OptionTypeSelect
+            value={option.type}
+            onChange={(type) => onChange({ ...option, type, values: [] })}
+          />
+          <Pressable
+            onPress={() => onChange({ ...option, is_required: !option.is_required })}
+            className="flex-row items-center gap-2">
+            <View
+              className={`h-4 w-4 items-center justify-center rounded border ${
+                option.is_required ? 'border-green-600 bg-green-600' : 'border-gray-300 bg-white'
+              }`}>
+              {option.is_required && <Feather name="check" size={11} color="#ffffff" />}
+            </View>
+            <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">
+              {t('product_form.options.required', 'Required')}
+            </Text>
+          </Pressable>
           <Pressable onPress={onRemove} className="h-9 w-9 items-center justify-center rounded-lg">
             <Feather name="trash-2" size={16} color="#ef4444" />
           </Pressable>
-          <Feather name={open ? 'chevron-up' : 'chevron-down'} size={18} color="#9ca3af" />
+          <Pressable onPress={() => setOpen((value) => !value)} className="h-9 w-9 items-center justify-center rounded-lg">
+            <Feather name={open ? 'chevron-up' : 'chevron-down'} size={18} color="#9ca3af" />
+          </Pressable>
         </View>
-        <OptionTypeSelect
-          value={option.type}
-          onChange={(type) => onChange({ ...option, type, values: type === option.type ? option.values : [] })}
-        />
-        <Pressable
-          onPress={() => onChange({ ...option, is_required: !option.is_required })}
-          className="flex-row items-center gap-2 self-start">
-          <View
-            className={`h-4 w-4 items-center justify-center rounded border ${
-              option.is_required ? 'border-green-600 bg-green-600' : 'border-gray-300 bg-white'
-            }`}>
-            {option.is_required && <Feather name="check" size={11} color="#ffffff" />}
-          </View>
-          <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">
-            {t('product_form.options.required', 'Required')}
-          </Text>
-        </Pressable>
-      </Pressable>
+      </View>
 
       {open && (
         <View className="gap-3 bg-white px-4 py-3 dark:bg-slate-900">
@@ -259,6 +392,21 @@ function OptionBlock({
           ) : null}
           {option.type !== 'input' ? (
             <View className="gap-2">
+              {option.values.length > 0 ? (
+                <View className="hidden gap-2 md:grid md:grid-cols-3">
+                  <Text className="font-sans text-xs font-semibold text-gray-500 dark:text-slate-400">
+                    {t('product_form.options.label', 'Label')}
+                  </Text>
+                  <Text className="font-sans text-xs font-semibold text-gray-500 dark:text-slate-400">
+                    {t('product_form.options.slug', 'Slug')}
+                  </Text>
+                  {(option.type === 'color' || option.type === 'image') && (
+                    <Text className="font-sans text-xs font-semibold text-gray-500 dark:text-slate-400">
+                      {thirdColumnLabel}
+                    </Text>
+                  )}
+                </View>
+              ) : null}
               {option.values.map((value, index) => (
                 <ValueRow
                   key={value._id}
@@ -305,6 +453,13 @@ export function ProductOptionsEditorNative({
   const [success, setSuccess] = useState('');
 
   useEffect(() => {
+    setOptions([]);
+    setError('');
+    setSuccess('');
+    setLoading(Boolean(productId));
+  }, [productId]);
+
+  useEffect(() => {
     if (!productId) return;
 
     const controller = new AbortController();
@@ -326,7 +481,7 @@ export function ProductOptionsEditorNative({
 
   const validate = () => {
     if (!productId) {
-      return t('product_form.save_steps_first', 'Save the product in Steps 1-4 first.');
+      return t('product_form.messages.save_steps_first', 'Save the product in Steps 1-4 first.');
     }
 
     for (let index = 0; index < options.length; index += 1) {
@@ -350,9 +505,22 @@ export function ProductOptionsEditorNative({
         }
         const slug = slugify(value.value || value.label);
         if (!slug || !isValidSlug(slug)) {
-          return t('product_form.options.error_value_label', 'All values in option "{{name}}" need a label.', {
-            name: option.name,
-          });
+          return t(
+            'product_form.options.error_value_slug',
+            'Value "{{label}}" in option "{{name}}" needs an English slug using a-z, 0-9, or hyphen.',
+            { name: option.name, label: value.label },
+          );
+        }
+
+        if (option.type === 'color' && value.meta.hex?.trim()) {
+          const hex = normalizeHex(value.meta.hex);
+          if (!isValidHex(hex)) {
+            return t(
+              'product_form.options.error_invalid_hex',
+              'Colour "{{label}}" in option "{{name}}" needs a valid hex code (e.g. #FF0000).',
+              { name: option.name, label: value.label },
+            );
+          }
         }
       }
     }
@@ -368,27 +536,30 @@ export function ProductOptionsEditorNative({
 
     setSaving(true);
     try {
-      await apiPost(`/seller/products/${encodeURIComponent(String(productId))}/options`, {
-        options: options.map((option, index) => ({
-          name: option.name,
-          type: option.type,
-          position: index + 1,
-          is_required: option.is_required,
-          values: option.values.map((value, valueIndex) => ({
-            label: value.label,
-            value: slugify(value.value || value.label),
-            meta: Object.keys(value.meta).length > 0 ? value.meta : null,
-            position: valueIndex + 1,
+      const payload = await apiPost<unknown>(
+        `/seller/products/${encodeURIComponent(String(productId))}/options`,
+        {
+          options: options.map((option, index) => ({
+            name: option.name.trim(),
+            type: option.type,
+            position: index + 1,
+            is_required: option.is_required,
+            values: option.values.map((value, valueIndex) => ({
+              label: value.label.trim(),
+              value: slugify(value.value || value.label),
+              meta: cleanValueMeta(option.type, value.meta),
+              position: valueIndex + 1,
+            })),
           })),
-        })),
-      });
+        },
+      );
+      const saved = getPayloadArray(payload).filter(isRecord).map(mapOption);
+      if (saved.length) setOptions(saved);
       setSuccess(t('product_form.options.saved', 'Options saved! Now generate your variants below.'));
       onSaved?.();
     } catch (nextError) {
       setError(
-        nextError instanceof Error
-          ? nextError.message
-          : t('product_form.options.save_failed', 'Failed to save options.'),
+        formatApiError(nextError, t('product_form.options.save_failed', 'Failed to save options.')),
       );
     } finally {
       setSaving(false);

@@ -32,9 +32,9 @@ import { AnnouncementNative } from "@/components/ui/announcement-native";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { FloatingCompareButtonNative } from "@/components/ui/floating-compare-button-native";
 import { WebLoadMoreSentinel } from "@/components/ui/web-load-more-sentinel";
-import { footerGroups, mainRoutes } from "@/constants/routes";
-import { FOOTER_LINK_GRID_CLASS, SITE_CONTAINER_CLASS } from "@/constants/layout";
-import { useCookies } from "@/context/cookies";
+import { mainRoutes } from "@/constants/routes";
+import { SITE_CONTAINER_CLASS } from "@/constants/layout";
+import { Footer } from "@/components/layout/site-footer";
 import { useNativeAuth } from "@/context/native-auth";
 import { useTheme } from "@/context/theme";
 import { useCartCount } from "@/context/cart-count-context";
@@ -46,34 +46,14 @@ import {
   type SupportedLanguage,
 } from "@/i18n";
 import { getRoleDestination, hasUserRole } from "@/utils/auth-routing";
-import { subscribeNewsletter } from "@/utils/native-api";
-
-const socialLinks = [
-  { key: "facebook", url: "https://facebook.com/PyoneaOfficial" },
-  { key: "twitter", url: "https://twitter.com/PyoneaOfficial" },
-  { key: "linkedin", url: "https://linkedin.com/company/pyoneaofficial" },
-  { key: "instagram", url: "https://instagram.com/PyoneaOfficial" },
-  { key: "threads", url: "https://www.threads.com/@PyoneaOfficial" },
-];
 const headerRouteKeys: Record<string, string> = {
   "/": "header.home",
   "/products": "header.products",
   "/sellers": "header.sellers",
   "/categories": "header.categories",
 };
-const footerGroupKeys: Record<string, string> = {
-  Discover: "footer.section_discover",
-  Help: "footer.section_help",
-  "For Sellers": "footer.section_sell",
-  Company: "footer.section_company",
-  Legal: "footer.section_legal",
-};
-const footerRouteKeys: Record<string, string> = {
-  "/compare": "footer.compare_product",
-  "/track-order": "footer.track_order",
-};
-
 const accountPaths = [
+  "/account",
   "/login",
   "/register",
   "/forgot-password",
@@ -567,244 +547,6 @@ export function Header() {
   );
 }
 
-export function Footer() {
-  const { t } = useAppTranslation();
-  const { openBanner } = useCookies();
-  const footerRef = useRef<View>(null);
-  const [newsletterEmail, setNewsletterEmail] = useState("");
-  const [newsletterStatus, setNewsletterStatus] = useState<"idle" | "loading" | "success" | "error">("idle");
-  const [newsletterMessage, setNewsletterMessage] = useState("");
-
-  useEffect(() => {
-    if (Platform.OS !== "web") return;
-
-    const timer = window.setTimeout(() => {
-      const root = footerRef.current as unknown as HTMLElement | null;
-      if (!root) return;
-
-      const nestedScrollers: Array<{
-        tag: string;
-        overflowY: string;
-        scrollHeight: number;
-        clientHeight: number;
-      }> = [];
-
-      root.querySelectorAll("*").forEach((node) => {
-        const el = node as HTMLElement;
-        const style = window.getComputedStyle(el);
-        if (
-          (style.overflowY === "auto" || style.overflowY === "scroll") &&
-          el.scrollHeight > el.clientHeight + 2
-        ) {
-          nestedScrollers.push({
-            tag: el.tagName,
-            overflowY: style.overflowY,
-            scrollHeight: el.scrollHeight,
-            clientHeight: el.clientHeight,
-          });
-        }
-      });
-
-      // #region agent log
-      fetch("http://127.0.0.1:7881/ingest/2abef94f-5c12-4a0b-a31b-9ad0887d232d", {
-        method: "POST",
-        headers: { "Content-Type": "application/json", "X-Debug-Session-Id": "763aef" },
-        body: JSON.stringify({
-          sessionId: "763aef",
-          runId: "pre-fix",
-          hypothesisId: "H4",
-          location: "app-layout.tsx:Footer",
-          message: "Footer nested vertical scroll scan",
-          data: {
-            offenderCount: nestedScrollers.length,
-            offenders: nestedScrollers.slice(0, 5),
-            footerScrollHeight: root.scrollHeight,
-            footerClientHeight: root.clientHeight,
-          },
-          timestamp: Date.now(),
-        }),
-      }).catch(() => {});
-      // #endregion
-    }, 1500);
-
-    return () => window.clearTimeout(timer);
-  }, []);
-
-  const handleNewsletterSubmit = useCallback(async () => {
-    const email = newsletterEmail.trim();
-    if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
-      setNewsletterStatus("error");
-      setNewsletterMessage(t("footer.newsletter_error_message"));
-      return;
-    }
-
-    setNewsletterStatus("loading");
-    setNewsletterMessage("");
-
-    try {
-      const result = await subscribeNewsletter(email, "footer");
-      setNewsletterStatus(result.success ? "success" : "error");
-      setNewsletterMessage(
-        result.message ||
-          (result.success ? t("footer.newsletter_confirm_message") : t("footer.newsletter_error_message"))
-      );
-      if (result.success) setNewsletterEmail("");
-    } catch (error) {
-      setNewsletterStatus("error");
-      setNewsletterMessage(error instanceof Error ? error.message : t("footer.newsletter_error_message"));
-    }
-  }, [newsletterEmail, t]);
-
-  return (
-    <View
-      ref={footerRef}
-      className="min-w-0 border-t border-white/5 bg-gray-900 pb-8 pt-12 dark:bg-slate-950"
-    >
-      <View className={`${SITE_CONTAINER_CLASS} min-w-0`}>
-        <View className="gap-4 border-b border-white/10 pb-10 sm:flex-row sm:items-center sm:justify-between">
-          <Link href="/" asChild>
-            <Pressable className="min-w-0 flex-row items-center gap-2.5 self-start">
-              <BrandLogo size={36} opacity={0.9} />
-              <View className="min-w-0 flex-1">
-                <Text
-                  className="text-lg text-white"
-                  style={{ fontFamily: "Torus-SemiBold" }}
-                >
-                  {t("header.logo_text")}
-                </Text>
-                <Text className="mt-0.5 max-w-md font-sans text-sm leading-5 text-gray-500 dark:text-slate-400">
-                  {t("footer.tagline")}
-                </Text>
-              </View>
-            </Pressable>
-          </Link>
-        </View>
-
-        <View className={`${FOOTER_LINK_GRID_CLASS} pt-10`}>
-          {footerGroups.map((group) => (
-            <View key={group.title} className="min-w-0 gap-1.5">
-              <Text className="mb-2 font-sans text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-500">
-                {t(footerGroupKeys[group.title] || group.title)}
-              </Text>
-              {group.routes.map((route) => (
-                <Link key={String(route.href)} href={route.href} asChild>
-                  <Text className="py-0.5 font-sans text-sm text-gray-400 dark:text-slate-400">
-                    {t(footerRouteKeys[String(route.href)] || route.label)}
-                  </Text>
-                </Link>
-              ))}
-              {group.title === "Legal" ? (
-                <Pressable onPress={openBanner} className="self-start py-0.5">
-                  <Text className="font-sans text-sm text-gray-400 dark:text-slate-400">
-                    {t("footer.cookie_settings")}
-                  </Text>
-                </Pressable>
-              ) : null}
-            </View>
-          ))}
-        </View>
-
-        <View className="mt-12 grid gap-10 border-t border-white/10 pt-10 lg:grid-cols-2 lg:items-start lg:gap-16">
-          <View className="order-2 gap-8 lg:order-1">
-            <View>
-              <Text className="mb-3 font-sans text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-500">
-                {t("footer.contact_info")}
-              </Text>
-              <Pressable onPress={() => void Linking.openURL("tel:+959792115547")}>
-                <Text className="font-sans text-sm text-gray-400 dark:text-slate-400">
-                  {t("footer.phone")}
-                </Text>
-              </Pressable>
-              <Pressable onPress={() => void Linking.openURL("mailto:contact@pyonea.com")} className="mt-2">
-                <Text className="font-sans text-sm text-gray-400 dark:text-slate-400">
-                  {t("footer.email")}
-                </Text>
-              </Pressable>
-              <Text className="mt-2 max-w-sm font-sans text-sm leading-6 text-gray-500 dark:text-slate-500">
-                {t("footer.address")}
-              </Text>
-            </View>
-
-            <View>
-              <Text className="mb-3 font-sans text-xs font-bold uppercase tracking-wider text-gray-500 dark:text-slate-500">
-                {t("footer.follow_us")}
-              </Text>
-              <View className="flex-row flex-wrap gap-x-5 gap-y-2">
-                {socialLinks.map((link) => (
-                  <Pressable
-                    key={link.key}
-                    onPress={() => void Linking.openURL(link.url)}
-                    accessibilityRole="link"
-                  >
-                    <Text className="font-sans text-sm text-gray-400 dark:text-slate-400">
-                      {t(`footer.${link.key}`)}
-                    </Text>
-                  </Pressable>
-                ))}
-              </View>
-            </View>
-          </View>
-
-          <View className="order-1 w-full max-w-lg gap-2 lg:order-2 lg:justify-self-end">
-            <Text className="font-sans text-sm font-semibold text-white">
-              {t("footer.newsletter_title")}
-            </Text>
-            <Text className="font-sans text-xs leading-5 text-green-200">
-              {t("footer.newsletter_subtitle")}
-            </Text>
-            <View className="mt-1 flex-col gap-2 sm:flex-row">
-              <TextInput
-                value={newsletterEmail}
-                onChangeText={setNewsletterEmail}
-                className="min-w-0 w-full flex-1 rounded-lg border border-white/20 bg-white/10 px-3 py-2 font-sans text-sm text-white"
-                placeholder={t("footer.newsletter_email_placeholder")}
-                placeholderTextColor="#bbf7d0"
-                keyboardType="email-address"
-                autoCapitalize="none"
-              />
-              <Pressable
-                disabled={newsletterStatus === "loading"}
-                onPress={handleNewsletterSubmit}
-                className="shrink-0 items-center justify-center rounded-lg bg-white px-4 py-2 disabled:opacity-60 sm:self-stretch">
-                <Text className="font-sans text-sm font-semibold text-green-700">
-                  {newsletterStatus === "loading" ? t("footer.newsletter_subscribing") : t("footer.newsletter_subscribe")}
-                </Text>
-              </Pressable>
-            </View>
-            {newsletterMessage ? (
-              <Text
-                className={`font-sans text-xs leading-5 ${
-                  newsletterStatus === "success" ? "text-green-200" : "text-red-200"
-                }`}>
-                {newsletterMessage}
-              </Text>
-            ) : null}
-          </View>
-        </View>
-
-        <View className="mt-10 gap-3 border-t border-white/10 pt-8 sm:flex-row sm:items-center sm:justify-between">
-          <View className="min-w-0 flex-1">
-            <Text className="font-sans text-sm leading-6 text-gray-500 dark:text-slate-500">
-              {t("footer.copyright_label", { year: new Date().getFullYear() })}{" "}
-              <Text
-                className="text-gray-400 dark:text-slate-400"
-                style={{ fontFamily: "Torus-SemiBold" }}
-              >
-                {t("header.logo_text")}
-              </Text>
-              {" · "}
-              {t("footer.rights_reserved")}
-            </Text>
-          </View>
-          <Text className="max-w-md font-sans text-sm text-gray-500 dark:text-slate-500 sm:text-right">
-            {t("footer.copyright")}
-          </Text>
-        </View>
-      </View>
-    </View>
-  );
-}
-
 type AppLayoutProps = PropsWithChildren<{
   scrollEnabled?: boolean;
   showNativeBottomTabs?: boolean;
@@ -823,7 +565,7 @@ function NativeBottomTabs() {
   const auth = useNativeAuth();
   const { isDark } = useTheme();
   const totalItems = useBuyerCartCount();
-  const accountHref = auth.user ? getRoleDestination(auth.user) : "/login";
+  const accountHref = "/account" as Href;
   const activeColor = "#16a34a";
   const inactiveColor = isDark ? "#94a3b8" : "#64748b";
   const borderColor = isDark ? "#1e293b" : "#e5e7eb";

@@ -6,6 +6,26 @@ import type { SellerProductFormData, SellerProductImage } from '@/utils/native-a
 const DRAFT_KEY = 'pyonea_product_draft_v1';
 const DRAFT_IMAGES_KEY = 'pyonea_product_draft_images_v1';
 
+/** Legacy Pyonea web keys (same origin migration). */
+const LEGACY_DRAFT_KEY = 'product_draft';
+const LEGACY_DRAFT_IMAGES_KEY = 'product_image_previews';
+
+export type ProductDraftPersistContext = {
+  isEditingExisting: boolean;
+  draftRestored: boolean;
+  draftPersistEnabled: boolean;
+  hasCreatedProductId: boolean;
+};
+
+export function shouldAutoSaveProductDraft(context: ProductDraftPersistContext): boolean {
+  return (
+    !context.isEditingExisting &&
+    context.draftRestored &&
+    context.draftPersistEnabled &&
+    !context.hasCreatedProductId
+  );
+}
+
 const isWebStorageAvailable = () => Platform.OS === 'web' && typeof localStorage !== 'undefined';
 
 const readRaw = async (key: string): Promise<string | null> => {
@@ -41,18 +61,36 @@ const writeRaw = async (key: string, value: string | null): Promise<void> => {
   }
 };
 
-export async function loadProductDraft(): Promise<Partial<SellerProductFormData> | null> {
-  const raw = await readRaw(DRAFT_KEY);
-  if (!raw) return null;
+const parseDraftRecord = (raw: string): Partial<SellerProductFormData> | null => {
   try {
     const parsed = JSON.parse(raw);
-    return parsed && typeof parsed === 'object' && !Array.isArray(parsed)
-      ? (parsed as Partial<SellerProductFormData>)
-      : null;
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null;
+    const draft = { ...(parsed as Partial<SellerProductFormData>) };
+    delete draft.id;
+    delete draft.images;
+    return draft;
   } catch {
+    return null;
+  }
+};
+
+export async function loadProductDraft(): Promise<Partial<SellerProductFormData> | null> {
+  let raw = await readRaw(DRAFT_KEY);
+  if (!raw) {
+    raw = await readRaw(LEGACY_DRAFT_KEY);
+    if (raw) {
+      await writeRaw(DRAFT_KEY, raw);
+      await writeRaw(LEGACY_DRAFT_KEY, null);
+    }
+  }
+  if (!raw) return null;
+
+  const draft = parseDraftRecord(raw);
+  if (!draft) {
     await writeRaw(DRAFT_KEY, null);
     return null;
   }
+  return draft;
 }
 
 export async function saveProductDraft(form: SellerProductFormData): Promise<void> {
@@ -63,8 +101,16 @@ export async function saveProductDraft(form: SellerProductFormData): Promise<voi
 }
 
 export async function loadProductDraftImages(): Promise<SellerProductImage[]> {
-  const raw = await readRaw(DRAFT_IMAGES_KEY);
+  let raw = await readRaw(DRAFT_IMAGES_KEY);
+  if (!raw) {
+    raw = await readRaw(LEGACY_DRAFT_IMAGES_KEY);
+    if (raw) {
+      await writeRaw(DRAFT_IMAGES_KEY, raw);
+      await writeRaw(LEGACY_DRAFT_IMAGES_KEY, null);
+    }
+  }
   if (!raw) return [];
+
   try {
     const parsed = JSON.parse(raw);
     return Array.isArray(parsed) ? (parsed as SellerProductImage[]) : [];
@@ -91,6 +137,10 @@ export async function saveProductDraftImages(images: SellerProductImage[]): Prom
 }
 
 export async function clearProductDraft(): Promise<void> {
-  await writeRaw(DRAFT_KEY, null);
-  await writeRaw(DRAFT_IMAGES_KEY, null);
+  await Promise.all([
+    writeRaw(DRAFT_KEY, null),
+    writeRaw(DRAFT_IMAGES_KEY, null),
+    writeRaw(LEGACY_DRAFT_KEY, null),
+    writeRaw(LEGACY_DRAFT_IMAGES_KEY, null),
+  ]);
 }
