@@ -2552,7 +2552,7 @@ const mapSellerManagedProduct = (product: UnknownRecord): SellerManagedProduct =
     brand: getString(product.brand),
     categoryId: getString(product.category_id || category.id),
     categoryName: getString(category.name_en || category.name_mm || product.category_name, 'Uncategorized'),
-    imageUrl: getNativeImageUrl(product.image || product.primary_image || product.thumbnail || product.images),
+    imageUrl: resolveProductImageFromRecord(product),
     priceValue,
     price: formatMMK(priceValue),
     salePriceValue: computedSalePrice,
@@ -3492,11 +3492,56 @@ export const getNativeImageUrl = (image: unknown): string | undefined => {
   }
 
   if (Array.isArray(image)) {
-    return getNativeImageUrl(image[0]);
+    if (image.length === 0) return undefined;
+
+    const primary = image.find(
+      (item) => isRecord(item) && (item.is_primary === true || item.isPrimary === true)
+    );
+
+    for (const item of primary ? [primary, ...image.filter((entry) => entry !== primary)] : image) {
+      const url = getNativeImageUrl(item);
+      if (url) return url;
+    }
+
+    return undefined;
   }
 
   if (isRecord(image)) {
-    return getNativeImageUrl(image.url ?? image.path ?? image.image);
+    const nested =
+      image.url ??
+      image.path ??
+      image.image ??
+      image.full_url ??
+      image.image_url ??
+      image.fullUrl;
+
+    if (nested == null || nested === '') return undefined;
+    return getNativeImageUrl(nested);
+  }
+
+  return undefined;
+};
+
+const resolveProductImageFromRecord = (product: UnknownRecord): string | undefined => {
+  const sources: unknown[] = [];
+
+  if (Array.isArray(product.images)) {
+    const primary = product.images.find(
+      (item) => isRecord(item) && (item.is_primary === true || item.isPrimary === true)
+    );
+    if (primary) sources.push(primary);
+    sources.push(...product.images);
+  }
+
+  if (product.image) sources.push(product.image);
+  if (product.primary_image) sources.push(product.primary_image);
+  if (product.thumbnail) sources.push(product.thumbnail);
+  if (product.image_url) sources.push(product.image_url);
+  if (product.imageUrl) sources.push(product.imageUrl);
+
+  for (const source of sources) {
+    const url = getNativeImageUrl(source);
+    if (url) return url;
   }
 
   return undefined;

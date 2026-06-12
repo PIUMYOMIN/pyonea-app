@@ -7,6 +7,9 @@ import {
   OptimizedImage,
   productGridImageTransition,
 } from '@/components/ui/optimized-image';
+import { getThumbUrl } from '@/utils/image-thumbs';
+
+const placeholderProduct = require('@/assets/images/placeholder-product.png');
 
 const getSourceUri = (source: ImageProps['source']): string | null => {
   if (!source) return null;
@@ -91,6 +94,32 @@ export function ProductImage({
           {...props}
         />
       ) : null}
+    </View>
+  );
+}
+
+/** Fixed-size product thumbnail for dense lists (dashboard tables, etc.). */
+export function ProductThumb({ imageUrl, size = 56 }: { imageUrl?: string; size?: number }) {
+  const thumbUri = imageUrl ? getThumbUrl(imageUrl, 160) : undefined;
+  const [failed, setFailed] = useState(false);
+
+  useEffect(() => {
+    setFailed(false);
+  }, [thumbUri]);
+
+  const source = !thumbUri || failed ? placeholderProduct : { uri: thumbUri };
+
+  return (
+    <View
+      className="overflow-hidden rounded-lg bg-gray-100 dark:bg-slate-700"
+      style={{ width: size, height: size }}>
+      <OptimizedImage
+        source={source}
+        style={{ width: size, height: size }}
+        contentFit="cover"
+        recyclingKey={thumbUri ?? 'product-thumb-placeholder'}
+        onError={() => setFailed(true)}
+      />
     </View>
   );
 }

@@ -52,7 +52,7 @@ type HomeFeedCache = {
   deals: LocalDeal[];
 };
 
-const HOME_FEATURED_LIMIT = isMarketplaceWeb ? 8 : 12;
+const HOME_FEATURED_LIMIT = isMarketplaceWeb ? 20 : 40;
 const HOME_SELLER_LIMIT = isMarketplaceWeb ? 4 : 6;
 const HOME_DEAL_PREVIEW_COUNT = 4;
 

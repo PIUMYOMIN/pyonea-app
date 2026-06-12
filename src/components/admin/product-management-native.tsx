@@ -1,5 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
+import { ProductThumb } from '@/components/ui/product-image';
 import { Link, router, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
@@ -31,6 +32,8 @@ const placeholderProduct = require('@/assets/images/placeholder-product.png');
 type ApprovalFilter = 'all' | 'approved' | 'pending' | 'rejected';
 type ActiveFilter = 'all' | 'active' | 'inactive';
 type BulkAction = '' | 'activate' | 'deactivate' | 'approve' | 'reject' | 'delete';
+
+const PRODUCTS_PER_PAGE = 10;
 
 const approvalTone: Record<string, { wrap: string; text: string }> = {
   approved: {
@@ -191,13 +194,7 @@ function ProductRow({
       </Pressable>
 
       <View className="w-72 flex-row gap-3 pr-4">
-        <View className="h-14 w-14 overflow-hidden rounded-lg bg-gray-100 dark:bg-slate-700">
-          <Image
-            source={product.imageUrl ? { uri: product.imageUrl } : placeholderProduct}
-            className="h-full w-full"
-            contentFit="cover"
-          />
-        </View>
+        <ProductThumb imageUrl={product.imageUrl} size={56} />
         <View className="min-w-0 flex-1">
           <Text className="font-sans text-sm font-medium text-gray-900 dark:text-slate-100" numberOfLines={2}>
             {product.name}
@@ -672,6 +669,7 @@ export function ProductManagementNative() {
   const [deleteTarget, setDeleteTarget] = useState<AdminManagedProduct | null>(null);
   const [previewProduct, setPreviewProduct] = useState<AdminProductDetail | null>(null);
   const [previewLoading, setPreviewLoading] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const filters = useMemo<AdminProductFilters>(
     () => ({
@@ -710,6 +708,23 @@ export function ProductManagementNative() {
     setSelectedIds((current) => current.filter((id) => products.some((product) => product.id === id)));
   }, [products]);
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, approvalFilter, activeFilter]);
+
+  const lastPage = Math.max(1, Math.ceil(products.length / PRODUCTS_PER_PAGE));
+
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * PRODUCTS_PER_PAGE;
+    return products.slice(start, start + PRODUCTS_PER_PAGE);
+  }, [currentPage, products]);
+
+  useEffect(() => {
+    if (currentPage > lastPage) {
+      setCurrentPage(lastPage);
+    }
+  }, [currentPage, lastPage]);
+
   const stats = useMemo(
     () => ({
       total: products.length,
@@ -720,10 +735,17 @@ export function ProductManagementNative() {
     [products],
   );
 
-  const allSelected = products.length > 0 && products.every((product) => selectedIds.includes(product.id));
+  const allSelected =
+    paginatedProducts.length > 0 &&
+    paginatedProducts.every((product) => selectedIds.includes(product.id));
 
   const toggleSelectAll = () => {
-    setSelectedIds(allSelected ? [] : products.map((product) => product.id));
+    const pageIds = paginatedProducts.map((product) => product.id);
+    if (allSelected) {
+      setSelectedIds((current) => current.filter((id) => !pageIds.includes(id)));
+      return;
+    }
+    setSelectedIds((current) => [...new Set([...current, ...pageIds])]);
   };
 
   const toggleSelect = (productId: string | number) => {
@@ -1147,7 +1169,7 @@ export function ProductManagementNative() {
                   </Text>
                 ))}
               </View>
-              {products.map((product) => (
+              {paginatedProducts.map((product) => (
                 <ProductRow
                   key={String(product.id)}
                   product={product}
@@ -1175,12 +1197,43 @@ export function ProductManagementNative() {
             </Text>
           </View>
         )}
-        <View className="border-t border-gray-200 bg-gray-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-700/50">
-          <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">
-            {t('admin.productManagement.showing', 'Showing')} {products.length}{' '}
-            {t('admin.productManagement.products', 'products')}
-          </Text>
-        </View>
+        {products.length > 0 ? (
+          <View className="flex-row flex-wrap items-center justify-between gap-3 border-t border-gray-200 bg-gray-50 px-4 py-4 dark:border-slate-700 dark:bg-slate-700/50">
+            <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">
+              {t('admin.productManagement.showing', 'Showing')}{' '}
+              {(currentPage - 1) * PRODUCTS_PER_PAGE + 1}–
+              {Math.min(currentPage * PRODUCTS_PER_PAGE, products.length)}{' '}
+              {t('admin.productManagement.of', 'of')} {products.length}{' '}
+              {t('admin.productManagement.products', 'products')}
+            </Text>
+            {lastPage > 1 ? (
+              <View className="flex-row items-center gap-2">
+                <Pressable
+                  disabled={currentPage <= 1}
+                  onPress={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                  className="rounded-lg border border-gray-300 px-3 py-1.5 disabled:opacity-40 dark:border-slate-600">
+                  <Text className="font-sans text-sm text-gray-700 dark:text-slate-300">
+                    {t('admin.verifiedSellers.pagination.previous', 'Previous')}
+                  </Text>
+                </Pressable>
+                <Text className="font-sans text-sm text-gray-600 dark:text-slate-400">
+                  {t('admin.verifiedSellers.pagination.page', 'Page {{current}} of {{last}}', {
+                    current: currentPage,
+                    last: lastPage,
+                  })}
+                </Text>
+                <Pressable
+                  disabled={currentPage >= lastPage}
+                  onPress={() => setCurrentPage((page) => page + 1)}
+                  className="rounded-lg border border-gray-300 px-3 py-1.5 disabled:opacity-40 dark:border-slate-600">
+                  <Text className="font-sans text-sm text-gray-700 dark:text-slate-300">
+                    {t('admin.verifiedSellers.pagination.next', 'Next')}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
+          </View>
+        ) : null}
       </View>
     </View>
   );

@@ -1,5 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
-import { OptimizedImage as Image } from '@/components/ui/optimized-image';
+import { ProductThumb } from '@/components/ui/product-image';
 import { useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
@@ -12,9 +12,9 @@ import {
   type SellerProductLimitUsage,
 } from '@/utils/native-api';
 
-const placeholderProduct = require('@/assets/images/placeholder-product.png');
-
 type StatusFilter = 'all' | 'active' | 'inactive';
+
+const PRODUCTS_PER_PAGE = 10;
 
 function ProductSummaryCard({
   icon,
@@ -89,13 +89,7 @@ function ProductRow({
   return (
     <View className="min-h-[84px] w-full flex-row items-center border-b border-gray-100 bg-white px-4 py-3 last:border-b-0 dark:border-slate-700 dark:bg-slate-800">
       <View className="w-80 flex-row gap-3 pr-4">
-        <View className="h-14 w-14 overflow-hidden rounded-lg bg-gray-100 dark:bg-slate-700">
-          <Image
-            source={product.imageUrl ? { uri: product.imageUrl } : placeholderProduct}
-            className="h-full w-full"
-            contentFit="cover"
-          />
-        </View>
+        <ProductThumb imageUrl={product.imageUrl} size={56} />
         <View className="min-w-0 flex-1">
           <Text className="font-sans text-sm font-medium text-gray-900 dark:text-slate-100" numberOfLines={2}>
             {product.name}
@@ -215,6 +209,7 @@ export function ProductManagementNative() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [deleteTarget, setDeleteTarget] = useState<SellerManagedProduct | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
 
   const loadProducts = async (showLoading = true) => {
     if (showLoading) setLoading(true);
@@ -250,6 +245,23 @@ export function ProductManagementNative() {
       return matchesSearch && matchesStatus;
     });
   }, [products, searchTerm, statusFilter]);
+
+  const lastPage = Math.max(1, Math.ceil(filteredProducts.length / PRODUCTS_PER_PAGE));
+
+  const paginatedProducts = useMemo(() => {
+    const start = (currentPage - 1) * PRODUCTS_PER_PAGE;
+    return filteredProducts.slice(start, start + PRODUCTS_PER_PAGE);
+  }, [currentPage, filteredProducts]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter]);
+
+  useEffect(() => {
+    if (currentPage > lastPage) {
+      setCurrentPage(lastPage);
+    }
+  }, [currentPage, lastPage]);
 
   const finiteLimit = limitUsage && limitUsage.productLimit !== -1;
   const productLimitReached = Boolean(finiteLimit && limitUsage.productsUsed >= limitUsage.productLimit);
@@ -437,12 +449,36 @@ export function ProductManagementNative() {
                   </Text>
                 ))}
               </View>
-              {filteredProducts.map((product) => (
+              {paginatedProducts.map((product) => (
                 <ProductRow key={String(product.id)} product={product} onToggle={toggleStatus} onDelete={setDeleteTarget} />
               ))}
             </View>
           </ScrollView>
-        ) : (
+        ) : null}
+
+        {filteredProducts.length > 0 && lastPage > 1 ? (
+          <View className="flex-row flex-wrap items-center justify-between gap-3 border-t border-gray-200 px-4 py-4 dark:border-slate-700">
+            <Text className="font-sans text-sm text-gray-600 dark:text-slate-400">
+              Page {currentPage} of {lastPage} ({filteredProducts.length} products)
+            </Text>
+            <View className="flex-row items-center gap-2">
+              <Pressable
+                disabled={currentPage <= 1}
+                onPress={() => setCurrentPage((page) => Math.max(1, page - 1))}
+                className="rounded-lg border border-gray-300 px-3 py-1.5 disabled:opacity-40 dark:border-slate-600">
+                <Text className="font-sans text-sm text-gray-700 dark:text-slate-300">Previous</Text>
+              </Pressable>
+              <Pressable
+                disabled={currentPage >= lastPage}
+                onPress={() => setCurrentPage((page) => page + 1)}
+                className="rounded-lg border border-gray-300 px-3 py-1.5 disabled:opacity-40 dark:border-slate-600">
+                <Text className="font-sans text-sm text-gray-700 dark:text-slate-300">Next</Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
+
+        {filteredProducts.length === 0 ? (
           <View className="items-center p-10">
             <Feather name="box" color="#94a3b8" size={58} />
             <Text className="mt-4 font-sans text-lg font-medium text-gray-900 dark:text-slate-100">No products found</Text>
@@ -460,7 +496,7 @@ export function ProductManagementNative() {
               </Pressable>
             ) : null}
           </View>
-        )}
+        ) : null}
       </View>
     </View>
   );

@@ -1,19 +1,14 @@
 import Feather from "@expo/vector-icons/Feather";
 import { OptimizedImage as Image } from "@/components/ui/optimized-image";
-import { Link, useGlobalSearchParams, usePathname, useRouter, type Href } from "expo-router";
+import { Link, useRouter, type Href } from "expo-router";
 import { useState, type ReactNode } from "react";
-import { Platform, Pressable, Text, TextInput, View } from "react-native";
+import { Pressable, Text, TextInput, View } from "react-native";
 
 import { NativeNotificationBell } from "@/components/notifications/native-notification-bell";
 import { BRAND_LOGO } from "@/constants/brand";
 import { useNativeAuth } from "@/context/native-auth";
 import { useTheme } from "@/context/theme";
-import {
-  mergeRouteLang,
-  normalizeLanguage,
-  useAppTranslation,
-  type SupportedLanguage,
-} from "@/i18n";
+import { useAppTranslation } from "@/i18n";
 
 type DashboardTopNavProps = {
   title: string;
@@ -24,13 +19,6 @@ type DashboardTopNavProps = {
   dashboardHref: Href;
   leadingAction?: ReactNode;
   showBrand?: boolean;
-};
-
-const languages: SupportedLanguage[] = ["en", "my"];
-
-const languageLabels: Record<SupportedLanguage, string> = {
-  en: "English",
-  my: "မြန်မာ",
 };
 
 function initials(name?: string | null) {
@@ -53,30 +41,16 @@ export function DashboardTopNav({
   showBrand = true,
 }: DashboardTopNavProps) {
   const router = useRouter();
-  const pathname = usePathname() || "/";
-  const params = useGlobalSearchParams() as Record<string, string | string[] | undefined>;
   const { user, logout } = useNativeAuth();
   const { isDark } = useTheme();
-  const { i18n, language, t } = useAppTranslation();
+  const { t } = useAppTranslation();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [languageOpen, setLanguageOpen] = useState(false);
   const canSearch = typeof searchTerm === "string" && Boolean(onSearchChange);
-  const activeLanguage = normalizeLanguage(language);
 
   const handleLogout = async () => {
     setMenuOpen(false);
     await logout();
     router.replace("/");
-  };
-
-  const changeLanguage = (nextLanguage: SupportedLanguage) => {
-    void i18n.changeLanguage(nextLanguage);
-    if (Platform.OS === "web") {
-      router.replace(
-        mergeRouteLang(pathname, params, nextLanguage) as Href,
-      );
-    }
-    setLanguageOpen(false);
   };
 
   return (
@@ -150,59 +124,7 @@ export function DashboardTopNav({
 
             <View className="relative">
               <Pressable
-                onPress={() => {
-                  setLanguageOpen((current) => !current);
-                  setMenuOpen(false);
-                }}
-                className="hidden h-10 flex-row items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 px-3 dark:border-slate-700 dark:bg-slate-950 sm:flex"
-              >
-                <Text className="font-sans text-xs font-black uppercase text-gray-700 dark:text-slate-200">
-                  {activeLanguage}
-                </Text>
-                <Feather
-                  name="chevron-down"
-                  color={isDark ? "#cbd5e1" : "#64748b"}
-                  size={14}
-                />
-              </Pressable>
-
-              {languageOpen ? (
-                <View className="absolute right-0 top-12 z-50 w-40 rounded-xl border border-gray-200 bg-white p-1.5 shadow-lg shadow-slate-900/10 dark:border-slate-700 dark:bg-slate-900">
-                  {languages.map((code) => {
-                    const active = activeLanguage === code;
-                    return (
-                      <Pressable
-                        key={code}
-                        onPress={() => changeLanguage(code)}
-                        className={`flex-row items-center justify-between rounded-lg px-3 py-2 ${
-                          active ? "bg-green-50 dark:bg-green-900/20" : ""
-                        }`}
-                      >
-                        <Text
-                          className={`font-sans text-sm font-semibold ${
-                            active
-                              ? "text-green-700 dark:text-green-300"
-                              : "text-gray-700 dark:text-slate-200"
-                          }`}
-                        >
-                          {languageLabels[code]}
-                        </Text>
-                        {active ? (
-                          <Feather name="check" color="#16a34a" size={15} />
-                        ) : null}
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              ) : null}
-            </View>
-
-            <View className="relative">
-              <Pressable
-                onPress={() => {
-                  setMenuOpen((current) => !current);
-                  setLanguageOpen(false);
-                }}
+                onPress={() => setMenuOpen((current) => !current)}
                 className="flex-row items-center gap-2 rounded-xl border border-gray-200 bg-gray-50 py-1.5 pl-1.5 pr-2 dark:border-slate-700 dark:bg-slate-950"
               >
                 <View className="h-8 w-8 items-center justify-center rounded-full bg-green-600">
@@ -284,41 +206,20 @@ export function DashboardTopNav({
           </View>
         </View>
 
-        <View className="gap-2 xl:flex-row xl:items-center xl:justify-between">
-          {canSearch ? (
-            <View className="min-h-11 flex-row items-center rounded-xl border border-gray-200 bg-gray-50 px-3 dark:border-slate-700 dark:bg-slate-950 md:hidden">
-              <Feather name="search" color="#94a3b8" size={16} />
-              <TextInput
-                value={searchTerm}
-                onChangeText={onSearchChange}
-                placeholder={t("search.placeholder", {
-                  defaultValue: "Search...",
-                })}
-                placeholderTextColor="#94a3b8"
-                className="ml-2 min-w-0 flex-1 font-sans text-sm text-gray-900 dark:text-slate-100"
-              />
-            </View>
-          ) : null}
-
-          <View className="flex-row items-center justify-end gap-2 sm:hidden">
-            {languages.map((code) => {
-              const active = activeLanguage === code;
-              return (
-                <Pressable
-                  key={code}
-                  onPress={() => changeLanguage(code)}
-                  className={`rounded-lg px-2.5 py-1.5 ${active ? "bg-green-600" : "bg-gray-100 dark:bg-slate-800"}`}
-                >
-                  <Text
-                    className={`font-sans text-xs font-bold uppercase ${active ? "text-white" : "text-gray-500 dark:text-slate-400"}`}
-                  >
-                    {code}
-                  </Text>
-                </Pressable>
-              );
-            })}
+        {canSearch ? (
+          <View className="min-h-11 flex-row items-center rounded-xl border border-gray-200 bg-gray-50 px-3 dark:border-slate-700 dark:bg-slate-950 md:hidden">
+            <Feather name="search" color="#94a3b8" size={16} />
+            <TextInput
+              value={searchTerm}
+              onChangeText={onSearchChange}
+              placeholder={t("search.placeholder", {
+                defaultValue: "Search...",
+              })}
+              placeholderTextColor="#94a3b8"
+              className="ml-2 min-w-0 flex-1 font-sans text-sm text-gray-900 dark:text-slate-100"
+            />
           </View>
-        </View>
+        ) : null}
       </View>
     </View>
   );
