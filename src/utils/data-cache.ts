@@ -4,6 +4,7 @@ export const DATA_CACHE_TTL = {
   categories: 5 * 60 * 1000,
   products: 3 * 60 * 1000,
   productDetail: 2 * 60 * 1000,
+  blogDetail: 2 * 60 * 1000,
   checkoutStatic: 10 * 60 * 1000,
 } as const;
 

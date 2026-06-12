@@ -7920,6 +7920,15 @@ export async function fetchBlogPosts(signal?: AbortSignal): Promise<BlogPost[]> 
 }
 
 export async function fetchBlogDetail(slug: string, signal?: AbortSignal): Promise<BlogDetail> {
+  return withDataCache(
+    `api:blog-detail:${slug}`,
+    DATA_CACHE_TTL.blogDetail,
+    async (requestSignal) => fetchBlogDetailUncached(slug, requestSignal),
+    signal,
+  );
+}
+
+async function fetchBlogDetailUncached(slug: string, signal?: AbortSignal): Promise<BlogDetail> {
   const payload = await apiGet(`/blog/${encodeURIComponent(slug)}`, signal);
   const postPayload = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
   const relatedPayload = isRecord(payload) && Array.isArray(payload.related) ? payload.related : [];

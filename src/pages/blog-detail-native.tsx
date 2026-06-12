@@ -128,19 +128,25 @@ export function BlogDetailNative({ initialDetail }: { initialDetail?: BlogDetail
   const slug = typeof params.slug === 'string' ? params.slug : '';
   const [post, setPost] = useState<BlogPost | null>(initialDetail?.post || null);
   const [related, setRelated] = useState<BlogPost[]>(initialDetail?.related || []);
-  const [loading, setLoading] = useState(!initialDetail?.post);
+  const [loading, setLoading] = useState(
+    () => !(initialDetail?.post && initialDetail.post.slug === slug),
+  );
   const [error, setError] = useState(false);
   const [copied, setCopied] = useState(false);
-  const hasInitialPost = Boolean(initialDetail?.post);
+  const loaderDetail =
+    initialDetail?.post?.slug === slug ? initialDetail : null;
+  const hasLoaderDetail = Boolean(loaderDetail?.post);
 
   useEffect(() => {
     const controller = new AbortController();
 
     const loadPost = async () => {
-      if (!hasInitialPost) setLoading(true);
+      if (!hasLoaderDetail) setLoading(true);
       setError(false);
       try {
-        const result = await fetchBlogDetail(slug, controller.signal);
+        const result = hasLoaderDetail
+          ? loaderDetail!
+          : await fetchBlogDetail(slug, controller.signal);
         if (!controller.signal.aborted) {
           setPost(result.post);
           setRelated(result.related);
@@ -159,7 +165,7 @@ export function BlogDetailNative({ initialDetail }: { initialDetail?: BlogDetail
     if (slug) void loadPost();
 
     return () => controller.abort();
-  }, [hasInitialPost, slug]);
+  }, [hasLoaderDetail, loaderDetail, slug]);
 
   const localized = useMemo(() => {
     if (!post) {
