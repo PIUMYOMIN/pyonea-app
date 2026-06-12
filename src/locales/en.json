@@ -2587,6 +2587,7 @@
       "option_name_placeholder": "Option name (e.g. Color)",
       "value_label_placeholder": "Label (e.g. Red)",
       "slug_placeholder": "Slug (auto-filled)",
+      "english_slug_placeholder": "English slug (e.g. red)",
       "pick_colour": "Pick colour",
       "required": "Required",
       "label": "Label",

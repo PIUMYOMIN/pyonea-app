@@ -4298,6 +4298,7 @@
       "option_name_placeholder": "Option အမည် (ဥပမာ Color)",
       "value_label_placeholder": "Label (ဥပမာ Red)",
       "slug_placeholder": "Slug (အလိုအလျောက်ဖြည့်မည်)",
+      "english_slug_placeholder": "English slug (ဥပမာ red)",
       "pick_colour": "အရောင်ရွေးပါ",
       "required": "မဖြစ်မနေရွေးချယ်ရမည်",
       "label": "Label",
