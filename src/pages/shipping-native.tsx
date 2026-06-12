@@ -4,7 +4,8 @@ import { createElement, useState } from 'react';
 import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
-import { useAppTranslation } from '@/i18n';
+import { NativeSeo } from '@/components/SEO/native-seo';
+import { mergeRouteLang, useAppTranslation } from '@/i18n';
 
 type Tone = 'blue' | 'green' | 'purple' | 'amber';
 
@@ -371,8 +372,9 @@ function DeliveryZonesTable({
 }
 
 export function ShippingNative() {
-  const { t } = useAppTranslation();
+  const { t, language } = useAppTranslation();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
+  const seoUrl = mergeRouteLang('/shipping', {}, language);
 
   const shippingMethods = [
     {
@@ -511,7 +513,13 @@ export function ShippingNative() {
   const notAvailable = t('shipping_page.zones.not_available');
 
   return (
-    <AppLayout>
+    <>
+      <NativeSeo
+        title={t('shipping_page.seo.title')}
+        description={t('shipping_page.seo.description')}
+        url={seoUrl}
+      />
+      <AppLayout>
       <View className="bg-gray-50 dark:bg-slate-950">
         <View className="bg-green-700">
           <View className="mx-auto w-full max-w-7xl px-4 py-14 sm:px-6 sm:py-20 lg:px-8">
@@ -792,6 +800,7 @@ export function ShippingNative() {
         </View>
       </View>
     </AppLayout>
+    </>
   );
 }
 

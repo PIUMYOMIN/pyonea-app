@@ -37,6 +37,96 @@
     <priority>0.8</priority>
   </url>
   <url>
+    <loc>https://pyonea.com/blog?lang=en</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pyonea.com/blog?lang=en" />
+    <xhtml:link rel="alternate" hreflang="my" href="https://pyonea.com/blog?lang=my" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pyonea.com/blog?lang=en" />
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>weekly</changefreq>
+    <priority>0.8</priority>
+  </url>
+  <url>
+    <loc>https://pyonea.com/bulk-order-tool?lang=en</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pyonea.com/bulk-order-tool?lang=en" />
+    <xhtml:link rel="alternate" hreflang="my" href="https://pyonea.com/bulk-order-tool?lang=my" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pyonea.com/bulk-order-tool?lang=en" />
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://pyonea.com/local-deals?lang=en</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pyonea.com/local-deals?lang=en" />
+    <xhtml:link rel="alternate" hreflang="my" href="https://pyonea.com/local-deals?lang=my" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pyonea.com/local-deals?lang=en" />
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://pyonea.com/pricing?lang=en</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pyonea.com/pricing?lang=en" />
+    <xhtml:link rel="alternate" hreflang="my" href="https://pyonea.com/pricing?lang=my" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pyonea.com/pricing?lang=en" />
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://pyonea.com/about-us?lang=en</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pyonea.com/about-us?lang=en" />
+    <xhtml:link rel="alternate" hreflang="my" href="https://pyonea.com/about-us?lang=my" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pyonea.com/about-us?lang=en" />
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://pyonea.com/help?lang=en</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pyonea.com/help?lang=en" />
+    <xhtml:link rel="alternate" hreflang="my" href="https://pyonea.com/help?lang=my" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pyonea.com/help?lang=en" />
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://pyonea.com/faq?lang=en</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pyonea.com/faq?lang=en" />
+    <xhtml:link rel="alternate" hreflang="my" href="https://pyonea.com/faq?lang=my" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pyonea.com/faq?lang=en" />
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://pyonea.com/shipping?lang=en</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pyonea.com/shipping?lang=en" />
+    <xhtml:link rel="alternate" hreflang="my" href="https://pyonea.com/shipping?lang=my" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pyonea.com/shipping?lang=en" />
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://pyonea.com/contact?lang=en</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pyonea.com/contact?lang=en" />
+    <xhtml:link rel="alternate" hreflang="my" href="https://pyonea.com/contact?lang=my" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pyonea.com/contact?lang=en" />
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
+    <loc>https://pyonea.com/seller-guidelines?lang=en</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pyonea.com/seller-guidelines?lang=en" />
+    <xhtml:link rel="alternate" hreflang="my" href="https://pyonea.com/seller-guidelines?lang=my" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pyonea.com/seller-guidelines?lang=en" />
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.6</priority>
+  </url>
+  <url>
     <loc>https://pyonea.com/compare?lang=en</loc>
     <xhtml:link rel="alternate" hreflang="en" href="https://pyonea.com/compare?lang=en" />
     <xhtml:link rel="alternate" hreflang="my" href="https://pyonea.com/compare?lang=my" />
@@ -44,6 +134,42 @@
     <lastmod>2026-06-12</lastmod>
     <changefreq>monthly</changefreq>
     <priority>0.5</priority>
+  </url>
+  <url>
+    <loc>https://pyonea.com/legal?lang=en</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pyonea.com/legal?lang=en" />
+    <xhtml:link rel="alternate" hreflang="my" href="https://pyonea.com/legal?lang=my" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pyonea.com/legal?lang=en" />
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://pyonea.com/terms?lang=en</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pyonea.com/terms?lang=en" />
+    <xhtml:link rel="alternate" hreflang="my" href="https://pyonea.com/terms?lang=my" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pyonea.com/terms?lang=en" />
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://pyonea.com/privacy-policy?lang=en</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pyonea.com/privacy-policy?lang=en" />
+    <xhtml:link rel="alternate" hreflang="my" href="https://pyonea.com/privacy-policy?lang=my" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pyonea.com/privacy-policy?lang=en" />
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
+  </url>
+  <url>
+    <loc>https://pyonea.com/return-policy?lang=en</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pyonea.com/return-policy?lang=en" />
+    <xhtml:link rel="alternate" hreflang="my" href="https://pyonea.com/return-policy?lang=my" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pyonea.com/return-policy?lang=en" />
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>yearly</changefreq>
+    <priority>0.4</priority>
   </url>
   <url>
     <loc>https://pyonea.com/products/titpintiyaintaeknwe?lang=en</loc>
@@ -889,6 +1015,24 @@
     <xhtml:link rel="alternate" hreflang="x-default" href="https://pyonea.com/sellers/fashion-style?lang=en" />
     <lastmod>2026-06-05</lastmod>
     <changefreq>weekly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://pyonea.com/blog/why-trust-between-sellers-and-buyers-matters?lang=en</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pyonea.com/blog/why-trust-between-sellers-and-buyers-matters?lang=en" />
+    <xhtml:link rel="alternate" hreflang="my" href="https://pyonea.com/blog/why-trust-between-sellers-and-buyers-matters?lang=my" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pyonea.com/blog/why-trust-between-sellers-and-buyers-matters?lang=en" />
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
+    <priority>0.7</priority>
+  </url>
+  <url>
+    <loc>https://pyonea.com/blog/how-to-find-wholesale-products-online-myanmar?lang=en</loc>
+    <xhtml:link rel="alternate" hreflang="en" href="https://pyonea.com/blog/how-to-find-wholesale-products-online-myanmar?lang=en" />
+    <xhtml:link rel="alternate" hreflang="my" href="https://pyonea.com/blog/how-to-find-wholesale-products-online-myanmar?lang=my" />
+    <xhtml:link rel="alternate" hreflang="x-default" href="https://pyonea.com/blog/how-to-find-wholesale-products-online-myanmar?lang=en" />
+    <lastmod>2026-06-12</lastmod>
+    <changefreq>monthly</changefreq>
     <priority>0.7</priority>
   </url>
 </urlset>
