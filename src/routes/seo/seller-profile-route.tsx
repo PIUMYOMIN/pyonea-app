@@ -10,7 +10,7 @@ import {
   resolveSeoLanguage,
   withPyoneaTitle,
 } from '@/utils/seo-localization';
-import { fetchAllSellerSlugs } from '@/utils/seo-export';
+import { fetchAllSellerSlugs, loadSeoDataWithRetry } from '@/utils/seo-export';
 import { shouldSkipDynamicSeoExport } from '@/utils/static-export';
 
 const firstParam = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
@@ -73,11 +73,7 @@ export async function loader(_request: unknown, params: Record<string, string | 
   const slug = firstParam(params.slug);
   if (!slug) return null;
 
-  try {
-    return await fetchSellerProfile(slug);
-  } catch {
-    return null;
-  }
+  return loadSeoDataWithRetry(`seller ${slug}`, () => fetchSellerProfile(slug));
 }
 
 export default function SellerProfileRoute() {

@@ -75,76 +75,8 @@ export const staticRouteSeoMy: Record<string, { title: string; description: stri
     description:
       'Verified Myanmar suppliers၊ seller profiles နှင့် wholesale catalogs များကို Pyonea တွင် ရှာဖွေပါ။',
   },
-  '/bulk-order-tool': {
-    title: 'Bulk Order Tool | Pyonea',
-    description:
-      'Myanmar suppliers များထံမှ bulk order ရွေးချယ်မှုများကို Pyonea B2B sourcing tool ဖြင့် တောင်းဆိုပါ။',
-  },
-  '/local-deals': {
-    title: 'Local Wholesale Deals | Pyonea',
-    description: 'Myanmar အတွင်း local wholesale deals နှင့် supplier promotions များကို Pyonea တွင် ရှာပါ။',
-  },
-  '/blog': {
-    title: 'Myanmar B2B Blog | Pyonea',
-    description:
-      'Myanmar wholesale buying၊ online selling၊ logistics နှင့် B2B growth အတွက် Pyonea guides များကို ဖတ်ပါ။',
-  },
-  '/pricing': {
-    title: 'Seller Pricing Plans | Pyonea',
-    description: 'Pyonea seller plans များကို နှိုင်းယှဉ်ပြီး Myanmar wholesale business ကို grow လုပ်ပါ။',
-  },
-  '/about-us': {
-    title: 'Pyonea အကြောင်း | Myanmar B2B Marketplace',
-    description:
-      'Pyonea သည် Myanmar businesses များကို trusted wholesale suppliers နှင့် buyers များနှင့် ဘယ်လို ချိတ်ဆက်ပေးသလဲ ဆိုတာ လေ့လာပါ။',
-  },
-  '/help': {
-    title: 'Help Center | Pyonea',
-    description:
-      'Buying၊ selling၊ bulk orders၊ shipping၊ payments နှင့် account support အတွက် Pyonea Help Center ကို သုံးပါ။',
-  },
-  '/faq': {
-    title: 'FAQ | Pyonea',
-    description:
-      'Pyonea accounts၊ suppliers၊ wholesale orders၊ payments၊ shipping နှင့် seller tools အကြောင်း FAQ များ။',
-  },
-  '/shipping': {
-    title: 'Shipping Information | Pyonea',
-    description:
-      'Myanmar wholesale orders အတွက် Pyonea shipping options၊ fees နှင့် delivery timelines ကို review လုပ်ပါ။',
-  },
-  '/contact': {
-    title: 'Contact Pyonea | Myanmar B2B Support',
-    description:
-      'Buyer support၊ seller support၊ partnerships နှင့် marketplace assistance အတွက် Pyonea ကို ဆက်သွယ်ပါ။',
-  },
-  '/seller-guidelines': {
-    title: 'Seller Guidelines | Pyonea',
-    description:
-      'Product listings၊ wholesale pricing နှင့် marketplace quality အတွက် Pyonea seller guidelines ကို ဖတ်ပါ။',
-  },
-  '/terms': {
-    title: 'Terms of Service | Pyonea',
-    description: 'Pyonea marketplace buyers, sellers and users အတွက် Terms of Service.',
-  },
-  '/privacy-policy': {
-    title: 'Privacy Policy | Pyonea',
-    description: 'Pyonea သည် user data ကို ဘယ်လို collect, use နှင့် protect လုပ်သလဲ ဆိုတာ လေ့လာပါ.',
-  },
-  '/return-policy': {
-    title: 'Return & Refund Policy | Pyonea',
-    description: 'Myanmar wholesale orders အတွက် Pyonea return နှင့် refund policy ကို review လုပ်ပါ.',
-  },
-  '/legal': {
-    title: 'Legal Information | Pyonea',
-    description: 'Pyonea marketplace users, buyers, sellers နှင့် partners အတွက် legal information.',
-  },
   '/compare': {
     title: 'Product Comparison | Pyonea',
     description: 'Myanmar wholesale products, pricing နှင့် sellers များကို Pyonea တွင် နှိုင်းယှဉ်ပါ.',
-  },
-  '/report': {
-    title: 'Report an Issue | Pyonea',
-    description: 'Product, seller, order သို့မဟုတ် marketplace issue များကို Pyonea support ထံ report လုပ်ပါ.',
   },
 };

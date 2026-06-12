@@ -14,15 +14,15 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppLayout } from '@/components/layout/app-layout';
-import { SITE_CONTAINER_CLASS, PRODUCT_LIST_GRID_CLASS } from '@/constants/layout';
-import {
-  CardSkeleton,
-  ProductListRow,
-  ProductListRowSkeleton,
-} from '@/components/marketplace-list-screen';
+import { NativeSeo } from '@/components/SEO/native-seo';
+import { ProductMarketplaceGrid, useProductGridColumns } from '@/components/marketplace/marketplace-grid';
+import { ProductListRowSkeleton } from '@/components/marketplace-list-screen';
+import { SITE_CONTAINER_CLASS } from '@/constants/layout';
 import { useTheme } from '@/context/theme';
 import { useAppTranslation } from '@/i18n';
+import { withPyoneaTitle } from '@/utils/seo-localization';
 import {
+  fetchCategoryDetail,
   fetchProductFilterCategories,
   fetchProductList,
   type BrowserCategory,
@@ -33,6 +33,14 @@ import { getScreenCache, setScreenCache } from '@/utils/screen-cache';
 import { SearchFiltersNative } from '@/components/marketplace/search-filters-native';
 
 const PRODUCT_LIST_CACHE_TTL_MS = 2 * 60 * 1000;
+
+function categoryExistsInTree(id: string, items: BrowserCategory[]): boolean {
+  for (const category of items) {
+    if (String(category.id) === id) return true;
+    if (categoryExistsInTree(id, category.children)) return true;
+  }
+  return false;
+}
 
 function ProductSearchBar({
   initialValue,
@@ -304,14 +312,7 @@ export function ProductListNative() {
   const mutedIconColor = isDark ? '#94a3b8' : '#64748b';
   const loadMoreLockRef = useRef(false);
   const queryKey = `${searchQuery}|${selectedCategory}|${minPrice}|${maxPrice}|${sortBy}|${sortOrder}`;
-  const productColumns = width >= 1280 ? 4 : width >= 640 ? 3 : 2;
-  const productRows = useMemo(() => {
-    const rows: HomeProduct[][] = [];
-    for (let index = 0; index < products.length; index += productColumns) {
-      rows.push(products.slice(index, index + productColumns));
-    }
-    return rows;
-  }, [productColumns, products]);
+  const productColumns = useProductGridColumns();
 
   const pushParams = (updates: Record<string, string | undefined>) => {
     const next = new URLSearchParams();
@@ -351,6 +352,24 @@ export function ProductListNative() {
 
     return () => controller.abort();
   }, []);
+
+  useEffect(() => {
+    if (!selectedCategory || categories.length === 0) return;
+    if (categoryExistsInTree(selectedCategory, categories)) return;
+
+    const controller = new AbortController();
+
+    void fetchCategoryDetail(selectedCategory, controller.signal)
+      .then((category) => {
+        if (controller.signal.aborted || !category?.id) return;
+        if (String(category.id) === selectedCategory) return;
+        pushParams({ category: String(category.id) });
+      })
+      .catch(() => undefined);
+
+    return () => controller.abort();
+    // Resolve legacy slug bookmarks once categories are loaded.
+  }, [categories, selectedCategory]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -461,8 +480,44 @@ export function ProductListNative() {
       ? t('products.search_results', { query: searchQuery })
       : t('products.all_products');
 
+  const seoDescription = useMemo(() => {
+    const categoryName = selectedCategory ? findCategoryName(selectedCategory) : '';
+    if (searchQuery && selectedCategory) {
+      return t('products.seo_search_category', {
+        query: searchQuery,
+        category: categoryName,
+        count: products.length,
+      });
+    }
+    if (searchQuery) {
+      return t('products.seo_search', { query: searchQuery, count: products.length });
+    }
+    if (selectedCategory) {
+      return t('products.seo_category', { category: categoryName });
+    }
+    return t('products.seo_default');
+  }, [categories, products.length, searchQuery, selectedCategory, t]);
+
+  const seoUrl = useMemo(() => {
+    const next = new URLSearchParams();
+    if (searchQuery) next.set('search', searchQuery);
+    if (selectedCategory) next.set('category', selectedCategory);
+    if (minPrice) next.set('min_price', minPrice);
+    if (maxPrice) next.set('max_price', maxPrice);
+    if (sortBy) next.set('sort_by', sortBy);
+    if (sortOrder) next.set('sort_order', sortOrder);
+    next.set('lang', activeLanguage);
+    return `/products?${next.toString()}`;
+  }, [activeLanguage, maxPrice, minPrice, searchQuery, selectedCategory, sortBy, sortOrder]);
+
   return (
-    <AppLayout onEndReached={loadMore}>
+    <>
+      <NativeSeo
+        title={withPyoneaTitle(title)}
+        description={seoDescription}
+        url={seoUrl}
+      />
+      <AppLayout onEndReached={loadMore}>
       <View className="min-w-0 bg-gray-50 py-6 dark:bg-slate-950 sm:py-8">
         <View className={`${SITE_CONTAINER_CLASS} min-w-0`}>
           <View className="mb-6">
@@ -657,23 +712,14 @@ export function ProductListNative() {
               ) : null}
 
               {loading && products.length === 0 ? (
-                <View className={PRODUCT_LIST_GRID_CLASS}>
-                  {Array.from({ length: 8 }).map((_, index) => (
-                    <CardSkeleton key={`product-skeleton-${index}`} />
-                  ))}
-                </View>
+                <ProductMarketplaceGrid products={[]} loading skeletonCount={8} />
               ) : products.length > 0 ? (
-                <View>
-                  {productRows.map((row, rowIndex) => (
-                    <ProductListRow
-                      key={`product-row-${rowIndex}`}
-                      row={row}
-                      productColumns={productColumns}
-                      rowIndex={rowIndex}
-                    />
-                  ))}
-                  {loadingMore ? <ProductListRowSkeleton productColumns={productColumns} /> : null}
-                </View>
+                <>
+                  <ProductMarketplaceGrid products={products} />
+                  {loadingMore ? (
+                    <ProductListRowSkeleton productColumns={productColumns} />
+                  ) : null}
+                </>
               ) : !loading ? (
                 <View className="w-full items-center py-16">
                   <Feather name="search" color={isDark ? '#475569' : '#cbd5e1'} size={48} />
@@ -701,6 +747,7 @@ export function ProductListNative() {
         </View>
       </View>
     </AppLayout>
+    </>
   );
 }
 

@@ -1,21 +1,40 @@
-// Google Analytics 4 via react-ga4. Tracking is gated on cookie consent.
-
-import ReactGA from 'react-ga4';
+// Google Analytics 4 via react-ga4. Loaded on demand after cookie consent.
 
 import { GA_MEASUREMENT_ID } from '@/config/native';
 
+type ReactGAClient = typeof import('react-ga4').default;
+
+let gaClient: ReactGAClient | null = null;
 let initialised = false;
+let initPromise: Promise<void> | null = null;
+
+async function loadGA() {
+  if (gaClient) return gaClient;
+  const mod = await import('react-ga4');
+  gaClient = mod.default;
+  return gaClient;
+}
 
 export const initGA = () => {
   if (initialised || !GA_MEASUREMENT_ID) return;
-  if (typeof window !== 'undefined') {
-    (window as unknown as Record<string, boolean>)[`ga-disable-${GA_MEASUREMENT_ID}`] = false;
+  if (typeof window === 'undefined') return;
+
+  if (!initPromise) {
+    initPromise = loadGA()
+      .then((ReactGA) => {
+        (window as unknown as Record<string, boolean>)[`ga-disable-${GA_MEASUREMENT_ID}`] = false;
+        ReactGA.initialize(GA_MEASUREMENT_ID, {
+          gaOptions: { anonymize_ip: true },
+          gtagOptions: { send_page_view: false },
+        });
+        initialised = true;
+      })
+      .catch(() => {
+        initPromise = null;
+      });
   }
-  ReactGA.initialize(GA_MEASUREMENT_ID, {
-    gaOptions: { anonymize_ip: true },
-    gtagOptions: { send_page_view: false },
-  });
-  initialised = true;
+
+  void initPromise;
 };
 
 export const disableGA = () => {
@@ -24,13 +43,14 @@ export const disableGA = () => {
     (window as unknown as Record<string, boolean>)[`ga-disable-${GA_MEASUREMENT_ID}`] = true;
   }
   initialised = false;
+  initPromise = null;
 };
 
 export const isInitialised = () => initialised;
 
 export const trackPageView = (path: string, title?: string) => {
-  if (!initialised) return;
-  ReactGA.send({
+  if (!initialised || !gaClient) return;
+  gaClient.send({
     hitType: 'pageview',
     page: path,
     title: title || (typeof document !== 'undefined' ? document.title : undefined),
@@ -43,8 +63,8 @@ export const trackEvent = (
   label?: string,
   value?: number
 ) => {
-  if (!initialised) return;
-  ReactGA.event({ category, action, label, value });
+  if (!initialised || !gaClient) return;
+  gaClient.event({ category, action, label, value });
 };
 
 export const trackViewItem = (product: {
@@ -57,8 +77,8 @@ export const trackViewItem = (product: {
   category?: { name_en?: string; name_mm?: string };
   seller?: { store_name?: string; name?: string };
 }) => {
-  if (!initialised) return;
-  ReactGA.event('view_item', {
+  if (!initialised || !gaClient) return;
+  gaClient.event('view_item', {
     currency: 'MMK',
     value: Number(product.selling_price ?? product.price ?? 0),
     items: [
@@ -87,9 +107,9 @@ export const trackAddToCart = (
   },
   quantity = 1
 ) => {
-  if (!initialised) return;
+  if (!initialised || !gaClient) return;
   const price = Number(product.selling_price ?? product.price ?? 0);
-  ReactGA.event('add_to_cart', {
+  gaClient.event('add_to_cart', {
     currency: 'MMK',
     value: price * quantity,
     items: [
@@ -112,8 +132,8 @@ export const trackRemoveFromCart = (item: {
   price?: number;
   quantity?: number;
 }) => {
-  if (!initialised) return;
-  ReactGA.event('remove_from_cart', {
+  if (!initialised || !gaClient) return;
+  gaClient.event('remove_from_cart', {
     currency: 'MMK',
     value: Number(item.price ?? 0) * (item.quantity ?? 1),
     items: [
@@ -137,8 +157,8 @@ export const trackBeginCheckout = (
   }>,
   subtotal?: number
 ) => {
-  if (!initialised) return;
-  ReactGA.event('begin_checkout', {
+  if (!initialised || !gaClient) return;
+  gaClient.event('begin_checkout', {
     currency: 'MMK',
     value: Number(subtotal ?? 0),
     items: (cartItems ?? []).map((item) => ({
@@ -165,8 +185,8 @@ export const trackPurchase = (order: {
     quantity?: number;
   }>;
 }) => {
-  if (!initialised) return;
-  ReactGA.event('purchase', {
+  if (!initialised || !gaClient) return;
+  gaClient.event('purchase', {
     transaction_id: order.order_number || String(order.id),
     currency: 'MMK',
     value: Number(order.total_amount ?? 0),
@@ -182,13 +202,13 @@ export const trackPurchase = (order: {
 };
 
 export const trackSignUp = (method = 'email') => {
-  if (!initialised) return;
-  ReactGA.event('sign_up', { method });
+  if (!initialised || !gaClient) return;
+  gaClient.event('sign_up', { method });
 };
 
 export const trackLogin = (method = 'email') => {
-  if (!initialised) return;
-  ReactGA.event('login', { method });
+  if (!initialised || !gaClient) return;
+  gaClient.event('login', { method });
 };
 
 export const trackAddToWishlist = (product: {
@@ -199,8 +219,8 @@ export const trackAddToWishlist = (product: {
   selling_price?: number;
   price?: number;
 }) => {
-  if (!initialised) return;
-  ReactGA.event('add_to_wishlist', {
+  if (!initialised || !gaClient) return;
+  gaClient.event('add_to_wishlist', {
     currency: 'MMK',
     value: Number(product.selling_price ?? product.price ?? 0),
     items: [
@@ -215,6 +235,6 @@ export const trackAddToWishlist = (product: {
 };
 
 export const trackSearch = (searchTerm: string) => {
-  if (!initialised) return;
-  ReactGA.event('search', { search_term: searchTerm });
+  if (!initialised || !gaClient) return;
+  gaClient.event('search', { search_term: searchTerm });
 };

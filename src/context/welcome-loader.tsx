@@ -1,37 +1,49 @@
 import { usePathname } from 'expo-router';
-import { createContext, useContext, useMemo, useState, type PropsWithChildren } from 'react';
+import { useCallback, useEffect, useState, type PropsWithChildren } from 'react';
 import { Platform } from 'react-native';
 
 import { usePyoneaWelcomeLoader } from '@/hooks/use-pyonea-welcome-loader';
+import { hasSeenWelcomeLoader } from '@/utils/welcome-loader-storage';
 
-type WelcomeLoaderContextValue = {
-  setHomeDataProgress: (progress: number) => void;
-};
-
-const WelcomeLoaderContext = createContext<WelcomeLoaderContextValue | null>(null);
-
-function isHomePathname(pathname: string) {
-  return pathname === '/' || pathname === '';
-}
+/** Safety cap — splash should disappear on the first React paint. */
+const WELCOME_MAX_WAIT_MS = 3_000;
 
 export function WelcomeLoaderProvider({ children }: PropsWithChildren) {
   const pathname = usePathname();
-  const [homeDataProgress, setHomeDataProgress] = useState(0);
-  const isHome = isHomePathname(pathname);
-  const dataProgress = isHome ? homeDataProgress : 100;
+  const [contentDisplayed, setContentDisplayed] = useState(false);
 
-  usePyoneaWelcomeLoader(dataProgress, Platform.OS === 'web');
+  const markWelcomeContentDisplayed = useCallback(() => {
+    setContentDisplayed(true);
+  }, []);
 
-  const value = useMemo(
-    () => ({
-      setHomeDataProgress,
-    }),
-    [],
-  );
+  useEffect(() => {
+    setContentDisplayed(false);
+  }, [pathname]);
 
-  return <WelcomeLoaderContext.Provider value={value}>{children}</WelcomeLoaderContext.Provider>;
-}
+  useEffect(() => {
+    if (Platform.OS !== 'web' || hasSeenWelcomeLoader()) return;
 
-export function useWelcomeLoaderProgress() {
-  return useContext(WelcomeLoaderContext);
+    let raf = 0;
+    raf = requestAnimationFrame(() => {
+      markWelcomeContentDisplayed();
+    });
+
+    return () => {
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [pathname, markWelcomeContentDisplayed]);
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || hasSeenWelcomeLoader() || contentDisplayed) return;
+
+    const timeout = window.setTimeout(() => {
+      markWelcomeContentDisplayed();
+    }, WELCOME_MAX_WAIT_MS);
+
+    return () => window.clearTimeout(timeout);
+  }, [pathname, contentDisplayed, markWelcomeContentDisplayed]);
+
+  usePyoneaWelcomeLoader(contentDisplayed, Platform.OS === 'web');
+
+  return children;
 }

@@ -4,6 +4,7 @@ import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-nativ
 import { useState } from 'react';
 
 import { MoreFromSellerCarousel } from '@/components/product/more-from-seller-carousel';
+import { ProductMarketplaceGrid } from '@/components/marketplace/marketplace-grid';
 import { useTheme } from '@/context/theme';
 import { useAppTranslation } from '@/i18n';
 import type { HomeProduct, ProductDetail, ProductReview } from '@/utils/native-api';
@@ -79,23 +80,7 @@ function ReviewItem({ review }: { review: ProductReview }) {
 }
 
 function MoreFromSellerSkeleton() {
-  return (
-    <View className="grid grid-cols-2 gap-3 sm:grid-cols-3 sm:gap-4 lg:grid-cols-4">
-      {Array.from({ length: 8 }, (_, index) => (
-        <View
-          key={index}
-          className="min-w-0 overflow-hidden rounded-2xl border border-gray-100 bg-white dark:border-slate-800 dark:bg-slate-800"
-        >
-          <View className="aspect-square animate-pulse bg-gray-200 dark:bg-slate-700" />
-          <View className="gap-2 p-3">
-            <View className="h-4 w-3/4 animate-pulse rounded bg-gray-200 dark:bg-slate-700" />
-            <View className="h-3 w-1/2 animate-pulse rounded bg-gray-200 dark:bg-slate-700" />
-            <View className="mt-3 h-8 animate-pulse rounded-xl bg-gray-200 dark:bg-slate-700" />
-          </View>
-        </View>
-      ))}
-    </View>
-  );
+  return <ProductMarketplaceGrid products={[]} loading skeletonCount={4} skeletonRows={2} />;
 }
 
 export function ProductDetailSecondarySections({

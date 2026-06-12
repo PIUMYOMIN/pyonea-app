@@ -4264,16 +4264,25 @@ export async function fetchCategoryDetail(
   slug: string,
   signal?: AbortSignal
 ): Promise<CategoryDetail | null> {
+  // Myanmar slugs can arrive percent-encoded (e.g. during static export),
+  // which would never match the raw unicode slugs from the category tree.
+  let normalizedSlug = slug;
+  try {
+    normalizedSlug = decodeURIComponent(slug);
+  } catch {
+    // Keep the raw value if it isn't valid percent-encoding.
+  }
+
   return withDataCache(
-    `api:category-detail:${slug}`,
+    `api:category-detail:${normalizedSlug}`,
     DATA_CACHE_TTL.categories,
     async (requestSignal) => {
       const tree = await fetchCategoryBrowser(requestSignal);
       const match = flattenBrowserCategories(tree).find(
         (category) =>
-          category.slugEn === slug ||
-          category.slugMm === slug ||
-          String(category.id) === slug
+          category.slugEn === normalizedSlug ||
+          category.slugMm === normalizedSlug ||
+          String(category.id) === normalizedSlug
       );
 
       if (!match) return null;

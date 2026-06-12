@@ -1,8 +1,9 @@
 import Feather from '@expo/vector-icons/Feather';
-import { Link } from 'expo-router';
 import { useState } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+
+import { externalSiteUrl } from '@/config/native';
 
 import { useCookies, type CookiePreferences } from '@/context/cookies';
 import { useAppTranslation } from '@/i18n';
@@ -194,11 +195,11 @@ export function CookieBannerNative() {
                   {isMM
                     ? 'We use cookies to enhance your experience and analyse site usage.'
                     : 'We use cookies to enhance your experience and analyse site usage.'}{' '}
-                  <Link href="/privacy-policy" asChild>
+                  <Pressable onPress={() => void Linking.openURL(externalSiteUrl('/privacy-policy'))}>
                     <Text className="font-sans text-xs font-semibold text-green-700 dark:text-green-300">
                       {isMM ? 'Learn more' : 'Learn more'}
                     </Text>
-                  </Link>
+                  </Pressable>
                 </Text>
               </View>
             </View>

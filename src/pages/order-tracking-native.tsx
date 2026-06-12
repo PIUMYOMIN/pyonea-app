@@ -2,7 +2,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { Link, useLocalSearchParams, useRouter } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { Pressable, Text, TextInput, View } from 'react-native';
+import { Linking, Pressable, Text, TextInput, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { useAppTranslation } from '@/i18n';
@@ -497,13 +497,13 @@ function HelpSection() {
         <Text className="mb-4 mt-1 text-center font-sans text-xs text-green-700 dark:text-green-300">
           {t('order_tracking.need_help_desc')}
         </Text>
-        <Link href="/contact" asChild>
-          <Pressable className="rounded-xl bg-green-600 px-5 py-2.5">
-            <Text className="font-sans text-sm font-semibold text-white">
-              {t('order_tracking.contact_support')}
-            </Text>
-          </Pressable>
-        </Link>
+        <Pressable
+          onPress={() => void Linking.openURL('mailto:contact@pyonea.com')}
+          className="rounded-xl bg-green-600 px-5 py-2.5">
+          <Text className="font-sans text-sm font-semibold text-white">
+            {t('order_tracking.contact_support')}
+          </Text>
+        </Pressable>
       </View>
     </View>
   );

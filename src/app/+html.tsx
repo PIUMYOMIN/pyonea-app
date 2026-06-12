@@ -20,14 +20,6 @@ html.dark {
   --welcome-stroke: #444444;
 }
 
-@font-face {
-  font-family: 'Torus-SemiBold';
-  src: url('/fonts/Torus-SemiBold.woff2') format('woff2');
-  font-weight: 600;
-  font-style: normal;
-  font-display: swap;
-}
-
 html,
 body {
   min-height: 100%;
@@ -46,7 +38,7 @@ body {
   align-items: center;
   justify-content: center;
   background: var(--app-bg);
-  transition: opacity 260ms ease, visibility 260ms ease;
+  transition: opacity 120ms ease, visibility 120ms ease;
 }
 
 #pyonea-web-loader.is-hidden {
@@ -70,7 +62,7 @@ body {
 
 .pyonea-fill-outline,
 .pyonea-fill-text {
-  font-family: 'Torus-SemiBold', ui-sans-serif, system-ui, sans-serif;
+  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
   font-size: clamp(3rem, 12vw, 8rem);
   font-weight: 600;
   line-height: 1.15;
@@ -96,7 +88,6 @@ body {
   max-width: 100%;
   justify-self: start;
   align-self: stretch;
-  transition: width 450ms ease-out;
   will-change: width;
 }
 
@@ -109,15 +100,12 @@ body {
 
 const loaderScript = `
 (function () {
-  var HALF_MS = 1200;
-  var FIRST_TARGET = 80;
   var loader = document.getElementById('pyonea-web-loader');
   if (!loader) return;
 
   var fillWrap = loader.querySelector('.pyonea-fill-wrap');
   var fillClip = loader.querySelector('.pyonea-fill-clip');
   var startedAt = Date.now();
-  var bootstrapRaf = 0;
 
   function applyProgress(progress) {
     var clamped = Math.max(0, Math.min(100, Number(progress) || 0));
@@ -135,36 +123,17 @@ const loaderScript = `
   }
 
   function hideLoader() {
-    if (bootstrapRaf) {
-      cancelAnimationFrame(bootstrapRaf);
-      bootstrapRaf = 0;
-    }
     loader.classList.add('is-hidden');
     window.setTimeout(function () {
       if (loader && loader.parentNode) {
         loader.parentNode.removeChild(loader);
       }
       delete window.__pyoneaWelcome;
-    }, 280);
-  }
-
-  function bootstrapHalfFill() {
-    var elapsed = Date.now() - startedAt;
-    var firstProgress = Math.min(FIRST_TARGET, (elapsed / HALF_MS) * FIRST_TARGET);
-    applyProgress(firstProgress);
-    if (firstProgress < FIRST_TARGET) {
-      bootstrapRaf = requestAnimationFrame(bootstrapHalfFill);
-    }
+    }, 130);
   }
 
   window.__pyoneaWelcome = {
-    setProgress: function (progress) {
-      if (bootstrapRaf) {
-        cancelAnimationFrame(bootstrapRaf);
-        bootstrapRaf = 0;
-      }
-      applyProgress(progress);
-    },
+    setProgress: applyProgress,
     hide: hideLoader,
     startedAt: startedAt,
   };
@@ -176,14 +145,13 @@ const loaderScript = `
     }
   } catch (e) {}
 
-  applyProgress(0);
-  bootstrapRaf = requestAnimationFrame(bootstrapHalfFill);
+  applyProgress(72);
 
   window.setTimeout(function () {
     if (window.__pyoneaWelcome) {
       hideLoader();
     }
-  }, 30000);
+  }, 5000);
 })();
 `;
 
@@ -257,13 +225,6 @@ export default function RootHtml({ children }: PropsWithChildren) {
         {preconnectOrigins.map((origin) => (
           <link key={`${origin}-dns`} rel="dns-prefetch" href={origin} />
         ))}
-        <link
-          rel="preload"
-          href="/fonts/Torus-SemiBold.woff2"
-          as="font"
-          type="font/woff2"
-          crossOrigin="anonymous"
-        />
         {headNodes}
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
         <style dangerouslySetInnerHTML={{ __html: loaderStyles }} />

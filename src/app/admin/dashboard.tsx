@@ -1,3 +1,6 @@
-import { AdminDashboardNative } from '@/pages/admin-dashboard-native';
+import { lazyRouteScreen } from '@/utils/lazy-route-screen';
 
-export default AdminDashboardNative;
+export default lazyRouteScreen(
+  () => import('@/pages/admin-dashboard-native'),
+  'AdminDashboardNative',
+);

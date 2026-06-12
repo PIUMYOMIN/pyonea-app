@@ -86,14 +86,7 @@ export function getCategoryHref(
   category: HomeCategory | BrowserCategory,
   language: 'en' | 'my'
 ): Href {
-  const slugEn = category.slugEn || '';
-  const slugMm = category.slugMm || '';
-  const slug =
-    language === 'my'
-      ? slugMm || slugEn || String(category.id)
-      : slugEn || slugMm || String(category.id);
-
-  return `/categories/${slug}?lang=${language}` as Href;
+  return `/products?category=${encodeURIComponent(String(category.id))}&lang=${language}` as Href;
 }
 
 function CategoryGradientPlaceholder({

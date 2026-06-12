@@ -42,7 +42,7 @@ const indexableRoutes: Record<string, RouteSeo> = {
   '/products': {
     title: 'Wholesale Products in Myanmar | Pyonea',
     description:
-      'Browse Myanmar wholesale products with MOQ pricing, seller details, local deals, and bulk order options on Pyonea.',
+      'Browse Myanmar wholesale products with MOQ pricing, seller details, and trusted suppliers on Pyonea.',
     priority: 0.9,
   },
   '/categories': {
@@ -57,97 +57,10 @@ const indexableRoutes: Record<string, RouteSeo> = {
       'Find verified Myanmar suppliers, seller profiles, business details, and wholesale product catalogs on Pyonea.',
     priority: 0.8,
   },
-  '/bulk-order-tool': {
-    title: 'Bulk Order Tool for Myanmar B2B Buyers | Pyonea',
-    description:
-      'Request and compare bulk order options from Myanmar suppliers using Pyonea’s B2B sourcing tool.',
-    priority: 0.7,
-  },
-  '/local-deals': {
-    title: 'Local Wholesale Deals in Myanmar | Pyonea',
-    description:
-      'Discover local wholesale deals, limited offers, and supplier promotions across Myanmar on Pyonea.',
-    priority: 0.7,
-  },
-  '/blog': {
-    title: 'Myanmar B2B Wholesale Blog | Pyonea',
-    description:
-      'Read Pyonea guides for Myanmar wholesale buying, selling online, logistics, supplier trust, and B2B growth.',
-    type: 'article',
-    priority: 0.8,
-  },
-  '/pricing': {
-    title: 'Seller Pricing Plans | Pyonea',
-    description:
-      'Compare Pyonea seller plans for listing products, reaching buyers, and growing a Myanmar wholesale business.',
-    priority: 0.7,
-  },
-  '/about-us': {
-    title: 'About Pyonea | Myanmar B2B Wholesale Marketplace',
-    description:
-      'Learn how Pyonea helps Myanmar businesses connect with trusted wholesale suppliers and buyers.',
-    priority: 0.6,
-  },
-  '/help': {
-    title: 'Help Center | Pyonea',
-    description:
-      'Get help with buying, selling, bulk orders, shipping, payments, and account support on Pyonea.',
-    priority: 0.6,
-  },
-  '/faq': {
-    title: 'Frequently Asked Questions | Pyonea',
-    description:
-      'Find answers about Pyonea accounts, suppliers, wholesale orders, payments, shipping, and seller tools.',
-    priority: 0.6,
-  },
-  '/shipping': {
-    title: 'Shipping Information | Pyonea',
-    description:
-      'Review Pyonea shipping information for Myanmar wholesale orders, delivery options, fees, and timelines.',
-    priority: 0.6,
-  },
-  '/contact': {
-    title: 'Contact Pyonea | Myanmar B2B Marketplace Support',
-    description:
-      'Contact Pyonea for buyer support, seller support, partnership questions, and Myanmar marketplace assistance.',
-    priority: 0.6,
-  },
-  '/seller-guidelines': {
-    title: 'Seller Guidelines | Pyonea',
-    description:
-      'Read Pyonea seller guidelines for product listings, wholesale pricing, buyer communication, and marketplace quality.',
-    priority: 0.6,
-  },
-  '/terms': {
-    title: 'Terms of Service | Pyonea',
-    description: 'Read the Pyonea terms of service for buyers, sellers, and marketplace users.',
-    priority: 0.4,
-  },
-  '/privacy-policy': {
-    title: 'Privacy Policy | Pyonea',
-    description: 'Learn how Pyonea collects, uses, protects, and manages marketplace user data.',
-    priority: 0.4,
-  },
-  '/return-policy': {
-    title: 'Return & Refund Policy | Pyonea',
-    description:
-      'Review Pyonea return and refund policy for Myanmar wholesale orders and marketplace purchases.',
-    priority: 0.4,
-  },
-  '/legal': {
-    title: 'Legal Information | Pyonea',
-    description: 'Review legal information for Pyonea marketplace users, buyers, sellers, and partners.',
-    priority: 0.4,
-  },
   '/compare': {
     title: 'Product Comparison | Pyonea',
     description: 'Compare Myanmar wholesale products, pricing, sellers, and product details on Pyonea.',
     priority: 0.5,
-  },
-  '/report': {
-    title: 'Report a Marketplace Issue | Pyonea',
-    description: 'Report product, seller, order, or marketplace issues to Pyonea support.',
-    priority: 0.3,
   },
 };
 
@@ -162,10 +75,7 @@ const privatePrefixes = [
   '/forgot-password',
   '/reset-password',
   '/payment-success',
-  '/my-reports',
   '/track-order',
-  '/unsubscribe',
-  '/newsletter-confirm',
   '/newsletter/confirm',
 ];
 
@@ -184,8 +94,7 @@ const routeKeyFor = (pathname: string) => {
   const cleanPath = stripTrailingSlash(pathname || '/');
   if (cleanPath.startsWith('/products/')) return '/products';
   if (cleanPath.startsWith('/sellers/')) return '/sellers';
-  if (cleanPath.startsWith('/blog/')) return '/blog';
-  if (cleanPath.startsWith('/categories/')) return '/categories';
+  if (cleanPath.startsWith('/categories/')) return '/products';
   return cleanPath;
 };
 

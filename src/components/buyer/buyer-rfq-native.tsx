@@ -401,13 +401,6 @@ export function BuyerRfqNative() {
           </Text>
         </View>
         <View className="flex-row flex-wrap gap-2">
-          <Link href="/bulk-order-tool" asChild>
-            <Pressable className="rounded-lg bg-green-600 px-3 py-2">
-              <Text className="font-sans text-xs font-bold text-white">
-                {t('bulk_order.title', { defaultValue: 'Bulk order tool' })}
-              </Text>
-            </Pressable>
-          </Link>
           <Pressable onPress={() => void load()} className="rounded-lg border border-gray-300 px-3 py-2 dark:border-slate-600">
             <Feather name="refresh-cw" color="#64748b" size={16} />
           </Pressable>
@@ -491,13 +484,6 @@ export function BuyerRfqNative() {
               <Text className="mt-3 font-sans text-sm text-gray-500 dark:text-slate-400">
                 {t('rfq.empty.sent.title')}
               </Text>
-              <Link href="/bulk-order-tool" asChild>
-                <Pressable className="mt-4 rounded-lg bg-indigo-600 px-4 py-2">
-                  <Text className="font-sans text-sm font-bold text-white">
-                    {t('bulk_order.send_rfq', { defaultValue: 'Send bulk RFQ' })}
-                  </Text>
-                </Pressable>
-              </Link>
             </View>
           ) : (
             <View className="flex-row flex-wrap gap-4">

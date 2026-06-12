@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from "react";
 import {
   Image,
   KeyboardAvoidingView,
+  Linking,
   Platform,
   Pressable,
   Text,
@@ -13,6 +14,7 @@ import {
 } from "react-native";
 
 import { AppLayout } from "@/components/layout/app-layout";
+import { externalSiteUrl } from "@/config/native";
 import { BRAND_LOGO } from "@/constants/brand";
 import { useNativeAuth } from "@/context/native-auth";
 import { useAppTranslation } from "@/i18n";
@@ -897,30 +899,30 @@ export function RegisterScreen() {
               {t("register.terms_agree_prefix", {
                 defaultValue: "I agree to the",
               })}{" "}
-              <Link href="/terms" asChild>
+              <Pressable onPress={() => void Linking.openURL(externalSiteUrl("/terms"))}>
                 <Text className="font-medium text-green-600 dark:text-green-300">
                   {t("register.terms", { defaultValue: "Terms" })}
                 </Text>
-              </Link>{" "}
+              </Pressable>{" "}
               {t("register.and", { defaultValue: "and" })}{" "}
-              <Link href="/privacy-policy" asChild>
+              <Pressable onPress={() => void Linking.openURL(externalSiteUrl("/privacy-policy"))}>
                 <Text className="font-medium text-green-600 dark:text-green-300">
                   {t("register.privacy_policy", {
                     defaultValue: "Privacy Policy",
                   })}
                 </Text>
-              </Link>
+              </Pressable>
               {userType === "seller" ? (
                 <>
                   {" "}
                   {t("register.and_the", { defaultValue: "and the" })}{" "}
-                  <Link href="/seller-guidelines" asChild>
+                  <Pressable onPress={() => void Linking.openURL(externalSiteUrl("/seller-guidelines"))}>
                     <Text className="font-medium text-green-600 dark:text-green-300">
                       {t("register.seller_guidelines", {
                         defaultValue: "Seller Guidelines",
                       })}
                     </Text>
-                  </Link>
+                  </Pressable>
                 </>
               ) : null}
             </Text>

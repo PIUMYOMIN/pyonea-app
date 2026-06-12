@@ -3,14 +3,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
-import {
-  CATEGORY_BROWSER_GRID_CLASS,
-  SITE_CONTAINER_CLASS,
-} from '@/constants/layout';
-import {
-  CategoryCardFromBrowser,
-  CategoryCardSkeleton,
-} from '@/components/ui/category-card';
+import { CategoryMarketplaceGrid, CATEGORY_BROWSER_GRID_CLASS } from '@/components/marketplace/marketplace-grid';
+import { SITE_CONTAINER_CLASS } from '@/constants/layout';
+import { CategoryCardFromBrowser } from '@/components/ui/category-card';
 import { useAppTranslation } from '@/i18n';
 import { fetchCategoryBrowser, type BrowserCategory } from '@/utils/native-api';
 import { getScreenCache, setScreenCache } from '@/utils/screen-cache';
@@ -149,27 +144,34 @@ export function CategoryBrowserNative() {
               </Pressable>
             </View>
           ) : loading ? (
-            <View className={CATEGORY_BROWSER_GRID_CLASS}>
-              {Array.from({ length: 12 }).map((_, index) => (
-                <CategoryCardSkeleton key={`category-skeleton-${index}`} />
-              ))}
-            </View>
+            <CategoryMarketplaceGrid
+              items={[]}
+              webGridClass={CATEGORY_BROWSER_GRID_CLASS}
+              loading
+              skeletonCount={12}
+              skeletonRows={3}
+              keyExtractor={() => 'skeleton'}
+              renderItem={() => null}
+            />
           ) : filteredCategories.length > 0 ? (
             <>
               <Text className="mb-4 font-sans text-sm text-gray-500 dark:text-slate-500">
                 {t('categories.showing_categories', { count: filteredCategories.length })}
               </Text>
-              <View className={CATEGORY_BROWSER_GRID_CLASS}>
-                {visibleCategories.map((category, index) => (
+              <CategoryMarketplaceGrid
+                items={visibleCategories}
+                webGridClass={CATEGORY_BROWSER_GRID_CLASS}
+                skeletonCount={12}
+                keyExtractor={(category) => String(category.id)}
+                renderItem={(category, index) => (
                   <CategoryCardFromBrowser
-                    key={String(category.id)}
                     category={category}
                     language={language}
                     priority={index < 6}
                     className="w-full min-w-0"
                   />
-                ))}
-              </View>
+                )}
+              />
               {hasMoreCategories ? (
                 <View className="items-center py-4">
                   <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">

@@ -11,8 +11,8 @@ import { Platform, Pressable, Text, View } from "react-native";
 
 import { AppLayout } from "@/components/layout/app-layout";
 import { SiteSection } from "@/components/layout/site-container";
+import { ProductMarketplaceGrid } from "@/components/marketplace/marketplace-grid";
 import { CategoryCardFromHome } from "@/components/ui/category-card";
-import { PRODUCT_LIST_GRID_CLASS } from "@/constants/layout";
 import { useIsProductInCompare } from "@/context/compare-products-context";
 import { useNativeAuth } from "@/context/native-auth";
 import { useWishlistProductState } from "@/context/wishlist-context";
@@ -181,21 +181,20 @@ export function MarketplaceListScreen<T>({
           </Text>
         </View>
 
-        <View className={PRODUCT_LIST_GRID_CLASS}>
-          {loading ? (
-            Array.from({ length: skeletonCount }).map((_, index) => (
-              <CardSkeleton key={`skeleton-${index}`} />
-            ))
-          ) : items.length > 0 ? (
-            items.map(renderItem)
-          ) : (
-            <View className="w-full rounded-2xl border border-gray-100 bg-white p-8 dark:border-slate-800 dark:bg-slate-900">
-              <Text className="text-center font-sans text-base text-gray-500 dark:text-slate-400">
-                {error || emptyMessage}
-              </Text>
-            </View>
-          )}
-        </View>
+        {!loading && items.length === 0 ? (
+          <View className="w-full rounded-2xl border border-gray-100 bg-white p-8 dark:border-slate-800 dark:bg-slate-900">
+            <Text className="text-center font-sans text-base text-gray-500 dark:text-slate-400">
+              {error || emptyMessage}
+            </Text>
+          </View>
+        ) : (
+          <ProductMarketplaceGrid
+            products={items as HomeProduct[]}
+            loading={loading}
+            skeletonCount={skeletonCount}
+            imagePriorityCount={4}
+          />
+        )}
       </SiteSection>
     </AppLayout>
   );

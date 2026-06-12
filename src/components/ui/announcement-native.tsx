@@ -2,7 +2,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { useRouter, type Href } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Linking, Modal, Pressable, Text, View } from 'react-native';
+import { Linking, Modal, Platform, Pressable, Text, View } from 'react-native';
 
 import { SITE_CONTAINER_CLASS } from '@/constants/layout';
 import { useNativeAuth } from '@/context/native-auth';
@@ -256,8 +256,24 @@ export function AnnouncementNative() {
       }
     };
 
-    void load();
-    return () => controller.abort();
+    if (Platform.OS === 'web' && typeof requestIdleCallback === 'function') {
+      const idleId = requestIdleCallback(() => {
+        void load();
+      });
+      return () => {
+        cancelIdleCallback(idleId);
+        controller.abort();
+      };
+    }
+
+    const timeout = setTimeout(() => {
+      void load();
+    }, 1200);
+
+    return () => {
+      clearTimeout(timeout);
+      controller.abort();
+    };
   }, []);
 
   const eligible = useMemo(

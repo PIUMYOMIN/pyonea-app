@@ -1,3 +1,6 @@
-import { SellerDashboardNative } from '@/pages/seller-dashboard-native';
+import { lazyRouteScreen } from '@/utils/lazy-route-screen';
 
-export default SellerDashboardNative;
+export default lazyRouteScreen(
+  () => import('@/pages/seller-dashboard-native'),
+  'SellerDashboardNative',
+);

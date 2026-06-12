@@ -11,7 +11,7 @@ import {
   resolveSeoLanguage,
   withPyoneaTitle,
 } from '@/utils/seo-localization';
-import { fetchAllProductSlugs } from '@/utils/seo-export';
+import { fetchAllProductSlugs, loadSeoDataWithRetry } from '@/utils/seo-export';
 import { shouldSkipDynamicSeoExport } from '@/utils/static-export';
 
 const firstParam = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
@@ -88,11 +88,7 @@ export async function loader(_request: unknown, params: Record<string, string | 
   const slug = firstParam(params.slug);
   if (!slug) return null;
 
-  try {
-    return await fetchProductDetail(slug);
-  } catch {
-    return null;
-  }
+  return loadSeoDataWithRetry(`product ${slug}`, () => fetchProductDetail(slug));
 }
 
 export function ErrorBoundary({ retry }: ErrorBoundaryProps) {

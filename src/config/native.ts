@@ -4,6 +4,12 @@ export const SITE_PUBLIC_URL = trimTrailingSlash(
   process.env.EXPO_PUBLIC_APP_URL || 'https://pyonea.com'
 );
 
+/** Public marketing/legal pages hosted on the main site (removed from in-app routes). */
+export function externalSiteUrl(path: string) {
+  const normalized = path.startsWith('/') ? path : `/${path}`;
+  return `${SITE_PUBLIC_URL}${normalized}`;
+}
+
 export const API_BASE_URL = trimTrailingSlash(
   process.env.EXPO_PUBLIC_API_URL || 'https://api.pyonea.com/api/v1'
 );

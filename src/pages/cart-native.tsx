@@ -5,9 +5,10 @@ import { useCallback, useEffect, useState } from 'react';
 import { Pressable, Text, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
-import { HOME_CATEGORY_GRID_CLASS, PRODUCT_LIST_GRID_CLASS, SITE_CONTAINER_CLASS } from '@/constants/layout';
+import { CategoryMarketplaceGrid, ProductMarketplaceGrid } from '@/components/marketplace/marketplace-grid';
+import { SITE_CONTAINER_CLASS } from '@/constants/layout';
+import { CategoryListCard } from '@/components/marketplace-list-screen';
 import { useCartCount } from '@/context/cart-count-context';
-import { CategoryListCard, ProductListCard } from '@/components/marketplace-list-screen';
 import { useAppTranslation } from '@/i18n';
 import {
   ApiError,
@@ -413,14 +414,7 @@ function EmptyCartRecommendations({
     return (
       <View className="mt-10 w-full gap-6">
         <View className="h-6 w-48 self-center rounded bg-gray-200 dark:bg-slate-700" />
-        <View className={PRODUCT_LIST_GRID_CLASS}>
-          {Array.from({ length: 4 }).map((_, index) => (
-            <View
-              key={`cart-rec-loading-${index}`}
-              className="h-[320px] w-full min-w-0 rounded-xl bg-gray-100 dark:bg-slate-800"
-            />
-          ))}
-        </View>
+        <ProductMarketplaceGrid products={[]} loading skeletonCount={4} skeletonRows={2} />
       </View>
     );
   }
@@ -452,15 +446,10 @@ function EmptyCartRecommendations({
               </Pressable>
             </Link>
           </View>
-          <View className={PRODUCT_LIST_GRID_CLASS}>
-            {products.slice(0, 8).map((product, index) => (
-              <ProductListCard
-                key={String(product.id)}
-                product={product}
-                imagePriority={index < 2}
-              />
-            ))}
-          </View>
+          <ProductMarketplaceGrid
+            products={products.slice(0, 8)}
+            imagePriorityCount={2}
+          />
         </View>
       ) : null}
 
@@ -485,11 +474,11 @@ function EmptyCartRecommendations({
               </Pressable>
             </Link>
           </View>
-          <View className={HOME_CATEGORY_GRID_CLASS}>
-            {categories.slice(0, 6).map((category) => (
-              <CategoryListCard key={String(category.id)} category={category} />
-            ))}
-          </View>
+          <CategoryMarketplaceGrid
+            items={categories.slice(0, 6)}
+            keyExtractor={(category) => String(category.id)}
+            renderItem={(category) => <CategoryListCard category={category} />}
+          />
         </View>
       ) : null}
     </View>

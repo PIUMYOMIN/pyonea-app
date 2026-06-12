@@ -2,25 +2,30 @@ import Feather from '@expo/vector-icons/Feather';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { Link, type Href } from 'expo-router';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentProps, ReactNode } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Pressable, Text, useWindowDimensions, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
 import {
-  HOME_CATEGORY_GRID_CLASS,
   HOME_PRODUCT_GRID_CLASS,
   HOME_SELLER_GRID_CLASS,
   HOME_VALUE_GRID_CLASS,
   SITE_CONTAINER_CLASS,
 } from '@/constants/layout';
-import { ProductListCard, CardSkeleton as ProductCardSkeleton } from '@/components/marketplace-list-screen';
+import {
+  CategoryMarketplaceGrid,
+  chunkMarketplaceItems,
+  isMarketplaceWeb,
+  MarketplaceGridRow,
+  ProductMarketplaceGrid,
+  useSellerGridColumns,
+} from '@/components/marketplace/marketplace-grid';
 import {
   CategoryCardFromHome,
   CategoryCardSkeleton,
 } from '@/components/ui/category-card';
 import { useNativeAuth } from '@/context/native-auth';
-import { useWelcomeLoaderProgress } from '@/context/welcome-loader';
 import { useAppTranslation } from '@/i18n';
 import { hasUserRole } from '@/utils/auth-routing';
 import {
@@ -279,14 +284,15 @@ function SellerCardSkeleton() {
 export default function HomeNative() {
   const { t, language } = useAppTranslation();
   const { user, isAuthenticated } = useNativeAuth();
-  const welcomeLoader = useWelcomeLoaderProgress();
+  const { width } = useWindowDimensions();
+  const sellerColumns = useSellerGridColumns();
+  const valueColumns = width >= 768 ? 2 : 1;
   // Snapshot the cache once per mount; reading it on every render would change
   // the reference after the fetch writes the cache and retrigger the effect.
   const [cachedFeed] = useState(() =>
     getScreenCache<HomeFeedCache>(HOME_CACHE_KEY, HOME_CACHE_TTL_MS),
   );
   const tRef = useRef(t);
-  const welcomeLoaderRef = useRef(welcomeLoader);
   const [categories, setCategories] = useState<HomeCategory[]>(cachedFeed?.categories ?? []);
   const [products, setProducts] = useState<HomeProduct[]>(cachedFeed?.products ?? []);
   const [sellers, setSellers] = useState<HomeSeller[]>(cachedFeed?.sellers ?? []);
@@ -322,30 +328,15 @@ export default function HomeNative() {
 
   useEffect(() => {
     tRef.current = t;
-    welcomeLoaderRef.current = welcomeLoader;
   });
-
-  useEffect(() => {
-    if (cachedFeed) {
-      welcomeLoaderRef.current?.setHomeDataProgress(100);
-    }
-  }, [cachedFeed]);
 
   useEffect(() => {
     const controller = new AbortController();
     const t = tRef.current;
-    const welcomeLoader = welcomeLoaderRef.current;
     const hasCachedFeed = Boolean(cachedFeed);
-    let completedTasks = 0;
     let nextCategories: HomeCategory[] | null = null;
     let nextProducts: HomeProduct[] | null = null;
     let nextSellers: HomeSeller[] | null = null;
-
-    const reportTaskDone = () => {
-      if (hasCachedFeed) return;
-      completedTasks += 1;
-      welcomeLoader?.setHomeDataProgress(Math.round((completedTasks / 3) * 100));
-    };
 
     const categoriesPromise = fetchHomeCategories(controller.signal)
       .then((result) => {
@@ -363,11 +354,6 @@ export default function HomeNative() {
           setErrors((current) => ({ ...current, categories: t('home.no_categories_found') }));
         }
         setLoading((current) => ({ ...current, categories: false }));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          reportTaskDone();
-        }
       });
 
     const productsPromise = fetchFeaturedProducts(controller.signal)
@@ -386,11 +372,6 @@ export default function HomeNative() {
           setErrors((current) => ({ ...current, products: t('home.no_featured_products') }));
         }
         setLoading((current) => ({ ...current, products: false }));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          reportTaskDone();
-        }
       });
 
     const sellersPromise = fetchTopSellers(controller.signal)
@@ -409,11 +390,6 @@ export default function HomeNative() {
           setErrors((current) => ({ ...current, sellers: t('home.no_top_sellers') }));
         }
         setLoading((current) => ({ ...current, sellers: false }));
-      })
-      .finally(() => {
-        if (!controller.signal.aborted) {
-          reportTaskDone();
-        }
       });
 
     void Promise.all([categoriesPromise, productsPromise, sellersPromise]).then(() => {
@@ -431,6 +407,15 @@ export default function HomeNative() {
     return () => controller.abort();
     // Fetch once per mount; cachedFeed is a mount-time snapshot.
   }, [cachedFeed]);
+
+  const sellerRows = useMemo(
+    () => chunkMarketplaceItems(sellers, sellerColumns),
+    [sellerColumns, sellers],
+  );
+  const valueRows = useMemo(
+    () => chunkMarketplaceItems(values, valueColumns),
+    [valueColumns],
+  );
 
   return (
     <AppLayout>
@@ -483,21 +468,27 @@ export default function HomeNative() {
               <ArrowLink href="/categories" label={t('home.browse_all_categories')} />
             </View>
           </View>
-          <View className={`mt-8 ${HOME_CATEGORY_GRID_CLASS} sm:mt-10`}>
+          <View className="mt-8 sm:mt-10">
             {loading.categories ? (
-              Array.from({ length: 6 }).map((_, index) => (
-                <CategoryCardSkeleton key={`category-skeleton-${index}`} className="w-full" />
-              ))
+              <CategoryMarketplaceGrid
+                items={[]}
+                loading
+                keyExtractor={() => 'skeleton'}
+                renderItem={() => null}
+              />
             ) : categories.length > 0 ? (
-              categories.map((category, index) => (
-                <CategoryCardFromHome
-                  key={String(category.id)}
-                  category={category}
-                  language={language}
-                  priority={index < 2}
-                  className="w-full"
-                />
-              ))
+              <CategoryMarketplaceGrid
+                items={categories}
+                keyExtractor={(category) => String(category.id)}
+                renderItem={(category, index) => (
+                  <CategoryCardFromHome
+                    category={category}
+                    language={language}
+                    priority={index < 2}
+                    className="w-full min-w-0"
+                  />
+                )}
+              />
             ) : (
               <EmptyState message={errors.categories || t('home.no_categories_found')} />
             )}
@@ -511,20 +502,15 @@ export default function HomeNative() {
             </Text>
             <ArrowLink href="/products" label={t('home.view_all')} />
           </View>
-          <View className={`mt-8 ${HOME_PRODUCT_GRID_CLASS} sm:mt-10`}>
+          <View className="mt-8 sm:mt-10">
             {loading.products ? (
-              Array.from({ length: 8 }).map((_, index) => (
-                <ProductCardSkeleton key={`product-skeleton-${index}`} className="w-full" />
-              ))
+              <ProductMarketplaceGrid products={[]} loading webGridClass={HOME_PRODUCT_GRID_CLASS} />
             ) : products.length > 0 ? (
-              products.map((product, index) => (
-                <ProductListCard
-                  key={String(product.id)}
-                  product={product}
-                  imagePriority={index < 4}
-                  className="w-full"
-                />
-              ))
+              <ProductMarketplaceGrid
+                products={products}
+                imagePriorityCount={4}
+                webGridClass={HOME_PRODUCT_GRID_CLASS}
+              />
             ) : (
               <EmptyState message={errors.products || t('home.no_featured_products')} />
             )}
@@ -538,13 +524,33 @@ export default function HomeNative() {
             </Text>
             <ArrowLink href="/sellers" label={t('home.view_all')} />
           </View>
-          <View className={`mt-6 ${HOME_SELLER_GRID_CLASS}`}>
+          <View className={`mt-6 ${isMarketplaceWeb ? HOME_SELLER_GRID_CLASS : ''}`}>
             {loading.sellers ? (
-              Array.from({ length: 4 }).map((_, index) => (
-                <SellerCardSkeleton key={`seller-skeleton-${index}`} />
-              ))
+              isMarketplaceWeb ? (
+                Array.from({ length: 4 }).map((_, index) => (
+                  <SellerCardSkeleton key={`seller-skeleton-${index}`} />
+                ))
+              ) : (
+                Array.from({ length: 2 }).map((_, rowIndex) => (
+                  <MarketplaceGridRow key={`seller-skeleton-row-${rowIndex}`} columns={sellerColumns}>
+                    {Array.from({ length: sellerColumns }).map((__, cellIndex) => (
+                      <SellerCardSkeleton key={`seller-skeleton-${rowIndex}-${cellIndex}`} />
+                    ))}
+                  </MarketplaceGridRow>
+                ))
+              )
             ) : sellers.length > 0 ? (
-              sellers.map((seller) => <SellerCard key={String(seller.id)} seller={seller} />)
+              isMarketplaceWeb ? (
+                sellers.map((seller) => <SellerCard key={String(seller.id)} seller={seller} />)
+              ) : (
+                sellerRows.map((row, rowIndex) => (
+                  <MarketplaceGridRow key={`seller-row-${rowIndex}`} columns={sellerColumns}>
+                    {row.map((seller) => (
+                      <SellerCard key={String(seller.id)} seller={seller} />
+                    ))}
+                  </MarketplaceGridRow>
+                ))
+              )
             ) : (
               <EmptyState message={errors.sellers || t('home.no_top_sellers')} />
             )}
@@ -564,10 +570,16 @@ export default function HomeNative() {
             </Text>
           </View>
 
-          <View className={`mt-8 ${HOME_VALUE_GRID_CLASS} sm:mt-10`}>
-            {values.map((value) => (
-              <ValueItem key={value.titleKey} value={value} />
-            ))}
+          <View className={`mt-8 sm:mt-10 ${isMarketplaceWeb ? HOME_VALUE_GRID_CLASS : ''}`}>
+            {isMarketplaceWeb
+              ? values.map((value) => <ValueItem key={value.titleKey} value={value} />)
+              : valueRows.map((row, rowIndex) => (
+                  <MarketplaceGridRow key={`value-row-${rowIndex}`} columns={valueColumns}>
+                    {row.map((value) => (
+                      <ValueItem key={value.titleKey} value={value} />
+                    ))}
+                  </MarketplaceGridRow>
+                ))}
           </View>
         </SectionShell>
 

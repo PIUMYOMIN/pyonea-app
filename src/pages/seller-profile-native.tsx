@@ -6,8 +6,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Linking, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
-import { ProductListCard } from '@/components/marketplace-list-screen';
-import { PRODUCT_LIST_GRID_CLASS } from '@/constants/layout';
+import { ProductMarketplaceGrid } from '@/components/marketplace/marketplace-grid';
 import { SocialSharePanel } from '@/components/ui/social-share-panel';
 import { useNativeAuth } from '@/context/native-auth';
 import { useAppTranslation } from '@/i18n';
@@ -119,13 +118,8 @@ function SellerSkeleton() {
             <View className="h-4 w-1/2 rounded bg-gray-200 dark:bg-slate-800" />
             <View className="h-20 rounded bg-gray-200 dark:bg-slate-800" />
           </View>
-          <View className={`mt-8 ${PRODUCT_LIST_GRID_CLASS}`}>
-            {Array.from({ length: 6 }).map((_, index) => (
-              <View
-                key={`seller-profile-skeleton-${index}`}
-                className="h-48 w-full min-w-0 rounded-2xl bg-gray-200 dark:bg-slate-800"
-              />
-            ))}
+          <View className="mt-8">
+            <ProductMarketplaceGrid products={[]} loading skeletonCount={6} skeletonRows={2} />
           </View>
         </View>
       </View>
@@ -952,11 +946,7 @@ export function SellerProfileNative({
 
           {activeTab === 'products' ? (
             products.length > 0 ? (
-              <View className={PRODUCT_LIST_GRID_CLASS}>
-                {products.map((product) => (
-                  <ProductListCard key={String(product.id)} product={product} />
-                ))}
-              </View>
+              <ProductMarketplaceGrid products={products} />
             ) : (
               <View className="items-center py-16">
                 <Feather name="shopping-bag" color="#cbd5e1" size={48} />

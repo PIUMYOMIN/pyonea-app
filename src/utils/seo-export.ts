@@ -1,9 +1,8 @@
 import {
+  ApiError,
   fetchBlogPagePosts,
-  fetchCategoryBrowser,
   fetchProductList,
   fetchSellers,
-  flattenBrowserCategories,
   type BlogPost,
   type HomeProduct,
   type HomeSeller,
@@ -11,6 +10,41 @@ import {
 
 const DEFAULT_PAGE_SIZE = 100;
 const MAX_PAGES = 50;
+
+const sleep = (ms: number) => new Promise((resolve) => setTimeout(resolve, ms));
+
+/**
+ * Fetch SEO loader data with retries. During `expo export` the API receives a
+ * burst of loader requests; transient slowdowns/timeouts must not silently bake
+ * generic SEO into the static pages. Genuine 404s are not retried.
+ */
+export async function loadSeoDataWithRetry<T>(
+  label: string,
+  fetcher: () => Promise<T>,
+  attempts = 3,
+  baseDelayMs = 2000,
+): Promise<T | null> {
+  for (let attempt = 1; attempt <= attempts; attempt += 1) {
+    try {
+      return await fetcher();
+    } catch (error) {
+      if (error instanceof ApiError && error.status === 404) {
+        console.warn(`[seo-export] not found (404), skipping: ${label}`);
+        return null;
+      }
+      if (attempt === attempts) {
+        console.warn(
+          `[seo-export] loader failed after ${attempts} attempts: ${label} — ${
+            error instanceof Error ? error.message : String(error)
+          }`,
+        );
+        return null;
+      }
+      await sleep(baseDelayMs * attempt);
+    }
+  }
+  return null;
+}
 
 const getSlug = (item: { slug?: string; id?: string | number }, fallbacks: string[] = []) => {
   if (item.slug) return item.slug;
@@ -74,19 +108,6 @@ export async function fetchAllSellerSlugs(): Promise<string[]> {
   sellers.forEach((seller) => {
     const slug = getSlug(seller, ['slug']);
     if (slug) slugs.add(slug);
-  });
-
-  return [...slugs];
-}
-
-export async function fetchAllCategorySlugs(): Promise<string[]> {
-  const tree = await fetchCategoryBrowser().catch(() => []);
-  const slugs = new Set<string>();
-
-  flattenBrowserCategories(tree).forEach((category) => {
-    if (category.slugEn) slugs.add(category.slugEn);
-    if (category.slugMm && category.slugMm !== category.slugEn) slugs.add(category.slugMm);
-    if (!category.slugEn && !category.slugMm) slugs.add(String(category.id));
   });
 
   return [...slugs];

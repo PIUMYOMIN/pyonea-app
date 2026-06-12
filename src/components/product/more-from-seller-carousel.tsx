@@ -14,6 +14,7 @@ import {
   ProductListCard,
   PRODUCT_CARD_CAROUSEL_CLASS,
 } from '@/components/marketplace-list-screen';
+import { ProductMarketplaceGrid } from '@/components/marketplace/marketplace-grid';
 import { useTheme } from '@/context/theme';
 import { useAppTranslation } from '@/i18n';
 import type { HomeProduct } from '@/utils/native-api';
@@ -86,6 +87,10 @@ export function MoreFromSellerCarousel({ products }: MoreFromSellerCarouselProps
   );
 
   if (!products.length) return null;
+
+  if (Platform.OS !== 'web') {
+    return <ProductMarketplaceGrid products={products} imagePriorityCount={3} />;
+  }
 
   const chevronColor = isDark ? '#e2e8f0' : '#374151';
   const navButtonClass = `absolute top-1/2 z-10 h-10 w-10 -translate-y-1/2 items-center justify-center rounded-full border border-gray-200 bg-white/95 shadow-sm dark:border-slate-700 dark:bg-slate-800/95 ${

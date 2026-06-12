@@ -69,23 +69,8 @@ const footerGroupKeys: Record<string, string> = {
   Legal: "footer.section_legal",
 };
 const footerRouteKeys: Record<string, string> = {
-  "/local-deals": "footer.local_deals",
   "/compare": "footer.compare_product",
-  "/bulk-order-tool": "footer.bulk_order_tool",
-  "/blog": "footer.blog",
-  "/help": "footer.help_center",
-  "/faq": "footer.faq",
-  "/shipping": "footer.shipping",
   "/track-order": "footer.track_order",
-  "/return-policy": "footer.returns",
-  "/report": "footer.report_issue",
-  "/seller-guidelines": "footer.seller_guidelines",
-  "/pricing": "footer.pricing",
-  "/about-us": "footer.about",
-  "/contact": "footer.contact",
-  "/terms": "footer.terms",
-  "/privacy-policy": "footer.privacy",
-  "/legal": "footer.legal",
 };
 
 const accountPaths = [
@@ -820,6 +805,13 @@ export function Footer() {
   );
 }
 
+type AppLayoutProps = PropsWithChildren<{
+  scrollEnabled?: boolean;
+  showNativeBottomTabs?: boolean;
+  onEndReached?: () => void;
+  onEndReachedThreshold?: number;
+}>;
+
 function useBuyerCartCount() {
   return useCartCount().totalItems;
 }
@@ -915,13 +907,6 @@ function NativeBottomTabs() {
     </SafeAreaView>
   );
 }
-
-type AppLayoutProps = PropsWithChildren<{
-  scrollEnabled?: boolean;
-  showNativeBottomTabs?: boolean;
-  onEndReached?: () => void;
-  onEndReachedThreshold?: number;
-}>;
 
 export function AppLayout({
   children,
