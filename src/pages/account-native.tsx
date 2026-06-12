@@ -14,7 +14,6 @@ import {
 } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
-import { externalSiteUrl } from '@/config/native';
 import { useNativeAuth } from '@/context/native-auth';
 import { useTheme } from '@/context/theme';
 import { normalizeLanguage, useAppTranslation, type SupportedLanguage } from '@/i18n';
@@ -401,7 +400,7 @@ export function AccountNative() {
           <AccountRow
             icon="external-link"
             label={t('account_page.contact_us', { defaultValue: 'Contact Page' })}
-            onPress={() => void Linking.openURL(externalSiteUrl('/contact'))}
+            onPress={() => router.push('/contact' as Href)}
           />
         </AccountSection>
 
@@ -409,13 +408,13 @@ export function AccountNative() {
           <AccountRow
             icon="file-text"
             label={t('account_page.terms', { defaultValue: 'Terms of Service' })}
-            onPress={() => void Linking.openURL(externalSiteUrl('/terms'))}
+            onPress={() => router.push('/terms' as Href)}
           />
           <AccountDivider />
           <AccountRow
             icon="shield"
             label={t('account_page.privacy', { defaultValue: 'Privacy Policy' })}
-            onPress={() => void Linking.openURL(externalSiteUrl('/privacy-policy'))}
+            onPress={() => router.push('/privacy-policy' as Href)}
           />
         </AccountSection>
 

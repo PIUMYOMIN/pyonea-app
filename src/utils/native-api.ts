@@ -94,9 +94,12 @@ export type ProductOption = {
 export type ProductVariant = {
   id: string | number;
   sku: string;
+  label?: string;
   priceValue: number;
   price: string;
   quantity: number;
+  inStock?: boolean;
+  isActive?: boolean;
   moq?: number;
   quantityStep?: number;
   imageUrl?: string;
@@ -3885,10 +3888,16 @@ const mapUserReport = (report: UnknownRecord, index = 0): UserReport => {
   };
 };
 
+const resolveBulkQuantityStep = (rawStep: unknown, moq: number) => {
+  const safeMoq = Math.max(getNumber(moq, 1), 1);
+  const parsedStep = Math.max(getNumber(rawStep, safeMoq), 1);
+  return parsedStep > 1 ? parsedStep : safeMoq;
+};
+
 const mapBulkOrderProduct = (product: UnknownRecord, index = 0): BulkOrderProduct => {
   const seller = isRecord(product.seller) ? product.seller : undefined;
   const moq = Math.max(getNumber(product.moq || product.minimum_order_quantity, 1), 1);
-  const quantityStep = Math.max(getNumber(product.quantity_step || moq, moq), 1);
+  const quantityStep = resolveBulkQuantityStep(product.quantity_step, moq);
   const discountPct = getDiscountPct(product);
   const effectivePrice = getEffectiveProductPrice(product, discountPct);
   const wholesaleTiers = Array.isArray(product.wholesale_tiers)
@@ -3991,14 +4000,19 @@ const getVariantOptionValueIds = (variant: UnknownRecord): (string | number)[] =
 
 const mapProductVariant = (variant: UnknownRecord, index: number): ProductVariant => {
   const priceValue = getNumber(variant.selling_price || variant.price);
+  const quantity = getNumber(variant.quantity || variant.stock || variant.total_stock);
   return {
     id: getString(variant.id || variant.variant_id, `variant-${index}`),
     sku: getString(variant.sku),
+    label: getString(variant.label || variant.sku, `Variant #${index + 1}`),
     priceValue,
     price: formatMMK(priceValue),
-    quantity: getNumber(variant.quantity || variant.stock || variant.total_stock),
+    quantity,
+    inStock: variant.in_stock === true || variant.in_stock === 1 || quantity > 0,
+    isActive: variant.is_active !== false && variant.is_active !== 0,
     moq: variant.moq == null ? undefined : getNumber(variant.moq),
-    quantityStep: variant.quantity_step == null ? undefined : getNumber(variant.quantity_step),
+    quantityStep:
+      variant.quantity_step == null ? undefined : getNumber(variant.quantity_step),
     imageUrl: getNativeImageUrl(variant.image || variant.image_url || variant.imageUrl),
     optionValueIds: getVariantOptionValueIds(variant),
   };
@@ -7818,8 +7832,18 @@ export async function fetchLocalDealsPage(
 }
 
 const getBlogCategories = (payload: unknown) => {
-  if (!isRecord(payload) || !Array.isArray(payload.categories)) return [];
-  return payload.categories.map((category) => getString(category)).filter(Boolean);
+  if (!isRecord(payload)) return [];
+
+  if (Array.isArray(payload.categories)) {
+    return payload.categories.map((category) => getString(category)).filter(Boolean);
+  }
+
+  const nested = payload.data;
+  if (isRecord(nested) && Array.isArray(nested.categories)) {
+    return nested.categories.map((category) => getString(category)).filter(Boolean);
+  }
+
+  return [];
 };
 
 const mapBlogPost = (post: UnknownRecord, index = 0): BlogPost => {
@@ -7878,7 +7902,8 @@ export async function fetchBlogPagePosts(
     page: String(params.page || 1),
   });
 
-  if (params.search) query.set('search', params.search);
+  const trimmedSearch = params.search?.trim();
+  if (trimmedSearch) query.set('search', trimmedSearch);
   if (params.category) query.set('category', params.category);
 
   const payload = await apiGet(`/blog?${query.toString()}`, signal);
@@ -9110,15 +9135,46 @@ export async function addReportComment(
   await apiPost(`/reports/${encodeURIComponent(ticketId)}/comments`, { body }, signal);
 }
 
+const extractSubmitReportTicketId = (response: unknown) => {
+  const root = isRecord(response) ? response : {};
+  const data = isRecord(root.data) ? root.data : {};
+  const report = isRecord(data.report) ? data.report : {};
+  return getString(root.ticket_id || data.ticket_id || report.ticket_id);
+};
+
 export async function submitReport(
   payload: SubmitReportPayload,
   signal?: AbortSignal
 ): Promise<SubmitReportResult> {
   const response = await apiPost('/reports', payload, signal);
-  const root = isRecord(response) ? response : {};
-  const data = isRecord(root.data) ? root.data : {};
-  const report = isRecord(data.report) ? data.report : {};
-  const ticketId = getString(root.ticket_id || data.ticket_id || report.ticket_id);
+  const ticketId = extractSubmitReportTicketId(response);
+
+  if (!ticketId) {
+    throw new Error('Missing ticket ID');
+  }
+
+  return { ticketId };
+}
+
+export async function submitReportWithAttachments(
+  payload: SubmitReportPayload & { recaptcha_token?: string },
+  files: NativeUploadFile[] = [],
+  signal?: AbortSignal
+): Promise<SubmitReportResult> {
+  const form = new FormData();
+
+  Object.entries(payload).forEach(([key, value]) => {
+    if (value != null && String(value).trim() !== '') {
+      form.append(key, String(value));
+    }
+  });
+
+  for (let index = 0; index < Math.min(files.length, 5); index += 1) {
+    await appendNativeFile(form, `attachments[${index}]`, files[index]);
+  }
+
+  const response = await apiPostForm('/reports', form, signal);
+  const ticketId = extractSubmitReportTicketId(response);
 
   if (!ticketId) {
     throw new Error('Missing ticket ID');

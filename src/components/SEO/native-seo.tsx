@@ -1,10 +1,7 @@
 import Head from 'expo-router/head';
 import { useGlobalSearchParams, usePathname } from 'expo-router';
-import { Platform } from 'react-native';
 
-import { SITE_PUBLIC_URL, GOOGLE_SITE_VERIFICATION } from '@/config/native';
-import { staticRouteSeoMy } from '@/utils/seo-localization';
-import { BRAND_LOGO_BACKGROUND, BRAND_LOGO_PUBLIC_URL } from '@/constants/brand';
+import { SITE_PUBLIC_URL } from '@/config/native';
 import { normalizeLanguage, useAppTranslation, type SupportedLanguage } from '@/i18n';
 
 type SeoSchema = Record<string, unknown>;
@@ -42,7 +39,7 @@ const indexableRoutes: Record<string, RouteSeo> = {
   '/products': {
     title: 'Wholesale Products in Myanmar | Pyonea',
     description:
-      'Browse Myanmar wholesale products with MOQ pricing, seller details, and trusted suppliers on Pyonea.',
+      'Browse Myanmar wholesale products with MOQ pricing, seller details, local deals, and bulk order options on Pyonea.',
     priority: 0.9,
   },
   '/categories': {
@@ -57,16 +54,97 @@ const indexableRoutes: Record<string, RouteSeo> = {
       'Find verified Myanmar suppliers, seller profiles, business details, and wholesale product catalogs on Pyonea.',
     priority: 0.8,
   },
+  '/bulk-order-tool': {
+    title: 'Bulk Order Tool for Myanmar B2B Buyers | Pyonea',
+    description:
+      'Request and compare bulk order options from Myanmar suppliers using Pyonea’s B2B sourcing tool.',
+    priority: 0.7,
+  },
+  '/local-deals': {
+    title: 'Local Wholesale Deals in Myanmar | Pyonea',
+    description:
+      'Discover local wholesale deals, limited offers, and supplier promotions across Myanmar on Pyonea.',
+    priority: 0.7,
+  },
+  '/blog': {
+    title: 'Myanmar B2B Wholesale Blog | Pyonea',
+    description:
+      'Read Pyonea guides for Myanmar wholesale buying, selling online, logistics, supplier trust, and B2B growth.',
+    type: 'article',
+    priority: 0.8,
+  },
+  '/pricing': {
+    title: 'Seller Pricing Plans | Pyonea',
+    description:
+      'Compare Pyonea seller plans for listing products, reaching buyers, and growing a Myanmar wholesale business.',
+    priority: 0.7,
+  },
+  '/about-us': {
+    title: 'About Pyonea | Myanmar B2B Wholesale Marketplace',
+    description:
+      'Learn how Pyonea helps Myanmar businesses connect with trusted wholesale suppliers and buyers.',
+    priority: 0.6,
+  },
+  '/help': {
+    title: 'Help Center | Pyonea',
+    description:
+      'Get help with buying, selling, bulk orders, shipping, payments, and account support on Pyonea.',
+    priority: 0.6,
+  },
+  '/faq': {
+    title: 'Frequently Asked Questions | Pyonea',
+    description:
+      'Find answers about Pyonea accounts, suppliers, wholesale orders, payments, shipping, and seller tools.',
+    priority: 0.6,
+  },
+  '/shipping': {
+    title: 'Shipping Information | Pyonea',
+    description:
+      'Review Pyonea shipping information for Myanmar wholesale orders, delivery options, fees, and timelines.',
+    priority: 0.6,
+  },
+  '/contact': {
+    title: 'Contact Pyonea | Myanmar B2B Marketplace Support',
+    description:
+      'Contact Pyonea for buyer support, seller support, partnership questions, and Myanmar marketplace assistance.',
+    priority: 0.6,
+  },
+  '/seller-guidelines': {
+    title: 'Seller Guidelines | Pyonea',
+    description:
+      'Read Pyonea seller guidelines for product listings, wholesale pricing, buyer communication, and marketplace quality.',
+    priority: 0.6,
+  },
+  '/terms': {
+    title: 'Terms of Service | Pyonea',
+    description: 'Read the Pyonea terms of service for buyers, sellers, and marketplace users.',
+    priority: 0.4,
+  },
+  '/privacy-policy': {
+    title: 'Privacy Policy | Pyonea',
+    description: 'Learn how Pyonea collects, uses, protects, and manages marketplace user data.',
+    priority: 0.4,
+  },
+  '/return-policy': {
+    title: 'Return & Refund Policy | Pyonea',
+    description:
+      'Review Pyonea return and refund policy for Myanmar wholesale orders and marketplace purchases.',
+    priority: 0.4,
+  },
+  '/legal': {
+    title: 'Legal Information | Pyonea',
+    description: 'Review legal information for Pyonea marketplace users, buyers, sellers, and partners.',
+    priority: 0.4,
+  },
   '/compare': {
     title: 'Product Comparison | Pyonea',
     description: 'Compare Myanmar wholesale products, pricing, sellers, and product details on Pyonea.',
     priority: 0.5,
   },
-  '/local-deals': {
-    title: 'Local Deals | Pyonea',
-    description:
-      'Browse active coupon offers from verified Myanmar sellers by region. Save on wholesale orders and support local businesses.',
-    priority: 0.6,
+  '/report': {
+    title: 'Report a Marketplace Issue | Pyonea',
+    description: 'Report product, seller, order, or marketplace issues to Pyonea support.',
+    priority: 0.3,
   },
 };
 
@@ -81,8 +159,10 @@ const privatePrefixes = [
   '/forgot-password',
   '/reset-password',
   '/payment-success',
+  '/my-reports',
   '/track-order',
-  '/account',
+  '/unsubscribe',
+  '/newsletter-confirm',
   '/newsletter/confirm',
 ];
 
@@ -101,7 +181,7 @@ const routeKeyFor = (pathname: string) => {
   const cleanPath = stripTrailingSlash(pathname || '/');
   if (cleanPath.startsWith('/products/')) return '/products';
   if (cleanPath.startsWith('/sellers/')) return '/sellers';
-  if (cleanPath.startsWith('/categories/')) return '/products';
+  if (cleanPath.startsWith('/blog/')) return '/blog';
   return cleanPath;
 };
 
@@ -117,7 +197,7 @@ function buildBaseSchema() {
         name: 'Pyonea Marketplace',
         alternateName: ['Pyonea', 'Myanmar B2B Wholesale Marketplace'],
         url: SITE_PUBLIC_URL,
-        logo: `${SITE_PUBLIC_URL}${BRAND_LOGO_PUBLIC_URL}`,
+        logo: `${SITE_PUBLIC_URL}/logo.png`,
       },
       {
         '@type': 'WebSite',
@@ -148,12 +228,7 @@ export function NativeSeo({
   const params = useGlobalSearchParams<{ lang?: string }>();
   const { language } = useAppTranslation();
   const activeLanguage = normalizeLanguage(params.lang || language);
-  const routeSeoBase = indexableRoutes[routeKeyFor(pathname)];
-  const routeSeoMy = staticRouteSeoMy[routeKeyFor(pathname)];
-  const routeSeo =
-    activeLanguage === 'my' && routeSeoMy
-      ? { ...routeSeoBase, ...routeSeoMy, priority: routeSeoBase?.priority }
-      : routeSeoBase;
+  const routeSeo = indexableRoutes[routeKeyFor(pathname)];
   const routePrivate = isPrivateRoute(pathname);
   const resolvedTitle = title || routeSeo?.title || defaultTitle;
   const resolvedDescription = description || routeSeo?.description || defaultDescription;
@@ -169,15 +244,10 @@ export function NativeSeo({
   const customSchemaItems = schema ? (Array.isArray(schema) ? schema : [schema]) : [];
   const schemaItems = [buildBaseSchema(), ...customSchemaItems];
 
-  if (Platform.OS !== 'web') return null;
-
   return (
     <Head>
       <title>{resolvedTitle}</title>
       <meta name="description" content={resolvedDescription} />
-      {GOOGLE_SITE_VERIFICATION ? (
-        <meta name="google-site-verification" content={GOOGLE_SITE_VERIFICATION} />
-      ) : null}
       <meta httpEquiv="content-language" content={activeLanguage} />
       <meta name="robots" content={shouldNoindex ? 'noindex,nofollow' : 'index,follow'} />
       <link rel="canonical" href={canonicalUrl} />
@@ -205,14 +275,10 @@ export function NativeSeo({
       <meta name="twitter:image" content={absoluteImage} />
       {imageAlt ? <meta name="twitter:image:alt" content={imageAlt} /> : null}
 
-      <meta name="theme-color" content={BRAND_LOGO_BACKGROUND} />
+      <meta name="theme-color" content="#16a34a" />
       <meta name="application-name" content="Pyonea" />
       <meta name="apple-mobile-web-app-title" content="Pyonea" />
       <meta name="format-detection" content="telephone=no" />
-      <meta
-        name="viewport"
-        content="width=device-width, initial-scale=1, viewport-fit=cover"
-      />
       <link rel="icon" href="/favicon.ico" />
       <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
       <link rel="manifest" href="/manifest.json" />

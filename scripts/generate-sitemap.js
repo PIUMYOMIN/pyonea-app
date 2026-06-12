@@ -22,7 +22,21 @@ const staticRoutes = [
   { path: '/products', priority: '0.9', changefreq: 'daily' },
   { path: '/categories', priority: '0.9', changefreq: 'weekly' },
   { path: '/sellers', priority: '0.8', changefreq: 'daily' },
+  { path: '/blog', priority: '0.8', changefreq: 'weekly' },
+  { path: '/bulk-order-tool', priority: '0.7', changefreq: 'monthly' },
+  { path: '/local-deals', priority: '0.7', changefreq: 'daily' },
+  { path: '/pricing', priority: '0.7', changefreq: 'monthly' },
+  { path: '/about-us', priority: '0.6', changefreq: 'monthly' },
+  { path: '/help', priority: '0.6', changefreq: 'monthly' },
+  { path: '/faq', priority: '0.6', changefreq: 'monthly' },
+  { path: '/shipping', priority: '0.6', changefreq: 'monthly' },
+  { path: '/contact', priority: '0.6', changefreq: 'monthly' },
+  { path: '/seller-guidelines', priority: '0.6', changefreq: 'monthly' },
   { path: '/compare', priority: '0.5', changefreq: 'monthly' },
+  { path: '/legal', priority: '0.4', changefreq: 'yearly' },
+  { path: '/terms', priority: '0.4', changefreq: 'yearly' },
+  { path: '/privacy-policy', priority: '0.4', changefreq: 'yearly' },
+  { path: '/return-policy', priority: '0.4', changefreq: 'yearly' },
 ];
 
 function trimTrailingSlash(value) {
@@ -131,7 +145,7 @@ function flattenCategories(items) {
 }
 
 async function getDynamicRoutes() {
-  const [products, categoriesPayload, sellersPayload] = await Promise.all([
+  const [products, categoriesPayload, sellersPayload, posts] = await Promise.all([
     fetchAllPaginatedRoutes(
       '/products?sort_by=created_at&sort_order=desc&fields=id,slug_en,slug,updated_at,created_at',
       (item) => ({
@@ -151,6 +165,12 @@ async function getDynamicRoutes() {
       console.warn(error.message);
       return [];
     }),
+    fetchAllPaginatedRoutes('/blog', (item) => ({
+      path: `/blog/${getSlug(item, ['slug', 'slug_en', 'id'])}`,
+      lastmod: getLastmod(item),
+      priority: '0.7',
+      changefreq: 'monthly',
+    })),
   ]);
 
   const categoryRoutes = [];
@@ -172,7 +192,7 @@ async function getDynamicRoutes() {
     changefreq: 'weekly',
   }));
 
-  return [...products, ...categoryRoutes, ...sellers].filter(
+  return [...products, ...categoryRoutes, ...sellers, ...posts].filter(
     (route) => !route.path.endsWith('/')
   );
 }

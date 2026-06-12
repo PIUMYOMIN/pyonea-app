@@ -39,7 +39,11 @@ export const SELLER_DIRECTORY_GRID_CLASS =
   'grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4';
 
 /** Blog post cards — match pyonea Blog.jsx. */
-export const BLOG_POST_GRID_CLASS = 'grid gap-6 md:grid-cols-2 lg:grid-cols-3';
+export const BLOG_POST_GRID_CLASS =
+  'grid items-stretch gap-6 md:grid-cols-2 lg:grid-cols-3';
+
+/** Blog detail related posts — match pyonea BlogDetail.jsx. */
+export const BLOG_RELATED_GRID_CLASS = 'grid gap-5 md:grid-cols-3';
 
 /** Local deals — match pyonea LocalDeals.jsx. */
 export const LOCAL_DEALS_GRID_CLASS = 'grid grid-cols-1 gap-4 md:grid-cols-2';

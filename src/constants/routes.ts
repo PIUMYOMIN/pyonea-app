@@ -34,7 +34,6 @@ export const mainRoutes: AppRoute[] = [
   },
 ];
 
-/** In-app utility routes plus public marketing paths used in the web footer. */
 export const utilityRoutes: AppRoute[] = [
   {
     href: '/local-deals',
@@ -94,7 +93,7 @@ export const utilityRoutes: AppRoute[] = [
     href: '/report',
     label: 'Report an Issue',
     title: 'Report an Issue',
-    description: 'Report bugs, safety concerns, payment issues, or seller misconduct.',
+    description: 'Report product, seller, order, or marketplace issues to Pyonea support.',
   },
   {
     href: '/seller-guidelines',
@@ -167,18 +166,6 @@ export const utilityRoutes: AppRoute[] = [
     label: 'Payment Success',
     title: 'Payment Success',
     description: 'View your payment confirmation and receipt.',
-  },
-  {
-    href: '/account',
-    label: 'Account',
-    title: 'Account',
-    description: 'Manage your Pyonea account, preferences, and support links.',
-  },
-  {
-    href: '/unsubscribe',
-    label: 'Unsubscribe',
-    title: 'Unsubscribe',
-    description: 'Manage newsletter email unsubscribe requests.',
   },
   {
     href: '/login',
