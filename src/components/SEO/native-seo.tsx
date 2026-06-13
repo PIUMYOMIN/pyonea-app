@@ -239,7 +239,10 @@ export function NativeSeo({
   const { language, t } = useAppTranslation();
   const routeLang = Array.isArray(params.lang) ? params.lang[0] : params.lang;
   const activeLanguage = normalizeLanguage(
-    routeLang || (Platform.OS === 'web' ? readLangFromLocation() : null) || language || DEFAULT_LANGUAGE,
+    language ||
+      routeLang ||
+      (Platform.OS === 'web' ? readLangFromLocation() : null) ||
+      DEFAULT_LANGUAGE,
   );
   const routeBucket = routeKeyFor(pathname);
   const routeSeo = indexableRoutes[routeBucket];
@@ -271,7 +274,7 @@ export function NativeSeo({
       <link rel="canonical" href={canonicalUrl} />
       <link rel="alternate" hrefLang="en" href={alternateEn} />
       <link rel="alternate" hrefLang="my" href={alternateMy} />
-      <link rel="alternate" hrefLang="x-default" href={alternateEn} />
+      <link rel="alternate" hrefLang="x-default" href={alternateMy} />
 
       <meta property="og:type" content={resolvedType} />
       <meta property="og:title" content={resolvedTitle} />

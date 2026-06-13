@@ -52,7 +52,8 @@
           "color": "#16a34a",
           "defaultChannel": "default"
         }
-      ]
+      ],
+      "expo-image"
     ],
     "experiments": {
       "typedRoutes": false,

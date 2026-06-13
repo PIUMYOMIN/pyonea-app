@@ -1,3 +1,4 @@
+import AsyncStorage from '@react-native-async-storage/async-storage';
 import Feather from '@expo/vector-icons/Feather';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { useRouter, type Href } from 'expo-router';
@@ -52,20 +53,63 @@ const aspectRatio = (value: string) => {
   return 16 / 9;
 };
 
-const storage = {
-  get(key: string) {
-    try {
-      return globalThis.localStorage?.getItem(key) || '';
-    } catch {
-      return '';
+const storageCache = new Map<string, string>();
+let storageHydrated = false;
+let storageHydration: Promise<void> | null = null;
+
+function hydrateAnnouncementStorage() {
+  if (storageHydrated) return Promise.resolve();
+  if (storageHydration) return storageHydration;
+
+  storageHydration = (async () => {
+    if (Platform.OS === 'web') {
+      storageHydrated = true;
+      return;
     }
-  },
-  set(key: string, value: string) {
+
     try {
-      globalThis.localStorage?.setItem(key, value);
+      const keys = await AsyncStorage.getAllKeys();
+      const announcementKeys = keys.filter((key) => key.startsWith('ann_seen_'));
+      const entries = await AsyncStorage.multiGet(announcementKeys);
+      entries.forEach(([key, value]) => {
+        if (key && value) storageCache.set(key, value);
+      });
     } catch {
       // Announcements are non-critical.
+    } finally {
+      storageHydrated = true;
     }
+  })();
+
+  return storageHydration;
+}
+
+const storage = {
+  get(key: string) {
+    if (Platform.OS === 'web') {
+      try {
+        return globalThis.localStorage?.getItem(key) || '';
+      } catch {
+        return '';
+      }
+    }
+
+    return storageCache.get(key) || '';
+  },
+  set(key: string, value: string) {
+    if (Platform.OS === 'web') {
+      try {
+        globalThis.localStorage?.setItem(key, value);
+      } catch {
+        // Announcements are non-critical.
+      }
+      return;
+    }
+
+    storageCache.set(key, value);
+    void AsyncStorage.setItem(key, value).catch(() => {
+      // Announcements are non-critical.
+    });
   },
 };
 
@@ -242,7 +286,14 @@ export function AnnouncementNative() {
   const [items, setItems] = useState<Announcement[]>([]);
   const [dismissed, setDismissed] = useState<(string | number)[]>(() => [...sessionDismissedBannerIds]);
   const [popup, setPopup] = useState<Announcement | null>(null);
+  const [storageReady, setStorageReady] = useState(Platform.OS === 'web');
   const userType = user?.type || user?.roles?.[0];
+
+  useEffect(() => {
+    void hydrateAnnouncementStorage().then(() => {
+      setStorageReady(true);
+    });
+  }, []);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -293,6 +344,8 @@ export function AnnouncementNative() {
   );
 
   useEffect(() => {
+    if (!storageReady) return;
+
     const nextPopup = eligible.find((item) => {
       if (item.displayStyle === 'page_banner') return false;
       if (sessionShownPopupIds.has(item.id)) return false;
@@ -306,7 +359,7 @@ export function AnnouncementNative() {
       setPopup(nextPopup);
     }, Math.max(nextPopup.delaySeconds, 0) * 1000);
     return () => clearTimeout(timeout);
-  }, [eligible]);
+  }, [eligible, storageReady]);
 
   const dismissBanner = () => {
     if (!pageBanner) return;

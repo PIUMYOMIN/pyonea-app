@@ -4,6 +4,7 @@ import { Platform } from 'react-native';
 
 import { API_BASE_URL, DEFAULT_PRODUCT_IMAGE, IMAGE_BASE_URL } from '@/config/native';
 import { DATA_CACHE_TTL, withDataCache, withInFlightRequest } from '@/utils/data-cache';
+import { invalidateScreenCache } from '@/utils/screen-cache';
 
 type ApiEnvelope<T> = {
   data?: T;
@@ -1712,6 +1713,21 @@ const buildHeaders = (extra?: HeadersInit) => {
 
 const API_REQUEST_TIMEOUT_MS = 20_000;
 
+/** True when a fetch was intentionally canceled (navigation, effect cleanup, timeout). */
+export function isAbortError(error: unknown, signal?: AbortSignal): boolean {
+  if (signal?.aborted) return true;
+
+  const message =
+    error instanceof Error ? error.message : typeof error === 'string' ? error : '';
+  const normalized = message.toLowerCase();
+
+  return (
+    normalized.includes('abort') ||
+    normalized.includes('cancel') ||
+    (error instanceof Error && error.name === 'AbortError')
+  );
+}
+
 const fetchWithTimeout = async (path: string, init: RequestInit = {}) => {
   const controller = new AbortController();
   const timeout = setTimeout(() => controller.abort(), API_REQUEST_TIMEOUT_MS);
@@ -1737,9 +1753,33 @@ const fetchWithTimeout = async (path: string, init: RequestInit = {}) => {
   }
 };
 
+const nonJsonResponseMessage = (status: number): string => {
+  if (status === 502) {
+    return 'The server is temporarily unavailable (502 Bad Gateway). Please try again in a moment.';
+  }
+  if (status === 503) {
+    return 'The service is under maintenance (503). Please try again later.';
+  }
+  if (status === 504) {
+    return 'The server took too long to respond (504 Gateway Timeout). Please try again.';
+  }
+  if (status >= 500) {
+    return `Server error (${status}). Please try again later.`;
+  }
+  return `Unexpected server response (${status}). Please try again.`;
+};
+
 const parseApiResponse = async <T>(response: Response, path: string): Promise<T> => {
   const text = await response.text();
-  const payload = text ? JSON.parse(text) : {};
+  let payload: unknown = {};
+
+  if (text) {
+    try {
+      payload = JSON.parse(text);
+    } catch {
+      throw new ApiError(nonJsonResponseMessage(response.status), response.status);
+    }
+  }
 
   if (!response.ok) {
     const data = isRecord(payload) ? payload : {};
@@ -1984,6 +2024,7 @@ export async function logoutUser(signal?: AbortSignal): Promise<void> {
   try {
     await apiPost('/auth/logout', {}, signal);
   } finally {
+    invalidateScreenCache();
     await setStoredAuthToken(null);
   }
 }
@@ -5113,39 +5154,75 @@ export async function fetchCheckoutSellerPolicies(
   const uniqueSlugs = [...new Set(slugs.map((slug) => slug.trim()).filter(Boolean))];
   if (!uniqueSlugs.length) return [];
 
-  const policies: (CheckoutSellerPolicy | null)[] = await Promise.all(
-    uniqueSlugs.map(async (slug) => {
-      try {
-        const payload = await withDataCache(
-          `api:seller-profile:${slug}`,
-          DATA_CACHE_TTL.checkoutStatic,
-          (requestSignal) => apiGet(`/sellers/${encodeURIComponent(slug)}`, requestSignal),
-          signal,
-        );
+  const mapSellerPolicy = (
+    seller: UnknownRecord,
+    fallbackSlug: string
+  ): CheckoutSellerPolicy | null => {
+    const returnPolicy = getString(seller.return_policy || seller.returnPolicy);
+    const shippingPolicy = getString(seller.shipping_policy || seller.shippingPolicy);
+    if (!returnPolicy && !shippingPolicy) return null;
+
+    return {
+      sellerId: getString(seller.id || seller.user_id || fallbackSlug, fallbackSlug),
+      sellerName: getString(
+        seller.store_name || seller.business_name || seller.name || seller.seller_name,
+        'Seller'
+      ),
+      slug: getString(seller.store_slug || seller.slug || fallbackSlug, fallbackSlug),
+      returnPolicy,
+      shippingPolicy,
+    };
+  };
+
+  const fetchPoliciesBySlug = async (
+    requestSlugs: string[],
+    requestSignal?: AbortSignal
+  ): Promise<CheckoutSellerPolicy[]> => {
+    const policies: (CheckoutSellerPolicy | null)[] = await Promise.all(
+      requestSlugs.map(async (slug) => {
+        try {
+          const payload = await withDataCache(
+            `api:seller-profile:${slug}`,
+            DATA_CACHE_TTL.checkoutStatic,
+            (cachedSignal) => apiGet(`/sellers/${encodeURIComponent(slug)}`, cachedSignal),
+            requestSignal
+          );
+          const data = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+          const seller = isRecord(data) && isRecord(data.seller) ? data.seller : data;
+          if (!isRecord(seller)) return null;
+          return mapSellerPolicy(seller, slug);
+        } catch {
+          return null;
+        }
+      })
+    );
+
+    return policies.filter((policy): policy is CheckoutSellerPolicy => policy !== null);
+  };
+
+  const batchCacheKey = `api:seller-policies:${uniqueSlugs.slice().sort().join(',')}`;
+
+  try {
+    return await withDataCache(
+      batchCacheKey,
+      DATA_CACHE_TTL.checkoutStatic,
+      async (requestSignal) => {
+        const params = new URLSearchParams({ slugs: uniqueSlugs.join(',') });
+        const payload = await apiGet(`/sellers/policies?${params.toString()}`, requestSignal);
         const data = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
-        const seller = isRecord(data) && isRecord(data.seller) ? data.seller : data;
-        if (!isRecord(seller)) return null;
-        const returnPolicy = getString(seller.return_policy || seller.returnPolicy);
-        const shippingPolicy = getString(seller.shipping_policy || seller.shippingPolicy);
-        if (!returnPolicy && !shippingPolicy) return null;
+        const rows = Array.isArray(data.policies) ? data.policies.filter(isRecord) : [];
 
-        return {
-          sellerId: getString(seller.id || slug, slug),
-          sellerName: getString(
-            seller.store_name || seller.business_name || seller.name || seller.seller_name,
-            'Seller'
-          ),
-          slug: getString(seller.store_slug || seller.slug || slug, slug),
-          returnPolicy,
-          shippingPolicy,
-        };
-      } catch {
-        return null;
-      }
-    })
-  );
-
-  return policies.filter((policy): policy is CheckoutSellerPolicy => policy !== null);
+        return rows
+          .map((seller) =>
+            mapSellerPolicy(seller, getString(seller.store_slug || seller.slug))
+          )
+          .filter((policy): policy is CheckoutSellerPolicy => policy !== null);
+      },
+      signal
+    );
+  } catch {
+    return fetchPoliciesBySlug(uniqueSlugs, signal);
+  }
 }
 
 export async function validateCheckoutCoupon(
@@ -5183,6 +5260,7 @@ export async function requestCheckoutOtp(
   cart: CartResult,
   address: CheckoutAddress,
   paymentMethod: string,
+  coupon?: CheckoutCoupon | null,
   signal?: AbortSignal
 ): Promise<{ emailHint: string; expiresIn: number }> {
   const payload = await apiPost(
@@ -5195,11 +5273,18 @@ export async function requestCheckoutOtp(
       })),
       shipping_address: address,
       payment_method: paymentMethod,
+      coupon_code: coupon?.code ?? null,
+      coupon_id: coupon?.couponId ?? null,
+      coupon_discount_amount: coupon?.discountAmountValue ?? 0,
     },
     signal
   );
 
   const data = isRecord(payload) ? payload : {};
+
+  if (data.success === false) {
+    throw new Error(getString(data.message, 'Failed to send OTP'));
+  }
 
   return {
     emailHint: getString(data.email_hint),
@@ -5208,7 +5293,12 @@ export async function requestCheckoutOtp(
 }
 
 export async function verifyCheckoutOtp(otp: string, signal?: AbortSignal): Promise<void> {
-  await apiPost('/orders/verify-otp', { otp }, signal);
+  const payload = await apiPost('/orders/verify-otp', { otp }, signal);
+  const data = isRecord(payload) ? payload : {};
+
+  if (data.success === false) {
+    throw new Error(getString(data.message, 'OTP verification failed'));
+  }
 }
 
 const mapCheckoutOrder = (order: UnknownRecord): CheckoutOrderResult => ({

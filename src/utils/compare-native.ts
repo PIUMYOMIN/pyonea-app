@@ -1,6 +1,7 @@
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Platform } from 'react-native';
 
+import { replaceCompareIds } from '@/utils/compare-store';
 import type { HomeProduct, ProductDetail } from '@/utils/native-api';
 import { fetchProductDetail } from '@/utils/native-api';
 import { invalidateScreenCache } from '@/utils/screen-cache';
@@ -64,6 +65,7 @@ export const hydrateCompareFromStorage = async () => {
   try {
     const raw = await AsyncStorage.getItem(getNativeCompareStorageKey());
     if (!raw) {
+      syncCompareStore([]);
       emitCompareChanged(0);
       return;
     }
@@ -72,9 +74,11 @@ export const hydrateCompareFromStorage = async () => {
     memoryItems = Array.isArray(parsed)
       ? parsed.map((item) => normalizeLegacyItem(item))
       : [];
+    syncCompareStore(memoryItems);
     emitCompareChanged(memoryItems.length);
   } catch {
     memoryItems = [];
+    syncCompareStore(memoryItems);
     emitCompareChanged(0);
   }
 };
@@ -191,6 +195,14 @@ const emitCompareChanged = (count: number) => {
   listeners.forEach((listener) => listener(count));
 };
 
+const syncCompareStore = (items: NativeCompareItem[]) => {
+  replaceCompareIds(items.map((item) => item.id));
+};
+
+export const syncCompareStoreFromStorage = () => {
+  syncCompareStore(loadCompareItems());
+};
+
 export const loadCompareItems = (): NativeCompareItem[] => {
   const storageKey = getCompareStorageKey();
 
@@ -217,6 +229,7 @@ export const saveCompareItems = (items: NativeCompareItem[]) => {
   const storageKey = getCompareStorageKey();
   memoryItems = items;
   memoryStorageKey = storageKey;
+  syncCompareStore(items);
 
   if (Platform.OS !== 'web') {
     persistNativeCompareItems(items);
@@ -335,8 +348,13 @@ export const clearCompareItems = () => {
 };
 
 export const syncCompareStorage = () => {
+  syncCompareStoreFromStorage();
   emitCompareChanged(getCompareCount());
 };
+
+if (Platform.OS === 'web' && canUseLocalStorage()) {
+  syncCompareStoreFromStorage();
+}
 
 export type CompareRefreshResult = {
   items: NativeCompareItem[];

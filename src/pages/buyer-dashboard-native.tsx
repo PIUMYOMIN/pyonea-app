@@ -28,6 +28,7 @@ import {
 import { useWishlist } from '@/context/wishlist-context';
 import { useAppTranslation } from '@/i18n';
 import { BuyerRfqNative } from '@/components/buyer/buyer-rfq-native';
+import { CheckoutPaymentModal } from '@/components/checkout/checkout-payment-modal';
 import {
   cancelBuyerOrder,
   clearCartItems,
@@ -48,6 +49,7 @@ import {
   type BuyerProfilePayload,
   type CartItem,
   type CartResult,
+  type CheckoutOrderResult,
   type HomeProduct,
   type TrackedOrder,
 } from '@/utils/native-api';
@@ -165,22 +167,44 @@ function StatCard({
   );
 }
 
+function trackedOrderToCheckoutOrder(order: TrackedOrder): CheckoutOrderResult {
+  return {
+    id: order.id,
+    orderNumber: order.orderNumber,
+    status: order.status,
+    paymentStatus: order.paymentStatus,
+    total: order.totalAmount,
+    totalValue: order.totalAmountValue,
+    paymentMethod: order.paymentMethod,
+  };
+}
+
 function OrderCard({
   order,
   onDetails,
   onCancel,
   onConfirmDelivery,
+  onPayNow,
   busy,
 }: {
   order: TrackedOrder;
   onDetails: (order: TrackedOrder) => void;
   onCancel: (order: TrackedOrder) => void;
   onConfirmDelivery: (order: TrackedOrder) => void;
+  onPayNow?: (order: TrackedOrder) => void;
   busy?: boolean;
 }) {
   const { t } = useAppTranslation();
-  const canCancel = order.status === 'pending' && order.paymentStatus !== 'paid';
+  const paid = String(order.paymentStatus).toLowerCase() === 'paid';
+  const isCod = order.paymentMethod === 'cash_on_delivery';
+  const canCancel = order.status === 'pending' && !paid;
   const canConfirm = order.status === 'shipped';
+  const canPayNow =
+    order.status === 'pending' &&
+    !paid &&
+    !isCod &&
+    Boolean(onPayNow);
+  const canViewPaySlip = paid || isCod;
   const orderLabel = `#${order.orderNumber || order.id}`;
 
   return (
@@ -216,13 +240,24 @@ function OrderCard({
             {t('buyer_dashboard.details')}
           </Text>
         </Pressable>
-        <Link href={`/payment-success?order_id=${encodeURIComponent(String(order.id))}` as Href} asChild>
-          <Pressable className="rounded-lg bg-purple-50 px-3 py-2 dark:bg-purple-900/30">
-            <Text className="font-sans text-xs font-semibold text-purple-700 dark:text-purple-300">
-              {t('buyer_dashboard.pay_slip')}
+        {canPayNow ? (
+          <Pressable
+            onPress={() => onPayNow?.(order)}
+            className="rounded-lg bg-green-600 px-3 py-2">
+            <Text className="font-sans text-xs font-semibold text-white">
+              {t('buyer_dashboard.pay_now', { defaultValue: 'Pay now' })}
             </Text>
           </Pressable>
-        </Link>
+        ) : null}
+        {canViewPaySlip ? (
+          <Link href={`/payment-success?order_id=${encodeURIComponent(String(order.id))}` as Href} asChild>
+            <Pressable className="rounded-lg bg-purple-50 px-3 py-2 dark:bg-purple-900/30">
+              <Text className="font-sans text-xs font-semibold text-purple-700 dark:text-purple-300">
+                {t('buyer_dashboard.pay_slip')}
+              </Text>
+            </Pressable>
+          </Link>
+        ) : null}
         {canConfirm ? (
           <Pressable
             onPress={() => onConfirmDelivery(order)}
@@ -252,6 +287,7 @@ function DashboardOverview({
   onOrderDetails,
   onCancel,
   onConfirmDelivery,
+  onPayNow,
   confirmingId,
   onResendEmail,
   resendingEmail,
@@ -263,6 +299,7 @@ function DashboardOverview({
   onOrderDetails: (order: TrackedOrder) => void;
   onCancel: (order: TrackedOrder) => void;
   onConfirmDelivery: (order: TrackedOrder) => void;
+  onPayNow: (order: TrackedOrder) => void;
   confirmingId: string | number | null;
   onResendEmail: () => void;
   resendingEmail: boolean;
@@ -368,6 +405,7 @@ function DashboardOverview({
                     onDetails={onOrderDetails}
                     onCancel={onCancel}
                     onConfirmDelivery={onConfirmDelivery}
+                    onPayNow={onPayNow}
                     busy={String(confirmingId) === String(order.id)}
                   />
                 </View>
@@ -426,12 +464,14 @@ function OrdersPanel({
   onDetails,
   onCancel,
   onConfirmDelivery,
+  onPayNow,
   confirmingId,
 }: {
   orders: TrackedOrder[];
   onDetails: (order: TrackedOrder) => void;
   onCancel: (order: TrackedOrder) => void;
   onConfirmDelivery: (order: TrackedOrder) => void;
+  onPayNow: (order: TrackedOrder) => void;
   confirmingId: string | number | null;
 }) {
   const { t } = useAppTranslation();
@@ -481,6 +521,7 @@ function OrdersPanel({
                   onDetails={onDetails}
                   onCancel={onCancel}
                   onConfirmDelivery={onConfirmDelivery}
+                  onPayNow={onPayNow}
                   busy={String(confirmingId) === String(order.id)}
                 />
               ))}
@@ -1273,6 +1314,8 @@ export function BuyerDashboardNative() {
   const [confirmingId, setConfirmingId] = useState<string | number | null>(null);
   const [resendingEmail, setResendingEmail] = useState(false);
   const [verificationMessage, setVerificationMessage] = useState('');
+  const [paymentOrder, setPaymentOrder] = useState<CheckoutOrderResult | null>(null);
+  const [paymentVisible, setPaymentVisible] = useState(false);
 
   const navItems = useMemo(
     () =>
@@ -1357,6 +1400,21 @@ export function BuyerDashboardNative() {
     } finally {
       setConfirmingId(null);
     }
+  };
+
+  const handlePayNow = (order: TrackedOrder) => {
+    setPaymentOrder(trackedOrderToCheckoutOrder(order));
+    setPaymentVisible(true);
+  };
+
+  const handlePaymentSuccess = async (order: CheckoutOrderResult) => {
+    setPaymentVisible(false);
+    setPaymentOrder(null);
+    await loadOrders();
+    router.replace({
+      pathname: '/payment-success',
+      params: { order_id: String(order.id) },
+    } as Href);
   };
 
   const handleResendEmail = async () => {
@@ -1447,6 +1505,7 @@ export function BuyerDashboardNative() {
           onOrderDetails={setSelectedOrder}
           onCancel={setCancelOrder}
           onConfirmDelivery={handleConfirmDelivery}
+          onPayNow={handlePayNow}
           confirmingId={confirmingId}
           onResendEmail={handleResendEmail}
           resendingEmail={resendingEmail}
@@ -1459,6 +1518,7 @@ export function BuyerDashboardNative() {
           onDetails={setSelectedOrder}
           onCancel={setCancelOrder}
           onConfirmDelivery={handleConfirmDelivery}
+          onPayNow={handlePayNow}
           confirmingId={confirmingId}
         />
       ) : null}
@@ -1484,6 +1544,19 @@ export function BuyerDashboardNative() {
           setCancelError('');
         }}
         onConfirm={handleCancelConfirm}
+      />
+      <CheckoutPaymentModal
+        key={String(paymentOrder?.id ?? 'buyer-payment')}
+        visible={paymentVisible}
+        order={paymentOrder}
+        paymentMethod={paymentOrder?.paymentMethod || 'mmqr'}
+        onSuccess={(order) => {
+          void handlePaymentSuccess(order);
+        }}
+        onCancel={() => {
+          setPaymentVisible(false);
+          setPaymentOrder(null);
+        }}
       />
       </View>
     </DashboardShell>

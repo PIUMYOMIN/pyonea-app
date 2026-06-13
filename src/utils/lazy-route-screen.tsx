@@ -13,7 +13,11 @@ const defaultFallback =
     </View>
   ) : null;
 
-/** Lazy-load heavy route screens so the main web bundle stays smaller. */
+/**
+ * Lazy-load heavy route screens so the main web bundle stays smaller.
+ * Use a matching `*.native.tsx` route file with a direct export on iOS/Android —
+ * nested React.lazy + Metro dynamic imports cause "Requiring unknown module" races.
+ */
 export function lazyRouteScreen<P extends object>(
   factory: () => Promise<{ default: ComponentType<P> } | Record<string, ComponentType<P>>>,
   exportName?: string,

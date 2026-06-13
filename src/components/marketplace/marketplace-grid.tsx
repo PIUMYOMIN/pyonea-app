@@ -1,10 +1,16 @@
-import { useMemo, type ReactNode } from 'react';
-import { Platform, useWindowDimensions, View } from 'react-native';
+import { useCallback, useMemo, type ReactNode } from 'react';
+import {
+  FlatList,
+  Platform,
+  StyleSheet,
+  useWindowDimensions,
+  View,
+  type ListRenderItemInfo,
+} from 'react-native';
 
 import {
   CardSkeleton,
   ProductListCard,
-  ProductListRow,
   ProductListRowSkeleton,
   PRODUCT_CARD_ROW_CLASS,
 } from '@/components/marketplace/product-list-cards';
@@ -18,6 +24,23 @@ import {
 } from '@/constants/layout';
 
 export const isMarketplaceWeb = Platform.OS === 'web';
+
+/** Approximate product card height for FlatList windowing (square image + meta/actions). */
+export const PRODUCT_GRID_ESTIMATED_ITEM_SIZE = 320;
+
+const nativeGridStyles = StyleSheet.create({
+  list: {
+    flexGrow: 1,
+  },
+  columnWrapper: {
+    gap: 12,
+    marginBottom: 12,
+  },
+  content: {
+    flexGrow: 1,
+    paddingBottom: 8,
+  },
+});
 
 export function chunkMarketplaceItems<T>(items: T[], columns: number) {
   const rows: T[][] = [];
@@ -95,6 +118,11 @@ type ProductMarketplaceGridProps = {
   skeletonRows?: number;
   imagePriorityCount?: number;
   footer?: ReactNode;
+  scrollEnabled?: boolean;
+  onEndReached?: () => void;
+  onEndReachedThreshold?: number;
+  listHeaderComponent?: ReactNode;
+  listEmptyComponent?: ReactNode;
 };
 
 export function ProductMarketplaceGrid({
@@ -105,12 +133,46 @@ export function ProductMarketplaceGrid({
   skeletonRows = 3,
   imagePriorityCount = 4,
   footer = null,
+  scrollEnabled = false,
+  onEndReached,
+  onEndReachedThreshold = 0.4,
+  listHeaderComponent = null,
+  listEmptyComponent = null,
 }: ProductMarketplaceGridProps) {
   const columns = useProductGridColumns();
-  const rows = useMemo(
-    () => chunkMarketplaceItems(products, columns),
-    [columns, products],
+  const { width } = useWindowDimensions();
+  const estimatedItemSize = useMemo(() => {
+    const horizontalPadding = 32;
+    const gap = 12 * Math.max(0, columns - 1);
+    const cardWidth = Math.max(120, (width - horizontalPadding - gap) / columns);
+    return Math.round(cardWidth + 132);
+  }, [columns, width]);
+
+  const renderProduct = useCallback(
+    ({ item, index }: ListRenderItemInfo<HomeProduct>) => (
+      <ProductListCard
+        product={item}
+        className={PRODUCT_CARD_ROW_CLASS}
+        imagePriority={index < imagePriorityCount}
+      />
+    ),
+    [imagePriorityCount],
   );
+
+  const listFooter = useMemo(
+    () => (footer ? <View>{footer}</View> : null),
+    [footer],
+  );
+
+  const renderListHeader = useCallback(() => {
+    if (!listHeaderComponent) return null;
+    return <>{listHeaderComponent}</>;
+  }, [listHeaderComponent]);
+
+  const renderListEmpty = useCallback(() => {
+    if (!listEmptyComponent) return null;
+    return <>{listEmptyComponent}</>;
+  }, [listEmptyComponent]);
 
   if (isMarketplaceWeb) {
     return (
@@ -149,17 +211,37 @@ export function ProductMarketplaceGrid({
   }
 
   return (
-    <>
-      {rows.map((row, rowIndex) => (
-        <ProductListRow
-          key={`product-grid-row-${rowIndex}`}
-          row={row}
-          productColumns={columns}
-          rowIndex={rowIndex}
-        />
-      ))}
-      {footer}
-    </>
+    <FlatList
+      data={products}
+      key={String(columns)}
+      numColumns={columns}
+      keyExtractor={(item) => String(item.id)}
+      renderItem={renderProduct}
+      scrollEnabled={scrollEnabled}
+      onEndReached={onEndReached}
+      onEndReachedThreshold={onEndReachedThreshold}
+      ListHeaderComponent={listHeaderComponent ? renderListHeader : undefined}
+      ListFooterComponent={listFooter ? () => listFooter : undefined}
+      ListEmptyComponent={listEmptyComponent ? renderListEmpty : undefined}
+      columnWrapperStyle={columns > 1 ? nativeGridStyles.columnWrapper : undefined}
+      contentContainerStyle={nativeGridStyles.content}
+      style={scrollEnabled ? nativeGridStyles.list : undefined}
+      keyboardShouldPersistTaps="handled"
+      keyboardDismissMode="on-drag"
+      initialNumToRender={columns * 4}
+      maxToRenderPerBatch={columns * 3}
+      windowSize={7}
+      removeClippedSubviews={Platform.OS === 'android'}
+      getItemLayout={
+        columns === 1
+          ? (_, index) => ({
+              length: estimatedItemSize,
+              offset: estimatedItemSize * index,
+              index,
+            })
+          : undefined
+      }
+    />
   );
 }
 

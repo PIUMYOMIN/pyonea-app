@@ -72,6 +72,7 @@ export function CheckoutPaymentModal({
   const [session, setSession] = useState<PaymentInitiationResult | null>(null);
   const [error, setError] = useState("");
   const [polls, setPolls] = useState(0);
+  const [retryMode, setRetryMode] = useState<"receipt" | "session">("session");
   const methodLabel = paymentLabels[paymentMethod] || paymentMethod;
   const methodColor = paymentColors[paymentMethod] || "#16a34a";
   const canOpenWallet = Boolean(session?.deepLink);
@@ -94,6 +95,7 @@ export function CheckoutPaymentModal({
     setSession(null);
     setError("");
     setPolls(0);
+    setRetryMode("session");
   }, []);
 
   useEffect(
@@ -113,6 +115,14 @@ export function CheckoutPaymentModal({
         const isCod = receipt.paymentMethod === "cash_on_delivery";
 
         if (!isPaid && !isCod) {
+          stopPolling();
+          setError(
+            t("checkout.payment_not_confirmed_yet", {
+              defaultValue: "Payment is not confirmed yet. Please complete payment first.",
+            }),
+          );
+          setRetryMode("session");
+          setStage("failed");
           return;
         }
 
@@ -125,13 +135,18 @@ export function CheckoutPaymentModal({
           paymentMethod: receipt.paymentMethod,
         });
       } catch {
-        completedRef.current = true;
         stopPolling();
-        setStage("success");
-        onSuccess({ ...nextOrder, paymentStatus: "paid" });
+        setRetryMode("receipt");
+        setError(
+          t("checkout.payment_receipt_failed", {
+            defaultValue:
+              "We could not confirm the receipt yet. Tap Verify Payment to retry, or check My Orders.",
+          }),
+        );
+        setStage("failed");
       }
     },
-    [onSuccess]
+    [onSuccess, t],
   );
 
   const verifyPayment = useCallback(async () => {
@@ -153,6 +168,7 @@ export function CheckoutPaymentModal({
             defaultValue: "Payment verification failed. Please check your orders page or try again.",
           })
         );
+        setRetryMode("session");
         setStage("failed");
       }
     }
@@ -457,14 +473,29 @@ export function CheckoutPaymentModal({
 
           <View className="gap-2 px-5 pb-5">
             {stage === "init" || stage === "failed" || stage === "expired" ? (
-              <Pressable onPress={() => void initiatePayment()} className="rounded-xl bg-green-600 py-3">
+              <Pressable
+                onPress={() => {
+                  if (stage === "failed" && retryMode === "receipt" && order) {
+                    setError("");
+                    setStage("polling");
+                    void completeSuccess(order);
+                    return;
+                  }
+                  void initiatePayment();
+                }}
+                className="rounded-xl bg-green-600 py-3"
+              >
                 <Text className="text-center font-sans text-sm font-bold text-white">
                   {stage === "init"
                     ? t("checkout.generate_payment", {
                         defaultValue: "Generate {{method}} Payment",
                         method: methodLabel,
                       })
-                    : t("checkout.try_again_payment", { defaultValue: "Try Again" })}
+                    : stage === "failed" && retryMode === "receipt"
+                      ? t("checkout.verify_payment_again", {
+                          defaultValue: "Verify Payment",
+                        })
+                      : t("checkout.try_again_payment", { defaultValue: "Try Again" })}
                 </Text>
               </Pressable>
             ) : null}

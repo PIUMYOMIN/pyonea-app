@@ -2,7 +2,7 @@ import { useFonts } from 'expo-font';
 import { DarkTheme, DefaultTheme, Stack, ThemeProvider as ExpoThemeProvider } from 'expo-router';
 import * as SplashScreen from 'expo-splash-screen';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
 import { AnalyticsPageTracker } from '@/components/analytics-page-tracker';
@@ -11,12 +11,11 @@ import { NativeSeo } from '@/components/SEO/native-seo';
 import { CookieBannerNative } from '@/components/ui/cookie-banner-native';
 import { CookieProvider } from '@/context/cookies';
 import { CartCountProvider } from '@/context/cart-count-context';
-import { CompareProductsProvider } from '@/context/compare-products-context';
 import { NativeAuthProvider } from '@/context/native-auth';
 import { AppThemeProvider, useTheme } from '@/context/theme';
 import { WishlistProvider } from '@/context/wishlist-context';
 import { WelcomeLoaderProvider } from '@/context/welcome-loader';
-import { RouteLanguageSync } from '@/i18n';
+import { hydrateLanguageFromStorage, RouteLanguageSync } from '@/i18n';
 import '@/i18n';
 import '../global.css';
 
@@ -45,7 +44,14 @@ export default function RootLayout() {
     'Torus-SemiBold': require('@/fonts/Torus/Torus-SemiBold.ttf'),
   });
   const isWeb = Platform.OS === 'web';
-  const appReady = isWeb || fontsLoaded || fontError;
+  const [languageReady, setLanguageReady] = useState(isWeb);
+  const fontsReady = isWeb || fontsLoaded || fontError;
+  const appReady = fontsReady && languageReady;
+
+  useEffect(() => {
+    if (isWeb) return;
+    void hydrateLanguageFromStorage().finally(() => setLanguageReady(true));
+  }, [isWeb]);
 
   useEffect(() => {
     if (appReady) {
@@ -60,7 +66,6 @@ export default function RootLayout() {
   return (
     <AppThemeProvider>
       <NativeAuthProvider>
-        <CompareProductsProvider>
           <CartCountProvider>
             <WishlistProvider>
               <CookieProvider>
@@ -70,7 +75,6 @@ export default function RootLayout() {
               </CookieProvider>
             </WishlistProvider>
           </CartCountProvider>
-        </CompareProductsProvider>
       </NativeAuthProvider>
     </AppThemeProvider>
   );

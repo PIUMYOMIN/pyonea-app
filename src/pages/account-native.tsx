@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useRouter, useGlobalSearchParams, usePathname, type Href } from 'expo-router';
-import { useMemo, type ReactNode } from 'react';
+import { router, type Href } from 'expo-router';
+import { useCallback, useMemo, type ReactNode } from 'react';
 import {
   ActivityIndicator,
   Alert,
@@ -16,11 +16,26 @@ import {
 import { AppLayout } from '@/components/layout/app-layout';
 import { useNativeAuth } from '@/context/native-auth';
 import { useTheme } from '@/context/theme';
-import { mergeRouteLang, normalizeLanguage, useAppTranslation, useLocalizedHref, type SupportedLanguage } from '@/i18n';
+import {
+  mergeRouteLang,
+  normalizeLanguage,
+  useAppTranslation,
+  useLocalizedHref,
+  type SupportedLanguage,
+} from '@/i18n';
 import { getRoleDestination, hasUserRole } from '@/utils/auth-routing';
 
 const TELEGRAM_CHAT_URL = 'https://t.me/Pyonea';
 const WHATSAPP_CHAT_URL = 'https://wa.me/959792115547';
+
+/** NativeWind shadow-* on conditional Pressable classNames breaks Expo Router nav context. */
+const languagePillActiveStyle = {
+  shadowColor: '#000',
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.08,
+  shadowRadius: 2,
+  elevation: 2,
+} as const;
 
 type AccountRowProps = {
   icon: keyof typeof Feather.glyphMap;
@@ -60,7 +75,6 @@ function AccountRow({
   trailing,
   showChevron = true,
 }: AccountRowProps) {
-  const router = useRouter();
   const { isDark } = useTheme();
 
   const handlePress = () => {
@@ -142,12 +156,15 @@ function ChatRow({
 export function AccountNative() {
   const { t, i18n } = useAppTranslation();
   const href = useLocalizedHref();
-  const router = useRouter();
-  const pathname = usePathname() || '/account';
-  const params = useGlobalSearchParams<Record<string, string | string[] | undefined>>();
   const auth = useNativeAuth();
   const { isDark, toggleTheme } = useTheme();
   const activeLanguage = normalizeLanguage(i18n.resolvedLanguage || i18n.language);
+  const changeLanguage = useCallback(
+    (nextLanguage: SupportedLanguage) => {
+      void i18n.changeLanguage(nextLanguage);
+    },
+    [i18n],
+  );
 
   const user = auth.user;
   const dashboardHref = user ? getRoleDestination(user) : null;
@@ -158,15 +175,6 @@ export function AccountNative() {
       { returnTo: mergeRouteLang(path, {}, activeLanguage) },
       activeLanguage,
     ) as Href;
-
-  const changeLanguage = (nextLanguage: SupportedLanguage) => {
-    void i18n.changeLanguage(nextLanguage);
-    if (Platform.OS === 'web') {
-      router.replace(
-        mergeRouteLang(pathname, params, nextLanguage) as Href,
-      );
-    }
-  };
 
   const handleSignOut = () => {
     const runLogout = () => {
@@ -360,7 +368,12 @@ export function AccountNative() {
                   <Pressable
                     key={code}
                     onPress={() => changeLanguage(code)}
-                    className={`rounded-md px-3 py-1.5 ${active ? 'bg-white shadow-sm dark:bg-slate-900' : ''}`}>
+                    className={
+                      active
+                        ? 'rounded-md bg-white px-3 py-1.5 dark:bg-slate-900'
+                        : 'rounded-md px-3 py-1.5'
+                    }
+                    style={active ? languagePillActiveStyle : undefined}>
                     <Text
                       className={`font-sans text-xs font-bold ${
                         active ? 'text-green-700 dark:text-green-300' : 'text-gray-500 dark:text-slate-400'

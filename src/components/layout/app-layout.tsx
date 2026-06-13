@@ -43,7 +43,7 @@ import {
   mergeRouteLang,
   normalizeLanguage,
   useAppTranslation,
-  type SupportedLanguage,
+  useChangeLanguage,
 } from "@/i18n";
 import { getRoleDestination, hasUserRole } from "@/utils/auth-routing";
 const headerRouteKeys: Record<string, string> = {
@@ -64,6 +64,14 @@ const accountPaths = [
   "/seller/dashboard",
   "/admin/dashboard",
 ];
+
+const languagePillActiveStyle = {
+  shadowColor: "#000",
+  shadowOffset: { width: 0, height: 1 },
+  shadowOpacity: 0.08,
+  shadowRadius: 2,
+  elevation: 2,
+} as const;
 
 function HeaderAction({
   href,
@@ -103,11 +111,8 @@ export function Header() {
   const pathname = usePathname();
   const params = useGlobalSearchParams<{ search?: string; lang?: string }>();
   const routeSearch = typeof params.search === "string" ? params.search : "";
-  const activeLanguage = normalizeLanguage(
-    typeof params.lang === "string"
-      ? params.lang
-      : i18n.resolvedLanguage || i18n.language,
-  );
+  const activeLanguage = normalizeLanguage(i18n.resolvedLanguage || i18n.language);
+  const changeLanguage = useChangeLanguage();
   const [mobileOpen, setMobileOpen] = useState(false);
   const [userMenuOpen, setUserMenuOpen] = useState(false);
   const [searchTerm, setSearchTerm] = useState(routeSearch);
@@ -163,19 +168,6 @@ export function Header() {
       ? mergeRouteLang('/products', { search: value.trim() }, activeLanguage)
       : mergeRouteLang('/products', {}, activeLanguage);
     router.replace(href as Href);
-  };
-
-  const changeLanguage = (nextLanguage: SupportedLanguage) => {
-    void i18n.changeLanguage(nextLanguage);
-    if (Platform.OS === "web") {
-      router.replace(
-        mergeRouteLang(
-          pathname,
-          params as Record<string, string | string[] | undefined>,
-          nextLanguage,
-        ) as Href,
-      );
-    }
   };
 
   const handleLogout = async () => {
@@ -264,11 +256,12 @@ export function Header() {
                 <Pressable
                   key={code}
                   onPress={() => changeLanguage(code)}
-                  className={`flex-row items-center gap-1 rounded-md px-2.5 py-1 ${
+                  className={
                     activeLanguage === code
-                      ? "bg-white shadow-sm dark:bg-slate-900"
-                      : "bg-transparent"
-                  }`}
+                      ? "flex-row items-center gap-1 rounded-md bg-white px-2.5 py-1 dark:bg-slate-900"
+                      : "flex-row items-center gap-1 rounded-md bg-transparent px-2.5 py-1"
+                  }
+                  style={activeLanguage === code ? languagePillActiveStyle : undefined}
                 >
                   <Text
                     className={`font-sans text-xs font-bold ${

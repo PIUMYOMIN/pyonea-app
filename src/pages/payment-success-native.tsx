@@ -44,6 +44,29 @@ const extractOrderId = (value: string | undefined) => {
   }
 };
 
+const parseOrderIds = (params: Record<string, string | string[] | undefined>) => {
+  const fromList = getParam(params.order_ids);
+  if (fromList) {
+    return fromList
+      .split(',')
+      .map((entry) => extractOrderId(entry.trim()))
+      .filter(Boolean);
+  }
+
+  const single = extractOrderId(
+    getParam(params.order_id) || getParam(params.id) || getParam(params.order) || getParam(params.orderNumber),
+  );
+
+  return single ? [single] : [];
+};
+
+const isOrderPaid = (order: PaymentReceiptOrder) =>
+  String(order.paymentStatus).toLowerCase() === 'paid';
+
+const isCodPending = (order: PaymentReceiptOrder) =>
+  order.paymentMethod === 'cash_on_delivery' &&
+  ['pending', 'unpaid'].includes(String(order.paymentStatus).toLowerCase());
+
 const formatReceiptDate = (value: string, fallback: string) => {
   if (!value) return fallback;
   const date = new Date(value);
@@ -268,14 +291,11 @@ export function PaymentSuccessNative() {
   const { t } = useAppTranslation();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const orderId = useMemo(
-    () =>
-      extractOrderId(
-        getParam(params.order_id) || getParam(params.id) || getParam(params.order) || getParam(params.orderNumber)
-      ),
-    [params.id, params.order, params.orderNumber, params.order_id]
-  );
+  const orderIds = useMemo(() => parseOrderIds(params as Record<string, string | string[] | undefined>), [params]);
+  const orderId = orderIds[0] || '';
+  const relatedOrderIds = useMemo(() => orderIds.slice(1), [orderIds]);
   const [order, setOrder] = useState<PaymentReceiptOrder | null>(null);
+  const [relatedOrders, setRelatedOrders] = useState<PaymentReceiptOrder[]>([]);
   const [loading, setLoading] = useState(Boolean(orderId));
   const [downloading, setDownloading] = useState(false);
   const [error, setError] = useState(orderId ? '' : t('payment_success.invalid_order'));
@@ -285,12 +305,18 @@ export function PaymentSuccessNative() {
     if (!orderId) return;
     const controller = new AbortController();
 
-    const loadOrder = async () => {
+    const loadOrders = async () => {
       setLoading(true);
       setError('');
       try {
-        const result = await fetchPaymentReceipt(orderId, controller.signal);
-        if (!controller.signal.aborted) setOrder(result);
+        const [primary, ...related] = await Promise.all([
+          fetchPaymentReceipt(orderId, controller.signal),
+          ...relatedOrderIds.map((id) => fetchPaymentReceipt(id, controller.signal)),
+        ]);
+        if (!controller.signal.aborted) {
+          setOrder(primary);
+          setRelatedOrders(related);
+        }
       } catch {
         if (!controller.signal.aborted) setError(t('payment_success.load_failed'));
       } finally {
@@ -298,10 +324,10 @@ export function PaymentSuccessNative() {
       }
     };
 
-    void loadOrder();
+    void loadOrders();
 
     return () => controller.abort();
-  }, [orderId, t]);
+  }, [orderId, relatedOrderIds, t]);
 
   const handleShare = async () => {
     if (!order) return;
@@ -319,6 +345,21 @@ export function PaymentSuccessNative() {
     const paymentDate = formatReceiptDate(order.paymentDate, emptyValue);
     const paymentMethod = formatPaymentMethod(order.paymentMethod, emptyValue);
     const taxLabel = t('payment_success.tax_with_rate', { rate: Math.round(order.taxRate * 100) });
+    const paid = isOrderPaid(order);
+    const codPending = isCodPending(order);
+    const statusBadgeLabel = paid
+      ? t('payment_success.paid')
+      : codPending
+        ? t('payment_success.order_confirmed')
+        : t('payment_success.pending_payment', { defaultValue: 'Pending payment' });
+    const statusMetaValue = paid
+      ? t('payment_success.paid')
+      : codPending
+        ? t('payment_success.order_confirmed')
+        : t('payment_success.pending_payment', { defaultValue: 'Pending payment' });
+    const totalPaidLabel = paid
+      ? t('payment_success.total_paid')
+      : t('payment_success.order_total', { defaultValue: 'Order total' });
 
     if (typeof window === 'undefined' || typeof document === 'undefined') {
       await handleShare();
@@ -409,7 +450,7 @@ export function PaymentSuccessNative() {
               <div class="title">
                 <h2>${escapeHtml(t('payment_success.receipt_heading'))}</h2>
                 <p class="muted">${escapeHtml(t('payment_success.generated_receipt'))}</p>
-                <span class="paid">${escapeHtml(t('payment_success.paid'))}</span>
+                <span class="paid">${escapeHtml(statusBadgeLabel)}</span>
               </div>
             </section>
             <section class="body">
@@ -418,7 +459,7 @@ export function PaymentSuccessNative() {
                 <div class="box"><span>${escapeHtml(t('payment_success.order_date'))}</span><strong>${escapeHtml(orderDate)}</strong></div>
                 <div class="box"><span>${escapeHtml(t('payment_success.payment_method'))}</span><strong>${escapeHtml(paymentMethod)}</strong></div>
                 <div class="box"><span>${escapeHtml(t('payment_success.reference_id'))}</span><strong>${escapeHtml(order.paymentReference || emptyValue)}</strong></div>
-                <div class="box"><span>${escapeHtml(t('payment_success.status'))}</span><strong>${escapeHtml(t('payment_success.confirmed'))}</strong></div>
+                <div class="box"><span>${escapeHtml(t('payment_success.status'))}</span><strong>${escapeHtml(statusMetaValue)}</strong></div>
                 <div class="box"><span>${escapeHtml(t('payment_success.payment_date'))}</span><strong>${escapeHtml(paymentDate)}</strong></div>
               </div>
               <div class="parties">
@@ -434,7 +475,7 @@ export function PaymentSuccessNative() {
                 <div class="row"><span>${escapeHtml(t('payment_success.subtotal'))}</span><strong>${escapeHtml(order.subtotalAmount)}</strong></div>
                 <div class="row"><span>${escapeHtml(t('payment_success.shipping'))}</span><strong>${escapeHtml(order.shippingFee)}</strong></div>
                 <div class="row"><span>${escapeHtml(taxLabel)}</span><strong>${escapeHtml(order.taxAmount)}</strong></div>
-                <div class="row total"><span>${escapeHtml(t('payment_success.total_paid'))}</span><strong>${escapeHtml(order.totalAmount)}</strong></div>
+                <div class="row total"><span>${escapeHtml(totalPaidLabel)}</span><strong>${escapeHtml(order.totalAmount)}</strong></div>
               </div>
               <div class="footer">
                 <p>${escapeHtml(t('payment_success.footer_thanks'))}</p>
@@ -541,12 +582,17 @@ export function PaymentSuccessNative() {
   const paymentDate = formatReceiptDate(order.paymentDate, emptyValue);
   const paymentMethod = formatPaymentMethod(order.paymentMethod, emptyValue);
   const taxLabel = t('payment_success.tax_with_rate', { rate: Math.round(order.taxRate * 100) });
-  const isCodPending =
-    order.paymentMethod === 'cash_on_delivery' &&
-    ['pending', 'unpaid'].includes(String(order.paymentStatus).toLowerCase());
-  const statusBadgeLabel = isCodPending
-    ? t('payment_success.order_confirmed')
-    : t('payment_success.paid');
+  const paid = isOrderPaid(order);
+  const codPending = isCodPending(order);
+  const statusBadgeLabel = paid
+    ? t('payment_success.paid')
+    : codPending
+      ? t('payment_success.order_confirmed')
+      : t('payment_success.pending_payment', { defaultValue: 'Pending payment' });
+  const statusMetaValue = statusBadgeLabel;
+  const totalPaidLabel = paid
+    ? t('payment_success.total_paid')
+    : t('payment_success.order_total', { defaultValue: 'Order total' });
 
   return (
     <AppLayout>
@@ -563,11 +609,15 @@ export function PaymentSuccessNative() {
               {t('payment_success.title')}
             </Text>
             <Text className="mt-3 max-w-2xl text-center font-sans text-base leading-7 text-green-100 sm:text-lg">
-              {isCodPending
+              {codPending
                 ? t('payment_success.success_message_cod')
-                : t('payment_success.success_message_paid', {
-                    defaultValue: t('payment_success.success_message'),
-                  })}
+                : paid
+                  ? t('payment_success.success_message_paid', {
+                      defaultValue: t('payment_success.success_message'),
+                    })
+                  : t('payment_success.success_message_pending', {
+                      defaultValue: 'Your order was created. Complete payment from My Orders when ready.',
+                    })}
             </Text>
             <View className="mt-6 rounded-full border border-green-300 bg-white/10 px-5 py-2">
               <Text className="font-sans text-sm font-semibold text-white">
@@ -639,7 +689,7 @@ export function PaymentSuccessNative() {
                     label={t('payment_success.reference_id')}
                     value={order.paymentReference || emptyValue}
                   />
-                  <MetaBox label={t('payment_success.status')} value={t('payment_success.confirmed')} />
+                  <MetaBox label={t('payment_success.status')} value={statusMetaValue} />
                   <MetaBox label={t('payment_success.payment_date')} value={paymentDate} />
                 </View>
 
@@ -676,7 +726,7 @@ export function PaymentSuccessNative() {
                   <SummaryRow label={t('payment_success.shipping')} value={order.shippingFee} />
                   <SummaryRow label={taxLabel} value={order.taxAmount} />
                   <View className="border-t border-gray-200 pt-4 dark:border-slate-700">
-                    <SummaryRow label={t('payment_success.total_paid')} value={order.totalAmount} strong />
+                    <SummaryRow label={totalPaidLabel} value={order.totalAmount} strong />
                   </View>
                 </View>
 
@@ -693,6 +743,34 @@ export function PaymentSuccessNative() {
           </View>
 
           <View className="w-full gap-5 lg:w-[32%]">
+            {relatedOrders.length > 0 ? (
+              <SideCard
+                title={t('payment_success.related_orders', {
+                  defaultValue: 'Other orders from this checkout',
+                })}>
+                <View className="gap-3">
+                  {relatedOrders.map((related) => (
+                    <Pressable
+                      key={String(related.id)}
+                      onPress={() =>
+                        router.push({
+                          pathname: '/payment-success',
+                          params: { order_id: String(related.id) },
+                        })
+                      }
+                      className="rounded-lg border border-gray-100 p-3 dark:border-slate-800">
+                      <Text className="font-sans text-sm font-semibold text-gray-950 dark:text-slate-100">
+                        #{related.orderNumber}
+                      </Text>
+                      <Text className="mt-1 font-sans text-xs text-gray-500 dark:text-slate-400">
+                        {related.totalAmount}
+                      </Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </SideCard>
+            ) : null}
+
             <SideCard title={t('payment_success.whats_next')}>
               <View className="gap-4">
                 <View className="flex-row gap-3">

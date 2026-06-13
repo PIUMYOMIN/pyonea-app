@@ -15,7 +15,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { NativeSeo } from '@/components/SEO/native-seo';
-import { ProductMarketplaceGrid, useProductGridColumns } from '@/components/marketplace/marketplace-grid';
+import { ProductMarketplaceGrid, isMarketplaceWeb, useProductGridColumns } from '@/components/marketplace/marketplace-grid';
 import { ProductListRowSkeleton } from '@/components/marketplace-list-screen';
 import { SITE_CONTAINER_CLASS } from '@/constants/layout';
 import { useTheme } from '@/context/theme';
@@ -510,6 +510,115 @@ export function ProductListNative() {
     return `/products?${next.toString()}`;
   }, [activeLanguage, maxPrice, minPrice, searchQuery, selectedCategory, sortBy, sortOrder]);
 
+  const productListHeader = useMemo(
+    () => (
+      <>
+        <View className="mb-4 flex-row items-center justify-between gap-3">
+          <Text
+            className="min-w-0 flex-1 font-sans text-xl font-bold text-gray-900 dark:text-white sm:text-2xl"
+            numberOfLines={1}
+          >
+            {title}
+          </Text>
+          <View className="shrink-0 flex-row items-center gap-2">
+            {products.length > 0 ? (
+              <Text className="hidden font-sans text-xs text-gray-500 dark:text-slate-400 sm:block">
+                {t('products.showing_count', { count: products.length })}
+                {hasMore ? '+' : ''}
+              </Text>
+            ) : null}
+            {!isDesktop ? (
+              <Pressable
+                onPress={() => setSidebarOpen(true)}
+                className={`min-h-10 flex-row items-center gap-1.5 rounded-lg border px-3 py-2 ${
+                  hasActiveFilters
+                    ? 'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/20'
+                    : 'border-gray-200 bg-white dark:border-slate-600 dark:bg-slate-800'
+                }`}
+              >
+                <Feather
+                  name="sliders"
+                  color={hasActiveFilters ? '#16a34a' : mutedIconColor}
+                  size={16}
+                />
+                <Text
+                  className={`font-sans text-sm font-medium ${
+                    hasActiveFilters
+                      ? 'text-green-700 dark:text-green-300'
+                      : 'text-gray-700 dark:text-slate-300'
+                  }`}
+                >
+                  {t('products.filters')}
+                </Text>
+                {activeFilterCount > 0 ? (
+                  <View className="min-h-5 min-w-5 items-center justify-center rounded-full bg-green-600 px-1.5">
+                    <Text className="font-sans text-[10px] font-bold text-white">
+                      {activeFilterCount}
+                    </Text>
+                  </View>
+                ) : null}
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+
+        {error ? (
+          <View className="mb-5 flex-row items-start gap-3 rounded-xl border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
+            <Feather name="alert-triangle" color="#f59e0b" size={20} />
+            <Text className="min-w-0 flex-1 font-sans text-sm text-yellow-700 dark:text-yellow-400">
+              {error}
+            </Text>
+          </View>
+        ) : null}
+      </>
+    ),
+    [
+      activeFilterCount,
+      error,
+      hasActiveFilters,
+      hasMore,
+      isDesktop,
+      mutedIconColor,
+      products.length,
+      t,
+      title,
+    ],
+  );
+
+  const productListEmpty = useMemo(
+    () => (
+      <View className="w-full items-center py-16">
+        <Feather name="search" color={isDark ? '#475569' : '#cbd5e1'} size={48} />
+        <Text className="mt-3 font-sans text-lg font-semibold text-gray-900 dark:text-gray-100">
+          {t('products.no_products_found')}
+        </Text>
+        <Text className="mt-1 text-center font-sans text-sm text-gray-500 dark:text-gray-400">
+          {t('products.try_adjusting_search')}
+        </Text>
+        <Pressable onPress={clearFilters} className="mt-4 rounded-lg bg-green-600 px-5 py-2">
+          <Text className="font-sans text-sm font-medium text-white">
+            {t('products.clear_filters')}
+          </Text>
+        </Pressable>
+      </View>
+    ),
+    [clearFilters, isDark, t],
+  );
+
+  const productListFooter = useMemo(
+    () => (
+      <>
+        {loadingMore ? <ProductListRowSkeleton productColumns={productColumns} /> : null}
+        {!hasMore && products.length > 0 ? (
+          <Text className="py-8 text-center font-sans text-sm text-gray-400 dark:text-gray-500">
+            {t('products.no_more_products')}
+          </Text>
+        ) : null}
+      </>
+    ),
+    [hasMore, loadingMore, productColumns, products.length, t],
+  );
+
   return (
     <>
       <NativeSeo
@@ -517,9 +626,16 @@ export function ProductListNative() {
         description={seoDescription}
         url={seoUrl}
       />
-      <AppLayout onEndReached={loadMore}>
-      <View className="min-w-0 bg-gray-50 py-6 dark:bg-slate-950 sm:py-8">
-        <View className={`${SITE_CONTAINER_CLASS} min-w-0`}>
+      <AppLayout
+        scrollEnabled={isMarketplaceWeb}
+        onEndReached={isMarketplaceWeb ? loadMore : undefined}
+      >
+      <View
+        className={`min-w-0 bg-gray-50 py-6 dark:bg-slate-950 sm:py-8${
+          isMarketplaceWeb ? '' : ' flex-1'
+        }`}
+      >
+        <View className={`${SITE_CONTAINER_CLASS} min-w-0${isMarketplaceWeb ? '' : ' flex-1'}`}>
           <View className="mb-6">
             <ProductSearchBar
               key={searchQuery}
@@ -633,7 +749,7 @@ export function ProductListNative() {
             </View>
           </Modal>
 
-          <View className={`gap-6 ${isDesktop ? 'flex-row lg:gap-8' : ''}`}>
+          <View className={`gap-6 ${isDesktop ? 'flex-row lg:gap-8' : ''}${isMarketplaceWeb ? '' : ' flex-1 min-h-0'}`}>
             {isDesktop ? (
               <View className="w-56 shrink-0 lg:w-64">
                 <FilterPanel
@@ -655,93 +771,95 @@ export function ProductListNative() {
               </View>
             ) : null}
 
-            <View className="min-w-0 flex-1">
-              <View className="mb-4 flex-row items-center justify-between gap-3">
-                <Text className="min-w-0 flex-1 font-sans text-xl font-bold text-gray-900 dark:text-white sm:text-2xl" numberOfLines={1}>
-                  {title}
-                </Text>
-                <View className="shrink-0 flex-row items-center gap-2">
-                  {products.length > 0 ? (
-                    <Text className="hidden font-sans text-xs text-gray-500 dark:text-slate-400 sm:block">
-                      {t('products.showing_count', { count: products.length })}
-                      {hasMore ? '+' : ''}
-                    </Text>
-                  ) : null}
-                  {!isDesktop ? (
-                    <Pressable
-                      onPress={() => setSidebarOpen(true)}
-                      className={`min-h-10 flex-row items-center gap-1.5 rounded-lg border px-3 py-2 ${
-                        hasActiveFilters
-                          ? 'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/20'
-                          : 'border-gray-200 bg-white dark:border-slate-600 dark:bg-slate-800'
-                      }`}
-                    >
-                      <Feather
-                        name="sliders"
-                        color={hasActiveFilters ? '#16a34a' : mutedIconColor}
-                        size={16}
-                      />
-                      <Text
-                        className={`font-sans text-sm font-medium ${
-                          hasActiveFilters
-                            ? 'text-green-700 dark:text-green-300'
-                            : 'text-gray-700 dark:text-slate-300'
-                        }`}
-                      >
-                        {t('products.filters')}
-                      </Text>
-                      {activeFilterCount > 0 ? (
-                        <View className="min-h-5 min-w-5 items-center justify-center rounded-full bg-green-600 px-1.5">
-                          <Text className="font-sans text-[10px] font-bold text-white">
-                            {activeFilterCount}
-                          </Text>
-                        </View>
-                      ) : null}
-                    </Pressable>
-                  ) : null}
-                </View>
-              </View>
-
-              {error ? (
-                <View className="mb-5 flex-row items-start gap-3 rounded-xl border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
-                  <Feather name="alert-triangle" color="#f59e0b" size={20} />
-                  <Text className="min-w-0 flex-1 font-sans text-sm text-yellow-700 dark:text-yellow-400">
-                    {error}
-                  </Text>
-                </View>
-              ) : null}
-
-              {loading && products.length === 0 ? (
-                <ProductMarketplaceGrid products={[]} loading skeletonCount={8} />
-              ) : products.length > 0 ? (
+            <View className={`min-w-0 flex-1${isMarketplaceWeb ? '' : ' min-h-0'}`}>
+              {isMarketplaceWeb ? (
                 <>
-                  <ProductMarketplaceGrid products={products} />
-                  {loadingMore ? (
-                    <ProductListRowSkeleton productColumns={productColumns} />
+                  <View className="mb-4 flex-row items-center justify-between gap-3">
+                    <Text className="min-w-0 flex-1 font-sans text-xl font-bold text-gray-900 dark:text-white sm:text-2xl" numberOfLines={1}>
+                      {title}
+                    </Text>
+                    <View className="shrink-0 flex-row items-center gap-2">
+                      {products.length > 0 ? (
+                        <Text className="hidden font-sans text-xs text-gray-500 dark:text-slate-400 sm:block">
+                          {t('products.showing_count', { count: products.length })}
+                          {hasMore ? '+' : ''}
+                        </Text>
+                      ) : null}
+                      {!isDesktop ? (
+                        <Pressable
+                          onPress={() => setSidebarOpen(true)}
+                          className={`min-h-10 flex-row items-center gap-1.5 rounded-lg border px-3 py-2 ${
+                            hasActiveFilters
+                              ? 'border-green-300 bg-green-50 dark:border-green-700 dark:bg-green-900/20'
+                              : 'border-gray-200 bg-white dark:border-slate-600 dark:bg-slate-800'
+                          }`}
+                        >
+                          <Feather
+                            name="sliders"
+                            color={hasActiveFilters ? '#16a34a' : mutedIconColor}
+                            size={16}
+                          />
+                          <Text
+                            className={`font-sans text-sm font-medium ${
+                              hasActiveFilters
+                                ? 'text-green-700 dark:text-green-300'
+                                : 'text-gray-700 dark:text-slate-300'
+                            }`}
+                          >
+                            {t('products.filters')}
+                          </Text>
+                          {activeFilterCount > 0 ? (
+                            <View className="min-h-5 min-w-5 items-center justify-center rounded-full bg-green-600 px-1.5">
+                              <Text className="font-sans text-[10px] font-bold text-white">
+                                {activeFilterCount}
+                              </Text>
+                            </View>
+                          ) : null}
+                        </Pressable>
+                      ) : null}
+                    </View>
+                  </View>
+
+                  {error ? (
+                    <View className="mb-5 flex-row items-start gap-3 rounded-xl border border-yellow-200 bg-yellow-50 p-4 dark:border-yellow-800 dark:bg-yellow-900/20">
+                      <Feather name="alert-triangle" color="#f59e0b" size={20} />
+                      <Text className="min-w-0 flex-1 font-sans text-sm text-yellow-700 dark:text-yellow-400">
+                        {error}
+                      </Text>
+                    </View>
+                  ) : null}
+
+                  {loading && products.length === 0 ? (
+                    <ProductMarketplaceGrid products={[]} loading skeletonCount={8} />
+                  ) : products.length > 0 ? (
+                    <>
+                      <ProductMarketplaceGrid products={products} />
+                      {loadingMore ? (
+                        <ProductListRowSkeleton productColumns={productColumns} />
+                      ) : null}
+                    </>
+                  ) : !loading ? (
+                    productListEmpty
+                  ) : null}
+
+                  {!hasMore && products.length > 0 ? (
+                    <Text className="py-8 text-center font-sans text-sm text-gray-400 dark:text-gray-500">
+                      {t('products.no_more_products')}
+                    </Text>
                   ) : null}
                 </>
-              ) : !loading ? (
-                <View className="w-full items-center py-16">
-                  <Feather name="search" color={isDark ? '#475569' : '#cbd5e1'} size={48} />
-                  <Text className="mt-3 font-sans text-lg font-semibold text-gray-900 dark:text-gray-100">
-                    {t('products.no_products_found')}
-                  </Text>
-                  <Text className="mt-1 text-center font-sans text-sm text-gray-500 dark:text-gray-400">
-                    {t('products.try_adjusting_search')}
-                  </Text>
-                  <Pressable onPress={clearFilters} className="mt-4 rounded-lg bg-green-600 px-5 py-2">
-                    <Text className="font-sans text-sm font-medium text-white">
-                      {t('products.clear_filters')}
-                    </Text>
-                  </Pressable>
-                </View>
-              ) : null}
-
-              {!hasMore && products.length > 0 ? (
-                <Text className="py-8 text-center font-sans text-sm text-gray-400 dark:text-gray-500">
-                  {t('products.no_more_products')}
-                </Text>
-              ) : null}
+              ) : loading && products.length === 0 ? (
+                <ProductMarketplaceGrid products={[]} loading skeletonCount={8} />
+              ) : (
+                <ProductMarketplaceGrid
+                  products={products}
+                  scrollEnabled
+                  onEndReached={loadMore}
+                  listHeaderComponent={productListHeader}
+                  listEmptyComponent={!loading ? productListEmpty : null}
+                  footer={productListFooter}
+                />
+              )}
             </View>
           </View>
         </View>

@@ -1,7 +1,7 @@
 import Feather from "@expo/vector-icons/Feather";
 import { OptimizedImage as Image } from "@/components/ui/optimized-image";
 import { Link, useRouter, type Href } from "expo-router";
-import { lazy, Suspense, useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -15,6 +15,7 @@ import {
 
 import { AppLayout } from "@/components/layout/app-layout";
 import { SITE_CONTAINER_CLASS } from "@/constants/layout";
+import { CheckoutLocationSelect } from "@/components/checkout/checkout-location-select";
 import { CheckoutPaymentModal } from "@/components/checkout/checkout-payment-modal";
 import { useCartCount } from "@/context/cart-count-context";
 import { useNativeAuth } from "@/context/native-auth";
@@ -53,12 +54,6 @@ import {
 } from "@/utils/native-api";
 import { getThumbUrl } from "@/utils/image-thumbs";
 import { emitCartCountChanged } from "@/utils/native-cart-events";
-
-const CheckoutLocationSelect = lazy(() =>
-  import("@/components/checkout/checkout-location-select").then((module) => ({
-    default: module.CheckoutLocationSelect,
-  })),
-);
 
 const placeholderProduct = require("@/assets/images/placeholder-product.png");
 
@@ -264,12 +259,13 @@ function OtpModal({
     const cleanValue = value.replace(/\D/g, "");
 
     if (cleanValue.length > 1) {
-      onChangeOtp(cleanValue.slice(0, 6));
-      focusInput(Math.min(cleanValue.length, 6) - 1);
+      const nextOtp = cleanValue.slice(0, 6);
+      onChangeOtp(nextOtp);
+      focusInput(nextOtp.length >= 6 ? 5 : nextOtp.length);
       return;
     }
 
-    const digits = otp.split("");
+    const digits = Array.from({ length: 6 }, (_, digitIndex) => otp[digitIndex] || "");
     digits[index] = cleanValue;
     onChangeOtp(digits.join("").slice(0, 6));
 
@@ -454,6 +450,7 @@ export function CheckoutNative() {
   const timerRef = useRef<ReturnType<typeof setInterval> | null>(null);
   const messageTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const checkoutBusyRef = useRef(false);
+  const otpSessionVerifiedRef = useRef(false);
   const idempotencyKeyRef = useRef(
     globalThis.crypto?.randomUUID?.() ??
       `checkout-${Date.now()}-${Math.random().toString(36).slice(2)}`
@@ -477,6 +474,7 @@ export function CheckoutNative() {
   const [locationRows, setLocationRows] = useState<CheckoutLocationRow[]>([]);
   const [locationLoading, setLocationLoading] = useState(true);
   const [feesLoading, setFeesLoading] = useState(true);
+  const [feesError, setFeesError] = useState("");
   const [sellerShippingFees, setSellerShippingFees] = useState<CheckoutSellerShippingFee[]>([]);
   const [sellerPolicies, setSellerPolicies] = useState<CheckoutSellerPolicy[]>(
     [],
@@ -562,12 +560,8 @@ export function CheckoutNative() {
       }
 
       try {
-        const cartPromise = cartSnapshot
-          ? Promise.resolve(cartSnapshot)
-          : fetchCart(controller.signal);
-
         const [cartResult, methods, apiStates, profile] = await Promise.all([
-          cartPromise,
+          fetchCart(controller.signal),
           fetchPaymentMethods(controller.signal),
           fetchCheckoutLocations(controller.signal),
           fetchCheckoutProfile(controller.signal).catch(() => null),
@@ -582,36 +576,17 @@ export function CheckoutNative() {
           methods.includes(current) ? current : methods[0] || "cash_on_delivery",
         );
         setCheckoutApiStates(apiStates);
-        setLocationRows(buildCheckoutLocationRows(apiStates, displayTree));
 
         if (profile) {
           setSavedProfile(profile);
-          const { engState, engCity, engTownship } = resolveCanonicalLocation(
-            displayTree,
-            profile.state,
-            profile.city,
-            profile.township,
-          );
-          setAddress((current) => ({
-            ...current,
-            full_name: current.full_name || profile.name,
-            phone: current.phone || profile.phone,
-            address: current.address || profile.address,
-            state: current.state || engState,
-            city: current.city || engCity,
-            township: current.township || engTownship,
-            postal_code: current.postal_code || profile.postalCode,
-          }));
         }
       } catch (err) {
         if (!controller.signal.aborted) {
           setMessage(
             err instanceof Error
               ? err.message
-              : "Failed to load checkout",
+              : t("checkout.load_failed", { defaultValue: "Failed to load checkout" }),
           );
-          setCart(null);
-          emitCartCountChanged({ count: 0 });
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -680,6 +655,7 @@ export function CheckoutNative() {
     const controller = new AbortController();
     const timeout = setTimeout(() => {
       setFeesLoading(true);
+      setFeesError("");
       void fetchCheckoutFees(
         {
           country: addressCountry,
@@ -694,9 +670,21 @@ export function CheckoutNative() {
             setShippingFee(fees.shippingFeeValue);
             setTaxRate(fees.taxRate);
             setSellerShippingFees(fees.sellers);
+            setFeesError("");
           }
         })
-        .catch(() => {})
+        .catch((err) => {
+          if (!controller.signal.aborted) {
+            setFeesError(
+              err instanceof Error
+                ? err.message
+                : t("checkout.fees_load_failed", {
+                    defaultValue:
+                      "Could not calculate shipping and tax. Update your address and try again.",
+                  }),
+            );
+          }
+        })
         .finally(() => {
           if (!controller.signal.aborted) setFeesLoading(false);
         });
@@ -782,6 +770,22 @@ export function CheckoutNative() {
     }, 4500);
   };
 
+  const refreshCartFromServer = async () => {
+    try {
+      const nextCart = await fetchCart();
+      setCart(nextCart);
+      emitCartCountChanged({ cart: nextCart });
+    } catch {
+      // Keep the current snapshot if the cart refetch fails.
+    }
+  };
+
+  const rotateIdempotencyKey = () => {
+    idempotencyKeyRef.current =
+      globalThis.crypto?.randomUUID?.() ??
+      `checkout-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+  };
+
   useEffect(() => {
     if (authLoading) return;
     if (checkoutBusyRef.current || paymentVisible || otpVisible) return;
@@ -842,10 +846,15 @@ export function CheckoutNative() {
   const beginOnlinePayment = (orders: CheckoutOrderResult[]) => {
     if (!orders.length) return;
 
+    const queue = orders.map((entry) => ({
+      ...entry,
+      paymentMethod: entry.paymentMethod || paymentMethod,
+    }));
+
     checkoutBusyRef.current = true;
-    setPaymentQueue(orders);
+    setPaymentQueue(queue);
     setPaymentQueueIndex(0);
-    setPaymentOrder(orders[0]);
+    setPaymentOrder(queue[0]);
     setPaymentVisible(true);
     setOtpVisible(false);
   };
@@ -922,19 +931,21 @@ export function CheckoutNative() {
   };
 
   const handleRequestOtp = async () => {
-    if (!cart || !validateBeforeOtp()) return;
+    if (!cart || !validateBeforeOtp() || submitting) return;
     checkoutBusyRef.current = true;
     setSubmitting(true);
     setOtpError("");
 
     try {
-      const result = await requestCheckoutOtp(cart, address, paymentMethod);
+      const result = await requestCheckoutOtp(cart, address, paymentMethod, coupon);
       setOtpEmailHint(result.emailHint);
       setOtp("");
       setOtpVerified(false);
+      otpSessionVerifiedRef.current = false;
       setOtpVisible(true);
       startOtpCountdown(result.expiresIn);
     } catch (err) {
+      checkoutBusyRef.current = false;
       showMessage(
         err instanceof Error ? err.message : t("checkout.otp_send_failed"),
       );
@@ -970,7 +981,7 @@ export function CheckoutNative() {
     };
   };
 
-  const placeOrder = async () => {
+  const placeOrder = async (): Promise<{ success: true } | { success: false; message: string }> => {
     setSubmitting(true);
     try {
       const pendingPayment = paymentMethod !== "cash_on_delivery";
@@ -981,16 +992,21 @@ export function CheckoutNative() {
       );
 
       if (pendingPayment) {
+        // Backend keeps cart until payment is confirmed — do not clear locally yet.
         beginOnlinePayment(result.orders);
-        return;
+        return { success: true };
       }
 
+      // COD: backend clears cart on order create; finishOrder syncs local state.
       await finishOrder(result.primaryOrder, result.orders);
+      return { success: true };
     } catch (err) {
       checkoutBusyRef.current = false;
-      showMessage(
-        err instanceof Error ? err.message : t("checkout.order_create_failed"),
-      );
+      return {
+        success: false,
+        message:
+          err instanceof Error ? err.message : t("checkout.order_create_failed"),
+      };
     } finally {
       setSubmitting(false);
     }
@@ -1003,6 +1019,7 @@ export function CheckoutNative() {
     const nextIndex = resolvedIndex + 1;
 
     if (nextIndex < queue.length) {
+      void refreshCartFromServer();
       showMessage(
         t("checkout.payment_step_complete", {
           defaultValue: "Payment {{step}} of {{total}} complete. Continue with the next seller.",
@@ -1012,8 +1029,6 @@ export function CheckoutNative() {
       );
       setPaymentQueueIndex(nextIndex);
       setPaymentOrder(queue[nextIndex]);
-      setPaymentVisible(false);
-      setTimeout(() => setPaymentVisible(true), 0);
       return;
     }
 
@@ -1054,14 +1069,26 @@ export function CheckoutNative() {
     setOtpError("");
 
     try {
-      await verifyCheckoutOtp(otp);
+      if (!otpSessionVerifiedRef.current) {
+        await verifyCheckoutOtp(otp);
+        otpSessionVerifiedRef.current = true;
+      }
+
       setOtpVerified(true);
       checkoutBusyRef.current = true;
       if (timerRef.current) clearInterval(timerRef.current);
-      setOtpVisible(false);
-      await placeOrder();
+
+      const orderResult = await placeOrder();
+      if (!orderResult.success) {
+        checkoutBusyRef.current = false;
+        setOtpVerified(false);
+        setOtpError(orderResult.message);
+        return;
+      }
     } catch (err) {
       checkoutBusyRef.current = false;
+      otpSessionVerifiedRef.current = false;
+      setOtpVerified(false);
       setOtpError(
         err instanceof Error ? err.message : t("checkout.otp_incorrect"),
       );
@@ -1099,9 +1126,76 @@ export function CheckoutNative() {
     );
   }
 
-  if (!cart || cart.items.length === 0) {
+  const paymentFlowActive = paymentVisible || paymentQueue.length > 0;
+  const showEmptyCart =
+    !redirecting &&
+    !paymentFlowActive &&
+    !otpVisible &&
+    (!cart || cart.items.length === 0);
+  const showCheckoutForm = Boolean(cart?.items.length);
+
+  const checkoutOverlays = (
+    <>
+      <OtpModal
+        visible={otpVisible}
+        emailHint={otpEmailHint}
+        otp={otp}
+        countdown={otpCountdown}
+        error={otpError}
+        loading={otpLoading}
+        verified={otpVerified}
+        onChangeOtp={setOtp}
+        onClose={() => {
+          checkoutBusyRef.current = false;
+          otpSessionVerifiedRef.current = false;
+          setOtpVisible(false);
+          setOtp("");
+          setOtpError("");
+          setOtpLoading(false);
+          if (timerRef.current) clearInterval(timerRef.current);
+        }}
+        onVerify={handleVerifyOtp}
+        onResend={handleRequestOtp}
+      />
+      <CheckoutPaymentModal
+        key={String(paymentOrder?.id ?? "checkout-payment")}
+        visible={paymentVisible}
+        order={paymentOrder}
+        paymentMethod={paymentOrder?.paymentMethod || paymentMethod}
+        paymentStep={paymentQueueIndex + 1}
+        paymentStepCount={paymentQueue.length || 1}
+        onSuccess={(order) => {
+          void completePaidOrder(order);
+        }}
+        onCancel={() => {
+          checkoutBusyRef.current = false;
+          rotateIdempotencyKey();
+          setPaymentVisible(false);
+          setPaymentOrder(null);
+          const remaining = Math.max(0, paymentQueue.length - paymentQueueIndex);
+          setPaymentQueue([]);
+          setPaymentQueueIndex(0);
+          void refreshCartFromServer();
+          showMessage(
+            remaining > 1
+              ? t("checkout.payment_cancelled_partial", {
+                  defaultValue:
+                    "Payment was cancelled. Unpaid seller orders remain in your dashboard.",
+                })
+              : t("checkout.payment_cancelled_saved", {
+                  defaultValue:
+                    "Payment was cancelled. Your order is saved in My Orders — use Pay Now to complete payment.",
+                }),
+          );
+        }}
+      />
+      <CheckoutMessageToast message={message} onClose={hideMessage} />
+    </>
+  );
+
+  if (showEmptyCart) {
     return (
-      <AppLayout>
+      <AppLayout showNativeBottomTabs={!paymentVisible && !otpVisible}>
         <View className="bg-gray-50 px-4 py-16 dark:bg-slate-950">
           <View className="mx-auto w-full max-w-2xl items-center rounded-2xl border border-gray-100 bg-white p-8 shadow-sm dark:border-slate-800 dark:bg-slate-900">
             <View className="h-24 w-24 items-center justify-center rounded-full bg-gray-100 dark:bg-slate-800">
@@ -1122,6 +1216,16 @@ export function CheckoutNative() {
             </Link>
           </View>
         </View>
+        {checkoutOverlays}
+      </AppLayout>
+    );
+  }
+
+  if (!showCheckoutForm) {
+    return (
+      <AppLayout showNativeBottomTabs={!paymentVisible && !otpVisible}>
+        <View className="flex-1 bg-gray-50 dark:bg-slate-950" />
+        {checkoutOverlays}
       </AppLayout>
     );
   }
@@ -1166,53 +1270,49 @@ export function CheckoutNative() {
                     placeholder={t("checkout.phone_placeholder")}
                     keyboardType="phone-pad"
                   />
-                  <Suspense fallback={null}>
+                  <CheckoutLocationSelect
+                    label={`${t("checkout.state_region")} *`}
+                    value={address.state}
+                    placeholder={t("checkout.select_state_region")}
+                    loading={locationLoading}
+                    options={locationRows.map((row) => ({
+                      value: row.engState,
+                      label: row.label,
+                    }))}
+                    onSelect={selectState}
+                  />
+                  <CheckoutLocationSelect
+                    label={`${t("checkout.city")} *`}
+                    value={address.city}
+                    placeholder={
+                      address.state
+                        ? t("checkout.select_city")
+                        : t("checkout.select_state_first")
+                    }
+                    disabled={!address.state}
+                    options={(selectedLocationRow?.cities || []).map(
+                      (city) => ({
+                        value: city.engCity,
+                        label: city.label,
+                      }),
+                    )}
+                    onSelect={selectCity}
+                  />
+                  {needsTownship ? (
                     <CheckoutLocationSelect
-                      label={`${t("checkout.state_region")} *`}
-                      value={address.state}
-                      placeholder={t("checkout.select_state_region")}
-                      loading={locationLoading}
-                      options={locationRows.map((row) => ({
-                        value: row.engState,
-                        label: row.label,
-                      }))}
-                      onSelect={selectState}
-                    />
-                    <CheckoutLocationSelect
-                      label={`${t("checkout.city")} *`}
-                      value={address.city}
-                      placeholder={
-                        address.state
-                          ? t("checkout.select_city")
-                          : t("checkout.select_state_first")
-                      }
-                      disabled={!address.state}
-                      options={(selectedLocationRow?.cities || []).map(
-                        (city) => ({
-                          value: city.engCity,
-                          label: city.label,
+                      label={`${t("checkout.township")} *`}
+                      value={address.township}
+                      placeholder={t("checkout.select_township")}
+                      disabled={!address.city}
+                      options={(selectedCityNode?.engTownships || []).map(
+                        (township, index) => ({
+                          value: township,
+                          label:
+                            selectedCityNode?.townships?.[index] || township,
                         }),
                       )}
-                      onSelect={selectCity}
+                      onSelect={selectTownship}
                     />
-                  </Suspense>
-                  {needsTownship ? (
-                    <Suspense fallback={null}>
-                      <CheckoutLocationSelect
-                        label={`${t("checkout.township")} *`}
-                        value={address.township}
-                        placeholder={t("checkout.select_township")}
-                        disabled={!address.city}
-                        options={(selectedCityNode?.engTownships || []).map(
-                          (township, index) => ({
-                            value: township,
-                            label:
-                              selectedCityNode?.townships?.[index] || township,
-                          }),
-                        )}
-                        onSelect={selectTownship}
-                      />
-                    </Suspense>
                   ) : null}
                   <View className="w-full">
                     <Field
@@ -1418,6 +1518,11 @@ export function CheckoutNative() {
                       </Text>
                     </View>
                   ) : null}
+                  {feesError ? (
+                    <Text className="font-sans text-sm text-red-600 dark:text-red-300">
+                      {feesError}
+                    </Text>
+                  ) : null}
                   <View className="flex-row justify-between border-t border-gray-100 pt-4 dark:border-slate-800">
                     <Text className="font-sans text-lg font-bold text-gray-950 dark:text-slate-100">
                       {t("checkout.total")}
@@ -1523,7 +1628,7 @@ export function CheckoutNative() {
 
                 <Pressable
                   onPress={handleRequestOtp}
-                  disabled={submitting || feesLoading || hasCartIssues}
+                  disabled={submitting || feesLoading || hasCartIssues || Boolean(feesError)}
                   className="mt-6 rounded-lg bg-green-600 px-4 py-3 disabled:opacity-50"
                 >
                   <Text className="text-center font-sans text-base font-semibold text-white">
@@ -1571,57 +1676,7 @@ export function CheckoutNative() {
           </View>
         </View>
       </KeyboardAvoidingView>
-
-      <OtpModal
-        visible={otpVisible}
-        emailHint={otpEmailHint}
-        otp={otp}
-        countdown={otpCountdown}
-        error={otpError}
-        loading={otpLoading}
-        verified={otpVerified}
-        onChangeOtp={setOtp}
-        onClose={() => {
-          checkoutBusyRef.current = false;
-          setOtpVisible(false);
-          setOtp("");
-          setOtpError("");
-          if (timerRef.current) clearInterval(timerRef.current);
-        }}
-        onVerify={handleVerifyOtp}
-        onResend={handleRequestOtp}
-      />
-      <CheckoutPaymentModal
-        key={String(paymentOrder?.id ?? "checkout-payment")}
-        visible={paymentVisible}
-        order={paymentOrder}
-        paymentMethod={paymentOrder?.paymentMethod || paymentMethod}
-        paymentStep={paymentQueueIndex + 1}
-        paymentStepCount={paymentQueue.length || 1}
-        onSuccess={(order) => {
-          void completePaidOrder(order);
-        }}
-        onCancel={() => {
-          checkoutBusyRef.current = false;
-          setPaymentVisible(false);
-          setPaymentOrder(null);
-          const remaining = Math.max(0, paymentQueue.length - paymentQueueIndex);
-          setPaymentQueue([]);
-          setPaymentQueueIndex(0);
-          showMessage(
-            remaining > 1
-              ? t("checkout.payment_cancelled_partial", {
-                  defaultValue:
-                    "Payment was cancelled. Unpaid seller orders remain in your dashboard.",
-                })
-              : t("checkout.payment_cancelled_saved", {
-                  defaultValue:
-                    "Payment was cancelled. Your order is saved in your dashboard.",
-                }),
-          );
-        }}
-      />
-      <CheckoutMessageToast message={message} onClose={hideMessage} />
+      {checkoutOverlays}
     </AppLayout>
   );
 }

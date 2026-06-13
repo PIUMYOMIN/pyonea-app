@@ -7,7 +7,7 @@ import { Link, useRouter, type Href } from 'expo-router';
 import { memo, useMemo, useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 
-import { useIsProductInCompare } from '@/context/compare-products-context';
+import { useIsProductInCompare } from '@/utils/compare-store';
 import { useNativeAuth } from '@/context/native-auth';
 import { useWishlistProductState } from '@/context/wishlist-context';
 import { localizeBilingualName, mergeRouteLang, useAppTranslation } from '@/i18n';
@@ -393,12 +393,4 @@ function ProductListCardComponent({
   );
 }
 
-export const ProductListCard = memo(
-  ProductListCardComponent,
-  (previous, next) =>
-    previous.product.id === next.product.id &&
-    previous.product.price === next.product.price &&
-    previous.product.imageUrl === next.product.imageUrl &&
-    previous.className === next.className &&
-    previous.imagePriority === next.imagePriority,
-);
+export const ProductListCard = memo(ProductListCardComponent);

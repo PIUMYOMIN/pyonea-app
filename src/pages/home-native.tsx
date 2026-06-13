@@ -34,6 +34,7 @@ import {
   fetchHomeCategories,
   fetchLocalDeals,
   fetchTopSellers,
+  isAbortError,
   type HomeCategory,
   type HomeProduct,
   type HomeSeller,
@@ -396,7 +397,7 @@ export default function HomeNative() {
         setErrors((current) => ({ ...current, categories: undefined }));
       })
       .catch((error) => {
-        if (controller.signal.aborted) return;
+        if (isAbortError(error, controller.signal)) return;
         console.error('Failed to fetch home categories:', error);
         if (!hasCachedFeed) {
           setCategories([]);
@@ -414,7 +415,7 @@ export default function HomeNative() {
         setErrors((current) => ({ ...current, products: undefined }));
       })
       .catch((error) => {
-        if (controller.signal.aborted) return;
+        if (isAbortError(error, controller.signal)) return;
         console.error('Failed to fetch featured products:', error);
         if (!hasCachedFeed) {
           setProducts([]);
@@ -432,7 +433,7 @@ export default function HomeNative() {
         setErrors((current) => ({ ...current, sellers: undefined }));
       })
       .catch((error) => {
-        if (controller.signal.aborted) return;
+        if (isAbortError(error, controller.signal)) return;
         console.error('Failed to fetch top sellers:', error);
         if (!hasCachedFeed) {
           setSellers([]);
@@ -453,7 +454,7 @@ export default function HomeNative() {
               return preview;
             })
             .catch((error) => {
-              if (controller.signal.aborted) return null;
+              if (isAbortError(error, controller.signal)) return null;
               console.error('Failed to fetch local deals:', error);
               setDeals([]);
               setDealsLoading(false);
