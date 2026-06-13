@@ -1,5 +1,5 @@
 import * as Localization from 'expo-localization';
-import { useGlobalSearchParams, usePathname, type Href } from 'expo-router';
+import { useGlobalSearchParams, usePathname, useRouter, type Href } from 'expo-router';
 import { createInstance } from 'i18next';
 import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
@@ -9,6 +9,8 @@ import my from '@/locales/my.json';
 
 export const supportedLanguages = ['en', 'my'] as const;
 export type SupportedLanguage = (typeof supportedLanguages)[number];
+
+export const DEFAULT_LANGUAGE: SupportedLanguage = 'my';
 
 export const PYONEA_LANGUAGE_STORAGE_KEY = 'pyonea_language';
 const LEGACY_LANGUAGE_STORAGE_KEY = 'i18nextLng';
@@ -50,12 +52,20 @@ function readStoredLanguage(): SupportedLanguage | null {
   }
 }
 
-function detectInitialLanguage(): SupportedLanguage {
+export function getPreferredLanguage(): SupportedLanguage {
   if (Platform.OS === 'web') {
-    return readLangFromUrl() || readStoredLanguage() || normalizeLanguage(Localization.getLocales()[0]?.languageCode);
+    return readLangFromUrl() || readStoredLanguage() || DEFAULT_LANGUAGE;
   }
 
-  return normalizeLanguage(Localization.getLocales()[0]?.languageCode);
+  return (
+    readStoredLanguage() ||
+    normalizeLanguage(Localization.getLocales()[0]?.languageCode) ||
+    DEFAULT_LANGUAGE
+  );
+}
+
+function detectInitialLanguage(): SupportedLanguage {
+  return getPreferredLanguage();
 }
 
 export function syncDocumentLanguage(language: SupportedLanguage) {
@@ -165,24 +175,46 @@ export function useAppTranslation() {
   };
 }
 
-/** Keeps i18n in sync with `?lang=` on every route (Google, social share, hreflang). */
+/** Keeps i18n and the URL in sync with `?lang=` (default Myanmar until user switches). */
 export function RouteLanguageSync() {
-  const params = useGlobalSearchParams<{ lang?: string | string[] }>();
+  const params = useGlobalSearchParams<Record<string, string | string[] | undefined>>();
   const pathname = usePathname() || '/';
+  const router = useRouter();
   const { i18n } = useAppTranslation();
 
   const routeLangValue = Array.isArray(params.lang) ? params.lang[0] : params.lang;
 
   useEffect(() => {
-    const fromRoute = routeLangValue ? normalizeLanguage(routeLangValue) : null;
-    const fromUrl = Platform.OS === 'web' ? readLangFromUrl() : null;
-    const nextLanguage = fromRoute || fromUrl;
+    if (Platform.OS !== 'web') {
+      const fromRoute = routeLangValue ? normalizeLanguage(routeLangValue) : null;
+      if (!fromRoute) return;
+      if (normalizeLanguage(i18n.resolvedLanguage || i18n.language) === fromRoute) return;
+      void i18n.changeLanguage(fromRoute);
+      return;
+    }
 
-    if (!nextLanguage) return;
-    if (normalizeLanguage(i18n.resolvedLanguage || i18n.language) === nextLanguage) return;
+    const fromUrl = readLangFromUrl();
 
-    void i18n.changeLanguage(nextLanguage);
-  }, [i18n, pathname, routeLangValue]);
+    if (fromUrl) {
+      if (normalizeLanguage(i18n.resolvedLanguage || i18n.language) === fromUrl) return;
+      void i18n.changeLanguage(fromUrl);
+      return;
+    }
+
+    const preferred = getPreferredLanguage();
+    if (normalizeLanguage(i18n.resolvedLanguage || i18n.language) !== preferred) {
+      void i18n.changeLanguage(preferred);
+    }
+
+    if (typeof window !== 'undefined') {
+      const currentLang = new URLSearchParams(window.location.search).get('lang');
+      if (currentLang === preferred) return;
+    }
+
+    router.replace(
+      mergeRouteLang(pathname, params, preferred) as Href,
+    );
+  }, [i18n, params, pathname, routeLangValue, router]);
 
   return null;
 }

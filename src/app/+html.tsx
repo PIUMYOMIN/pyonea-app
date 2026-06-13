@@ -205,7 +205,7 @@ export default function RootHtml({ children }: PropsWithChildren) {
   )];
 
   return (
-    <html {...htmlAttributes} lang="en">
+    <html {...htmlAttributes} lang="my">
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
@@ -228,7 +228,7 @@ export default function RootHtml({ children }: PropsWithChildren) {
         {headNodes}
         <script
           dangerouslySetInnerHTML={{
-            __html: `(function(){try{var l=new URLSearchParams(location.search).get('lang');if(l==='my'||l==='en'){document.documentElement.lang=l;}}catch(e){}})();`,
+            __html: `(function(){try{var l=new URLSearchParams(location.search).get('lang');document.documentElement.lang=(l==='my'||l==='en')?l:'my';}catch(e){}})();`,
           }}
         />
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />

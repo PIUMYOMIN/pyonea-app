@@ -41,7 +41,7 @@ $queryParams = [];
 parse_str(str_replace("\0", '', $_SERVER['QUERY_STRING'] ?? ''), $queryParams);
 $lang = (isset($queryParams['lang']) && in_array($queryParams['lang'], ['en', 'my'], true))
     ? $queryParams['lang']
-    : 'en';
+    : 'my';
 
 if ($hasUnsafePath) {
     readfile(__DIR__ . '/index.html');

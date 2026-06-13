@@ -1,6 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { useRouter, type Href } from 'expo-router';
+import { useRouter, useGlobalSearchParams, usePathname, type Href } from 'expo-router';
 import { useMemo, type ReactNode } from 'react';
 import {
   ActivityIndicator,
@@ -143,6 +143,8 @@ export function AccountNative() {
   const { t, i18n } = useAppTranslation();
   const href = useLocalizedHref();
   const router = useRouter();
+  const pathname = usePathname() || '/account';
+  const params = useGlobalSearchParams<Record<string, string | string[] | undefined>>();
   const auth = useNativeAuth();
   const { isDark, toggleTheme } = useTheme();
   const activeLanguage = normalizeLanguage(i18n.resolvedLanguage || i18n.language);
@@ -159,12 +161,17 @@ export function AccountNative() {
 
   const changeLanguage = (nextLanguage: SupportedLanguage) => {
     void i18n.changeLanguage(nextLanguage);
+    if (Platform.OS === 'web') {
+      router.replace(
+        mergeRouteLang(pathname, params, nextLanguage) as Href,
+      );
+    }
   };
 
   const handleSignOut = () => {
     const runLogout = () => {
       void auth.logout().then(() => {
-        router.replace('/account');
+        router.replace(href('/account'));
       });
     };
 

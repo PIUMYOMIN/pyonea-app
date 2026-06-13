@@ -4,7 +4,7 @@ import { useGlobalSearchParams, usePathname } from 'expo-router';
 import { SITE_PUBLIC_URL } from '@/config/native';
 import { Platform } from 'react-native';
 
-import { normalizeLanguage, useAppTranslation, type SupportedLanguage } from '@/i18n';
+import { DEFAULT_LANGUAGE, normalizeLanguage, useAppTranslation, type SupportedLanguage } from '@/i18n';
 import { resolveStaticRouteSeo } from '@/utils/seo-localization';
 
 function readLangFromLocation(): SupportedLanguage | null {
@@ -239,7 +239,7 @@ export function NativeSeo({
   const { language, t } = useAppTranslation();
   const routeLang = Array.isArray(params.lang) ? params.lang[0] : params.lang;
   const activeLanguage = normalizeLanguage(
-    routeLang || (Platform.OS === 'web' ? readLangFromLocation() : null) || language,
+    routeLang || (Platform.OS === 'web' ? readLangFromLocation() : null) || language || DEFAULT_LANGUAGE,
   );
   const routeBucket = routeKeyFor(pathname);
   const routeSeo = indexableRoutes[routeBucket];
