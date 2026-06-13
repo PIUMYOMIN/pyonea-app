@@ -16,7 +16,7 @@ import {
 import { AppLayout } from '@/components/layout/app-layout';
 import { useNativeAuth } from '@/context/native-auth';
 import { useTheme } from '@/context/theme';
-import { normalizeLanguage, useAppTranslation, type SupportedLanguage } from '@/i18n';
+import { mergeRouteLang, normalizeLanguage, useAppTranslation, useLocalizedHref, type SupportedLanguage } from '@/i18n';
 import { getRoleDestination, hasUserRole } from '@/utils/auth-routing';
 
 const TELEGRAM_CHAT_URL = 'https://t.me/Pyonea';
@@ -141,6 +141,7 @@ function ChatRow({
 
 export function AccountNative() {
   const { t, i18n } = useAppTranslation();
+  const href = useLocalizedHref();
   const router = useRouter();
   const auth = useNativeAuth();
   const { isDark, toggleTheme } = useTheme();
@@ -149,10 +150,12 @@ export function AccountNative() {
   const user = auth.user;
   const dashboardHref = user ? getRoleDestination(user) : null;
 
-  const authHref = (path: string) => {
-    const returnTo = encodeURIComponent(path);
-    return `/login?returnTo=${returnTo}` as Href;
-  };
+  const authHref = (path: string) =>
+    mergeRouteLang(
+      '/login',
+      { returnTo: mergeRouteLang(path, {}, activeLanguage) },
+      activeLanguage,
+    ) as Href;
 
   const changeLanguage = (nextLanguage: SupportedLanguage) => {
     void i18n.changeLanguage(nextLanguage);
@@ -285,13 +288,13 @@ export function AccountNative() {
           <AccountRow
             icon="package"
             label={t('account_page.track_order', { defaultValue: 'Track Order' })}
-            href="/track-order"
+            href={href('/track-order')}
           />
           <AccountDivider />
           <AccountRow
             icon="shuffle"
             label={t('account_page.compare', { defaultValue: 'Compare Products' })}
-            href="/compare"
+            href={href('/compare')}
           />
           <AccountDivider />
           <AccountRow
@@ -300,7 +303,7 @@ export function AccountNative() {
             description={t('account_page.local_deals_hint', {
               defaultValue: 'Coupon offers from verified sellers',
             })}
-            href="/local-deals"
+            href={href('/local-deals')}
           />
           {!user ? (
             <>
@@ -400,7 +403,7 @@ export function AccountNative() {
           <AccountRow
             icon="external-link"
             label={t('account_page.contact_us', { defaultValue: 'Contact Page' })}
-            onPress={() => router.push('/contact' as Href)}
+            onPress={() => router.push(href('/contact'))}
           />
         </AccountSection>
 
@@ -408,13 +411,13 @@ export function AccountNative() {
           <AccountRow
             icon="file-text"
             label={t('account_page.terms', { defaultValue: 'Terms of Service' })}
-            onPress={() => router.push('/terms' as Href)}
+            onPress={() => router.push(href('/terms'))}
           />
           <AccountDivider />
           <AccountRow
             icon="shield"
             label={t('account_page.privacy', { defaultValue: 'Privacy Policy' })}
-            onPress={() => router.push('/privacy-policy' as Href)}
+            onPress={() => router.push(href('/privacy-policy'))}
           />
         </AccountSection>
 

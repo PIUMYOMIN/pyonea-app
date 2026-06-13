@@ -54,98 +54,177 @@ export function withPyoneaTitle(title: string) {
   return title.includes('| Pyonea') ? title : `${title} | Pyonea`;
 }
 
-export const staticRouteSeoMy: Record<string, { title: string; description: string }> = {
-  '/': {
-    title: 'Pyonea | မြန်မာ B2B လက်ကားဈေးကွက်',
+export const productSeoTemplates = {
+  en: {
+    title: '{{title}} | Wholesale Myanmar | Pyonea',
     description:
-      'Pyonea သည် Myanmar လုပ်ငန်းများကို verified suppliers များနှင့် ချိတ်ဆက်ပေးပါသည်။ လက်ကားပစ္စည်းများ၊ MOQ စျေးနှုန်းများနှင့် bulk order များကို ရှာဖွေပါ။',
+      '{{title}} wholesale in Myanmar. Check MOQ {{moq}}, bulk price, supplier details, and secure ordering on Pyonea.',
   },
-  '/products': {
-    title: 'Myanmar လက်ကားပစ္စည်းများ | Pyonea',
+  my: {
+    title: '{{title}} | မြန်မာ လက်ကား | Pyonea',
     description:
-      'Myanmar လက်ကားပစ္စည်းများ၊ MOQ စျေးနှုန်းများ၊ seller အချက်အလက်များနှင့် bulk order ရွေးချယ်မှုများကို Pyonea တွင် ရှာဖွေပါ။',
+      '{{title}} ကို မြန်မာနိုင်ငံတွင် လက်ကားဝယ်ယူရန်။ အနည်းဆုံးမှာယူရမည့် အရေအတွက် {{moq}}၊ လက်ကားဈေး၊ ရောင်းချသူအချက်အလက်နှင့် လုံခြုံသော မှာယူမှုများကို Pyonea တွင် ကြည့်ရှုပါ။',
   },
-  '/categories': {
-    title: 'Myanmar လက်ကားအမျိုးအစားများ | Pyonea',
+} as const;
+
+export const sellerSeoTemplates = {
+  en: {
+    title: '{{name}} | Verified Myanmar Supplier | Pyonea',
+    description: 'View {{name}} products, business details, and wholesale seller profile on Pyonea.',
+  },
+  my: {
+    title: '{{name}} | Verified Myanmar Supplier | Pyonea',
     description:
-      'Myanmar B2B buying၊ supplier discovery နှင့် sourcing အတွက် product categories များကို Pyonea တွင် ရှာဖွေပါ။',
+      '{{name}} ၏ ကုန်ပစ္စည်းများ၊ လုပ်ငန်းအချက်အလက်များနှင့် လက်ကားရောင်းချသူ profile ကို Pyonea တွင် ကြည့်ရှုပါ။',
   },
-  '/sellers': {
-    title: 'Verified Myanmar Suppliers | Pyonea',
-    description:
-      'Verified Myanmar suppliers၊ seller profiles နှင့် wholesale catalogs များကို Pyonea တွင် ရှာဖွေပါ။',
+} as const;
+
+export const blogSeoTemplates = {
+  en: {
+    titleSuffix: ' | Pyonea Blog',
+    descriptionFallback: 'Read {{title}} on Pyonea.',
   },
-  '/bulk-order-tool': {
-    title: 'Bulk Order Tool | Pyonea',
-    description:
-      'Myanmar suppliers များထံမှ bulk order ရွေးချယ်မှုများကို Pyonea B2B sourcing tool ဖြင့် တောင်းဆိုပါ။',
+  my: {
+    titleSuffix: ' | Pyonea Blog',
+    descriptionFallback: '{{title}} ကို Pyonea တွင် ဖတ်ရှုပါ။',
   },
-  '/local-deals': {
-    title: 'Local Wholesale Deals | Pyonea',
-    description: 'Myanmar အတွင်း local wholesale deals နှင့် supplier promotions များကို Pyonea တွင် ရှာပါ။',
-  },
-  '/blog': {
-    title: 'Myanmar B2B Blog | Pyonea',
-    description:
-      'Myanmar wholesale buying၊ online selling၊ logistics နှင့် B2B growth အတွက် Pyonea guides များကို ဖတ်ပါ။',
-  },
-  '/compare': {
-    title: 'Product Comparison | Pyonea',
-    description: 'Myanmar wholesale products, pricing နှင့် sellers များကို Pyonea တွင် နှိုင်းယှဉ်ပါ.',
-  },
-  '/pricing': {
-    title: 'Seller Pricing Plans | Pyonea',
-    description: 'Pyonea seller plans များကို နှိုင်းယှဉ်ပြီး Myanmar wholesale business ကို grow လုပ်ပါ။',
-  },
-  '/about-us': {
-    title: 'Pyonea အကြောင်း | Myanmar B2B Marketplace',
-    description:
-      'Pyonea သည် Myanmar businesses များကို trusted wholesale suppliers နှင့် buyers များနှင့် ဘယ်လို ချိတ်ဆက်ပေးသလဲ ဆိုတာ လေ့လာပါ။',
-  },
-  '/help': {
-    title: 'Help Center | Pyonea',
-    description:
-      'Buying၊ selling၊ bulk orders၊ shipping၊ payments နှင့် account support အတွက် Pyonea Help Center ကို သုံးပါ။',
-  },
-  '/faq': {
-    title: 'FAQ | Pyonea',
-    description:
-      'Pyonea accounts၊ suppliers၊ wholesale orders၊ payments၊ shipping နှင့် seller tools အကြောင်း FAQ များ။',
-  },
-  '/shipping': {
-    title: 'Shipping Information | Pyonea',
-    description:
-      'Myanmar wholesale orders အတွက် Pyonea shipping options၊ fees နှင့် delivery timelines ကို review လုပ်ပါ။',
-  },
-  '/contact': {
-    title: 'Contact Pyonea | Myanmar B2B Support',
-    description:
-      'Buyer support၊ seller support၊ partnerships နှင့် marketplace assistance အတွက် Pyonea ကို ဆက်သွယ်ပါ။',
-  },
-  '/seller-guidelines': {
-    title: 'Seller Guidelines | Pyonea',
-    description:
-      'Product listings၊ wholesale pricing နှင့် marketplace quality အတွက် Pyonea seller guidelines ကို ဖတ်ပါ။',
-  },
-  '/terms': {
-    title: 'Terms of Service | Pyonea',
-    description: 'Pyonea marketplace buyers, sellers and users အတွက် Terms of Service.',
-  },
-  '/privacy-policy': {
-    title: 'Privacy Policy | Pyonea',
-    description: 'Pyonea သည် user data ကို ဘယ်လို collect, use နှင့် protect လုပ်သလဲ ဆိုတာ လေ့လာပါ.',
-  },
-  '/return-policy': {
-    title: 'Return & Refund Policy | Pyonea',
-    description: 'Myanmar wholesale orders အတွက် Pyonea return နှင့် refund policy ကို review လုပ်ပါ.',
-  },
-  '/legal': {
-    title: 'Legal Information | Pyonea',
-    description: 'Pyonea marketplace users, buyers, sellers နှင့် partners အတွက် legal information.',
-  },
-  '/report': {
-    title: 'Report a Marketplace Issue | Pyonea',
-    description:
-      'Report product, seller, order, payment, or safety issues to Pyonea support and receive a ticket ID.',
-  },
+} as const;
+
+type ProductSeoInput = {
+  name: string;
+  nameEn?: string;
+  nameMm?: string;
+  descriptionEn?: string;
+  descriptionMm?: string;
+  moq?: number;
 };
+
+export function buildProductPageSeo(product: ProductSeoInput, language: SupportedLanguage) {
+  const bilingual = buildBilingualSeoContent({
+    language,
+    titleEn: product.nameEn,
+    titleMm: product.nameMm,
+    descriptionEn: product.descriptionEn,
+    descriptionMm: product.descriptionMm,
+    fallbackTitle: product.name,
+    fallbackDescription: `Buy ${product.name} from verified Myanmar suppliers on Pyonea.`,
+  });
+  const template = productSeoTemplates[language];
+  const displayName = bilingual.title;
+  const moq = String(product.moq ?? 1);
+
+  return {
+    ...bilingual,
+    title: template.title.replace('{{title}}', displayName),
+    description: compactSeoText(
+      template.description.replace('{{title}}', displayName).replace('{{moq}}', moq),
+      bilingual.description,
+      155,
+    ),
+  };
+}
+
+type SellerSeoInput = {
+  name: string;
+  businessName?: string;
+  description?: string;
+};
+
+export function buildSellerPageSeo(seller: SellerSeoInput, language: SupportedLanguage) {
+  const bilingual = buildBilingualSeoContent({
+    language,
+    titleEn: seller.businessName || seller.name,
+    titleMm: seller.name,
+    descriptionEn: seller.description,
+    descriptionMm: seller.description,
+    fallbackTitle: seller.businessName || seller.name,
+    fallbackDescription: `View ${seller.name} products and wholesale seller profile on Pyonea.`,
+  });
+  const template = sellerSeoTemplates[language];
+  const displayName = bilingual.title;
+
+  return {
+    ...bilingual,
+    title: template.title.replace('{{name}}', displayName),
+    description: compactSeoText(
+      template.description.replace('{{name}}', displayName),
+      bilingual.description,
+      155,
+    ),
+  };
+}
+
+type BlogSeoInput = {
+  title: string;
+  titleEn?: string;
+  titleMm?: string;
+  excerpt?: string;
+  excerptEn?: string;
+  excerptMm?: string;
+  seoTitleEn?: string;
+  seoTitleMm?: string;
+  seoDescriptionEn?: string;
+  seoDescriptionMm?: string;
+};
+
+export function buildBlogPageSeo(post: BlogSeoInput, language: SupportedLanguage) {
+  const bilingual = buildBilingualSeoContent({
+    language,
+    titleEn: post.seoTitleEn || post.titleEn,
+    titleMm: post.seoTitleMm || post.titleMm,
+    descriptionEn: post.seoDescriptionEn || post.excerptEn || post.excerpt,
+    descriptionMm: post.seoDescriptionMm || post.excerptMm || post.excerpt,
+    fallbackTitle: post.title,
+    fallbackDescription: blogSeoTemplates[language].descriptionFallback.replace('{{title}}', post.title),
+  });
+  const template = blogSeoTemplates[language];
+
+  return {
+    ...bilingual,
+    title: `${bilingual.title}${template.titleSuffix}`,
+    description: compactSeoText(bilingual.description, template.descriptionFallback.replace('{{title}}', bilingual.title), 155),
+  };
+}
+
+const ROUTE_SEO_I18N_KEYS: Record<string, { title: string; description: string }> = {
+  '/': { title: 'seo.home.title', description: 'seo.home.description' },
+  '/products': { title: 'seo.products.title', description: 'seo.products.description' },
+  '/categories': { title: 'seo.categories.title', description: 'seo.categories.description' },
+  '/sellers': { title: 'seo.sellers.title', description: 'seo.sellers.description' },
+  '/local-deals': { title: 'seo.local_deals.title', description: 'seo.local_deals.description' },
+  '/blog': { title: 'seo.blog.title', description: 'seo.blog.description' },
+  '/bulk-order-tool': { title: 'seo.bulk_order_tool.title', description: 'seo.bulk_order_tool.description' },
+  '/pricing': { title: 'seo.pricing.title', description: 'seo.pricing.description' },
+  '/about-us': { title: 'seo.about_us.title', description: 'seo.about_us.description' },
+  '/help': { title: 'seo.help.title', description: 'seo.help.description' },
+  '/faq': { title: 'seo.faq.title', description: 'seo.faq.description' },
+  '/shipping': { title: 'seo.shipping.title', description: 'seo.shipping.description' },
+  '/contact': { title: 'seo.contact.title', description: 'seo.contact.description' },
+  '/seller-guidelines': {
+    title: 'seo.seller_guidelines.title',
+    description: 'seo.seller_guidelines.description',
+  },
+  '/terms': { title: 'seo.terms.title', description: 'seo.terms.description' },
+  '/privacy-policy': { title: 'seo.privacy_policy.title', description: 'seo.privacy_policy.description' },
+  '/return-policy': { title: 'seo.return_policy.title', description: 'seo.return_policy.description' },
+  '/legal': { title: 'seo.legal.title', description: 'seo.legal.description' },
+  '/compare': { title: 'seo.compare.title', description: 'seo.compare.description' },
+  '/report': { title: 'seo.report.title', description: 'seo.report.description' },
+};
+
+export function resolveStaticRouteSeo(
+  routeKey: string,
+  _language: SupportedLanguage,
+  t: (key: string) => string,
+  englishFallback: { title: string; description: string },
+): { title: string; description: string } {
+  const i18nKeys = ROUTE_SEO_I18N_KEYS[routeKey];
+  if (i18nKeys) {
+    return {
+      title: t(i18nKeys.title),
+      description: t(i18nKeys.description),
+    };
+  }
+
+  return englishFallback;
+}

@@ -10,7 +10,7 @@ import { Platform, Pressable, Text, View } from 'react-native';
 import { useIsProductInCompare } from '@/context/compare-products-context';
 import { useNativeAuth } from '@/context/native-auth';
 import { useWishlistProductState } from '@/context/wishlist-context';
-import { localizeBilingualName, useAppTranslation } from '@/i18n';
+import { localizeBilingualName, mergeRouteLang, useAppTranslation } from '@/i18n';
 import { hasUserRole } from '@/utils/auth-routing';
 import { toggleCompareProduct } from '@/utils/compare-native';
 import { getThumbUrl } from '@/utils/image-thumbs';
@@ -144,7 +144,7 @@ function ProductListCardComponent({
   const { saved, toggleWishlist } = useWishlistProductState(product);
   const [wishlistBusy, setWishlistBusy] = useState(false);
   const [cartBusy, setCartBusy] = useState(false);
-  const productHref = `/products/${product.slug || product.id}` as Href;
+  const productHref = mergeRouteLang(`/products/${product.slug || product.id}`, {}, language) as Href;
   const compared = useIsProductInCompare(product);
   const productName = localizeBilingualName(
     language,

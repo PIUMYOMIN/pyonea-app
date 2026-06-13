@@ -24,7 +24,7 @@ import { SITE_PUBLIC_URL } from '@/config/native';
 import { useNativeAuth } from '@/context/native-auth';
 import { useTheme } from '@/context/theme';
 import { useWishlist } from '@/context/wishlist-context';
-import { localizeBilingualName, useAppTranslation } from '@/i18n';
+import { localizeBilingualName, mergeRouteLang, useAppTranslation } from '@/i18n';
 import { hasUserRole } from '@/utils/auth-routing';
 import { emitCartCountChanged } from '@/utils/native-cart-events';
 import {
@@ -55,11 +55,10 @@ import {
 } from '@/utils/product-detail-helpers';
 import { buildSocialSharePayload } from '@/utils/social-share';
 
-type DeliveryLabel = {
-  region: string;
-  city?: string;
-  township?: string;
-};
+import {
+  buildProductDeliveryLabels,
+  type DeliveryLabel,
+} from '@/utils/delivery-name-lookup';
 
 function Stars({ rating, count, showCount = true }: { rating: number; count?: number; showCount?: boolean }) {
   const { t } = useAppTranslation();
@@ -161,18 +160,40 @@ function DeliveryTicker({
 }) {
   const { t } = useAppTranslation();
   const [activeIndex, setActiveIndex] = useState(0);
-  const safeIndex = labels.length ? activeIndex % labels.length : 0;
-  const activeLabel = labels[safeIndex];
+  const [animKeys, setAnimKeys] = useState({ region: 0, city: 0, township: 0 });
+  const indexRef = useRef(0);
+  const prevLabelRef = useRef<DeliveryLabel | null>(null);
 
   useEffect(() => {
+    indexRef.current = 0;
+    prevLabelRef.current = null;
+    setActiveIndex(0);
+    setAnimKeys({ region: 0, city: 0, township: 0 });
+
     if (labels.length <= 1) return;
 
     const interval = setInterval(() => {
-      setActiveIndex((current) => (current + 1) % labels.length);
+      const nextIndex = (indexRef.current + 1) % labels.length;
+      const prevLabel = prevLabelRef.current;
+      const nextLabel = labels[nextIndex];
+
+      indexRef.current = nextIndex;
+      prevLabelRef.current = nextLabel;
+
+      setActiveIndex(nextIndex);
+      setAnimKeys((keys) => ({
+        region:
+          !prevLabel || nextLabel.region !== prevLabel.region ? keys.region + 1 : keys.region,
+        city: !prevLabel || nextLabel.city !== prevLabel.city ? keys.city + 1 : keys.city,
+        township:
+          !prevLabel || nextLabel.township !== prevLabel.township
+            ? keys.township + 1
+            : keys.township,
+      }));
     }, 3000);
 
     return () => clearInterval(interval);
-  }, [labels.length]);
+  }, [labels]);
 
   if (loading) {
     return (
@@ -182,7 +203,7 @@ function DeliveryTicker({
     );
   }
 
-  if (!activeLabel) {
+  if (labels.length === 0) {
     return (
       <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">
         {t('productDetail.delivery_not_set')}
@@ -190,36 +211,44 @@ function DeliveryTicker({
     );
   }
 
+  const activeLabel = labels[activeIndex % labels.length];
+
   return (
     <View className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-900/50">
       <Text className="mb-2 font-sans text-xs text-gray-500 dark:text-slate-400">
         {t('productDetail.delivering_to')}
       </Text>
-      <View className="min-h-5 flex-row items-center gap-1 overflow-hidden">
+      <View
+        accessibilityLiveRegion="polite"
+        className="h-5 flex-row items-center gap-1 overflow-hidden">
         <Text
-          className="max-w-[130px] font-sans text-xs font-semibold text-gray-900 dark:text-slate-100"
-          numberOfLines={1}
-        >
+          key={`region-${animKeys.region}`}
+          className="dz-word max-w-[130px] font-sans text-xs font-semibold text-gray-900 dark:text-slate-100"
+          numberOfLines={1}>
           {activeLabel.region}
         </Text>
         {activeLabel.city ? (
           <>
-            <Text className="font-sans text-xs text-gray-400 dark:text-slate-400">→</Text>
+            <Text className="flex-shrink-0 font-sans text-xs text-gray-400 dark:text-slate-500">
+              →
+            </Text>
             <Text
-              className="max-w-[110px] font-sans text-xs font-semibold text-gray-900 dark:text-slate-100"
-              numberOfLines={1}
-            >
+              key={`city-${animKeys.city}`}
+              className="dz-word max-w-[110px] font-sans text-xs font-semibold text-gray-900 dark:text-slate-100"
+              numberOfLines={1}>
               {activeLabel.city}
             </Text>
           </>
         ) : null}
         {activeLabel.township ? (
           <>
-            <Text className="font-sans text-xs text-gray-400 dark:text-slate-400">→</Text>
+            <Text className="flex-shrink-0 font-sans text-xs text-gray-400 dark:text-slate-500">
+              →
+            </Text>
             <Text
-              className="max-w-[100px] font-sans text-xs font-semibold text-gray-900 dark:text-slate-100"
-              numberOfLines={1}
-            >
+              key={`township-${animKeys.township}`}
+              className="dz-word max-w-[100px] font-sans text-xs font-semibold text-gray-900 dark:text-slate-100"
+              numberOfLines={1}>
               {activeLabel.township}
             </Text>
           </>
@@ -228,27 +257,6 @@ function DeliveryTicker({
     </View>
   );
 }
-
-const buildDeliveryLabels = (
-  areas: SellerDeliveryArea[],
-  wholeMyanmarLabel: string
-): DeliveryLabel[] =>
-  areas
-    .map((area) => {
-      if (area.areaType === 'country') {
-        return { region: wholeMyanmarLabel };
-      }
-
-      const region = area.state || '';
-      if (!region) return null;
-
-      return {
-        region,
-        city: area.city || undefined,
-        township: area.township || undefined,
-      };
-    })
-    .filter((label): label is DeliveryLabel => Boolean(label));
 
 export function ProductDetailNative({
   slug,
@@ -261,6 +269,7 @@ export function ProductDetailNative({
   const router = useRouter();
   const { width } = useWindowDimensions();
   const useCompactActions = Platform.OS !== 'web' || width < 768;
+  const showMobileStickyCta = Platform.OS === 'web' && width < 640;
   const { user, isAuthenticated } = useNativeAuth();
   const { isInWishlist, toggleWishlist } = useWishlist();
   const [product, setProduct] = useState<ProductDetail | null>(initialProduct || null);
@@ -431,8 +440,13 @@ export function ProductDetailNative({
 
   const images = useMemo(() => product?.images ?? [], [product]);
   const deliveryLabels = useMemo(
-    () => buildDeliveryLabels(deliveryAreas, t('productDetail.delivery_whole_myanmar')),
-    [deliveryAreas, t]
+    () =>
+      buildProductDeliveryLabels(
+        deliveryAreas,
+        language,
+        t('productDetail.delivery_whole_myanmar'),
+      ),
+    [deliveryAreas, language, t],
   );
   const currencyLabel = t('common.currency.mmk', 'MMK');
   const productDisplayName = product
@@ -525,8 +539,8 @@ export function ProductDetailNative({
       ? product.savedAmount.replace(/\s*MMK/i, '').trim()
       : '';
   const sellerHref = product?.seller
-    ? (`/sellers/${product.seller.slug || product.seller.id}` as Href)
-    : '/sellers';
+    ? (mergeRouteLang(`/sellers/${product.seller.slug || product.seller.id}`, {}, language) as Href)
+    : (mergeRouteLang('/sellers', {}, language) as Href);
   const primaryCtaLabel = addingToCart
     ? t('productDetail.adding')
     : stockIsOut
@@ -743,7 +757,11 @@ export function ProductDetailNative({
   };
 
   const handleShare = () => {
-    setShareOpen((current) => !current);
+    setShareOpen(true);
+  };
+
+  const handleShareClose = () => {
+    setShareOpen(false);
   };
 
   if (loading) return <DetailSkeleton />;
@@ -773,14 +791,9 @@ export function ProductDetailNative({
     );
   }
 
-  return (
-    <AppLayout>
-      <ProductDetailToast
-        message={actionMessage}
-        onDismiss={() => setActionMessage(null)}
-      />
-      <View className="bg-gray-50 py-6 dark:bg-slate-950 sm:py-8 sm:pb-8 web:pb-24">
-        <View className={`${SITE_CONTAINER_CLASS} min-w-0`}>
+  const pageContent = (
+    <View className="bg-gray-50 py-6 dark:bg-slate-950 sm:py-8">
+      <View className={`${SITE_CONTAINER_CLASS} min-w-0`}>
           <Pressable
             onPress={() => router.back()}
             className="mb-6 min-h-10 flex-row items-center gap-2 rounded-md px-1"
@@ -1099,6 +1112,7 @@ export function ProductDetailNative({
                 onBuyNow={() => void handleBuyNow()}
                 onToggleWishlist={() => void handleToggleWishlist()}
                 onShare={handleShare}
+                onShareClose={handleShareClose}
                 onToggleCompare={handleToggleCompare}
                 labels={{
                   outOfStock: t('productDetail.out_of_stock'),
@@ -1111,6 +1125,7 @@ export function ProductDetailNative({
                   shareOn: t('productDetail.share_on'),
                   copyLink: t('productDetail.copy_link'),
                   copied: t('productDetail.copied'),
+                  close: t('common.close'),
                   removeFromCompare: t('productDetail.remove_from_compare'),
                   addToCompare: t('productDetail.add_to_compare'),
                   shareFacebook: t('productDetail.share_facebook'),
@@ -1169,48 +1184,67 @@ export function ProductDetailNative({
           />
         </View>
       </View>
+  );
 
+  return (
+    <AppLayout scrollEnabled={Platform.OS !== 'web'}>
+      <ProductDetailToast
+        message={actionMessage}
+        onDismiss={() => setActionMessage(null)}
+      />
       {Platform.OS === 'web' ? (
-        <View className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 py-3 dark:border-slate-800 dark:bg-slate-900/95 sm:hidden">
-          <View className={`${SITE_CONTAINER_CLASS} min-w-0 flex-row items-center gap-3`}>
-            <View className="min-w-0 flex-1">
-              <Text className="font-sans text-xs text-gray-500 dark:text-slate-400" numberOfLines={1}>
-                {t('productDetail.price')}
-              </Text>
-              <Text className="font-sans text-sm font-bold text-gray-900 dark:text-slate-100" numberOfLines={1}>
-                {displayPrice}
-              </Text>
+        <View className="min-h-0 min-w-0 flex-1">
+          <ScrollView
+            className="min-w-0 flex-1"
+            contentContainerClassName={`min-w-0 grow ${showMobileStickyCta ? 'pb-24' : 'pb-8'}`}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator>
+            {pageContent}
+          </ScrollView>
+
+          {showMobileStickyCta ? (
+            <View className="fixed bottom-0 left-0 right-0 z-40 border-t border-gray-200 bg-white/95 py-3 backdrop-blur dark:border-slate-800 dark:bg-slate-900/95">
+              <View className={`${SITE_CONTAINER_CLASS} min-w-0 flex-row items-center gap-3`}>
+                <View className="min-w-0 flex-1">
+                  <Text className="font-sans text-xs text-gray-500 dark:text-slate-400" numberOfLines={1}>
+                    {t('productDetail.price')}
+                  </Text>
+                  <Text className="font-sans text-sm font-bold text-gray-900 dark:text-slate-100" numberOfLines={1}>
+                    {displayPrice}
+                  </Text>
+                </View>
+                {stockIsOut ? (
+                  <Pressable
+                    disabled
+                    className="ml-auto min-h-11 max-w-[52vw] items-center justify-center rounded-xl bg-gray-300 px-4 py-2.5 dark:bg-slate-700">
+                    <Text className="font-sans text-sm font-semibold text-gray-500 dark:text-slate-400">
+                      🚫 {t('productDetail.out_of_stock')}
+                    </Text>
+                  </Pressable>
+                ) : (
+                  <Pressable
+                    onPress={() => void handlePrimaryCta()}
+                    disabled={addingToCart}
+                    className={`ml-auto min-h-11 max-w-[52vw] flex-row items-center justify-center rounded-xl px-4 py-2.5 ${
+                      variantReady ? 'bg-green-600' : 'bg-amber-500'
+                    } ${addingToCart ? 'opacity-50' : ''}`}>
+                    <Feather
+                      name={variantReady ? 'shopping-cart' : 'sliders'}
+                      color="#ffffff"
+                      size={16}
+                    />
+                    <Text className="ml-1.5 font-sans text-sm font-semibold text-white" numberOfLines={1}>
+                      {primaryCtaLabel}
+                    </Text>
+                  </Pressable>
+                )}
+              </View>
             </View>
-            {stockIsOut ? (
-              <Pressable
-                disabled
-                className="ml-auto min-h-9 max-w-[52%] items-center justify-center rounded-lg bg-gray-300 px-3 py-1.5 dark:bg-slate-700"
-              >
-                <Text className="font-sans text-xs font-semibold text-gray-500 dark:text-slate-400 sm:text-sm">
-                  🚫 {t('productDetail.out_of_stock')}
-                </Text>
-              </Pressable>
-            ) : (
-              <Pressable
-                onPress={() => void handlePrimaryCta()}
-                disabled={addingToCart}
-                className={`ml-auto min-h-9 max-w-[52%] flex-row items-center justify-center rounded-lg px-3 py-1.5 ${
-                  variantReady ? 'bg-green-600' : 'bg-amber-500'
-                } ${addingToCart ? 'opacity-50' : ''}`}
-              >
-                <Feather
-                  name={variantReady ? 'shopping-cart' : 'sliders'}
-                  color="#ffffff"
-                  size={14}
-                />
-                <Text className="ml-1.5 font-sans text-xs font-semibold text-white sm:text-sm" numberOfLines={1}>
-                  {primaryCtaLabel}
-                </Text>
-              </Pressable>
-            )}
-          </View>
+          ) : null}
         </View>
-      ) : null}
+      ) : (
+        pageContent
+      )}
     </AppLayout>
   );
 }

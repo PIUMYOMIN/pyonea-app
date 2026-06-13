@@ -3,10 +3,8 @@ import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { Link, useLocalSearchParams, type Href } from 'expo-router';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
-  Linking,
   Platform,
   Pressable,
-  Share,
   Text,
   useWindowDimensions,
   View,
@@ -14,10 +12,11 @@ import {
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { chunkMarketplaceItems } from '@/components/marketplace/marketplace-grid';
+import { SocialShareModal } from '@/components/ui/social-share-modal';
 import { BLOG_RELATED_GRID_CLASS } from '@/constants/layout';
-import { SITE_PUBLIC_URL } from '@/config/native';
-import { useAppTranslation } from '@/i18n';
+import { mergeRouteLang, useAppTranslation } from '@/i18n';
 import { fetchBlogDetail, type BlogDetail, type BlogPost } from '@/utils/native-api';
+import { buildSocialSharePayload } from '@/utils/social-share';
 
 const fallbackImage = require('@/assets/images/og-image.png');
 
@@ -101,7 +100,7 @@ function RelatedCard({ post }: { post: BlogPost }) {
     language === 'my' ? post.titleMm || post.titleEn || post.title : post.titleEn || post.titleMm || post.title;
 
   return (
-    <Link href={`/blog/${post.slug}` as Href} asChild>
+    <Link href={mergeRouteLang(`/blog/${post.slug}`, {}, language) as Href} asChild>
       <Pressable className="h-full w-full min-w-0 rounded-lg border border-gray-100 bg-white p-5 shadow-sm dark:border-slate-800 dark:bg-slate-950">
         <Text className="font-sans text-xs font-semibold text-green-700 dark:text-green-300">
           {post.category || t('blog_page.label')}
@@ -132,7 +131,7 @@ export function BlogDetailNative({ initialDetail }: { initialDetail?: BlogDetail
     () => !(initialDetail?.post && initialDetail.post.slug === slug),
   );
   const [error, setError] = useState(false);
-  const [copied, setCopied] = useState(false);
+  const [shareOpen, setShareOpen] = useState(false);
   const loaderDetail =
     initialDetail?.post?.slug === slug ? initialDetail : null;
   const hasLoaderDetail = Boolean(loaderDetail?.post);
@@ -204,6 +203,29 @@ export function BlogDetailNative({ initialDetail }: { initialDetail?: BlogDetail
     };
   }, [language, post]);
 
+  const sharePayload = useMemo(() => {
+    if (!post) return null;
+
+    const title =
+      language === 'my'
+        ? post.titleMm || post.titleEn || post.title
+        : post.titleEn || post.titleMm || post.title;
+    const shareText = t('blog_page.share_text', { title });
+    const payload = buildSocialSharePayload({
+      path: `/blog/${post.slug}`,
+      title,
+      text: shareText,
+      description: '',
+      language,
+      imageUrl: post.imageUrl,
+    });
+
+    return {
+      ...payload,
+      description: shareText,
+    };
+  }, [language, post, t]);
+
   if (!slug || error || (!loading && !post)) {
     return (
       <AppLayout>
@@ -216,7 +238,7 @@ export function BlogDetailNative({ initialDetail }: { initialDetail?: BlogDetail
             <Text className="mt-3 text-center font-sans text-base leading-6 text-gray-600 dark:text-slate-400">
               {t('blog_page.not_found_subtitle')}
             </Text>
-            <Link href="/blog" asChild>
+            <Link href={mergeRouteLang('/blog', {}, language) as Href} asChild>
               <Pressable className="mt-6 flex-row items-center gap-2 rounded-lg bg-green-600 px-4 py-2">
                 <Feather name="arrow-left" color="#ffffff" size={16} />
                 <Text className="font-sans text-sm font-semibold text-white">
@@ -232,73 +254,30 @@ export function BlogDetailNative({ initialDetail }: { initialDetail?: BlogDetail
 
   if (loading || !post) return <BlogDetailSkeleton />;
 
-  const articleUrl = `${SITE_PUBLIC_URL}/blog/${post.slug}`;
-  const shareText = t('blog_page.share_text', { title: localized.title });
-  const shareLinks = [
-    {
-      label: 'Facebook',
-      icon: 'f',
-      url: `https://www.facebook.com/sharer/sharer.php?u=${encodeURIComponent(articleUrl)}`,
-    },
-    {
-      label: 'WhatsApp',
-      icon: 'W',
-      url: `https://wa.me/?text=${encodeURIComponent(`${shareText} ${articleUrl}`)}`,
-    },
-    {
-      label: 'Telegram',
-      icon: 'T',
-      url: `https://t.me/share/url?url=${encodeURIComponent(articleUrl)}&text=${encodeURIComponent(shareText)}`,
-    },
-    {
-      label: 'LinkedIn',
-      icon: 'in',
-      url: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(articleUrl)}`,
-    },
-    {
-      label: 'X',
-      icon: 'X',
-      url: `https://x.com/intent/tweet?text=${encodeURIComponent(shareText)}&url=${encodeURIComponent(articleUrl)}`,
-    },
-  ];
-
-  const shareNative = async () => {
-    if (Platform.OS === 'web' && typeof navigator !== 'undefined' && navigator.clipboard) {
-      try {
-        await navigator.clipboard.writeText(articleUrl);
-        setCopied(true);
-        setTimeout(() => setCopied(false), 2200);
-        return;
-      } catch {
-        // fall through to share sheet
-      }
-    }
-
-    if (typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        await navigator.share({
-          title: localized.title,
-          text: shareText,
-          url: articleUrl,
-        });
-        return;
-      } catch {
-        // user cancelled
-      }
-    }
-
-    void Share.share({
-      title: localized.title,
-      message: `${shareText} ${articleUrl}`,
-      url: articleUrl,
-    });
-  };
-
   return (
     <AppLayout>
+      {sharePayload ? (
+        <SocialShareModal
+          open={shareOpen}
+          payload={sharePayload}
+          onClose={() => setShareOpen(false)}
+          labels={{
+            heading: t('blog_page.share_article'),
+            shareOn: t('blog_page.share_on'),
+            copyLink: t('blog_page.copy_link'),
+            copied: t('blog_page.copied'),
+            close: t('common.close'),
+            shareFacebook: t('productDetail.share_facebook'),
+            shareWhatsapp: t('productDetail.share_whatsapp'),
+            shareViber: t('productDetail.share_viber'),
+            shareTelegram: t('productDetail.share_telegram'),
+            shareX: t('productDetail.share_x'),
+          }}
+        />
+      ) : null}
       <View className="bg-white dark:bg-slate-950">
         <View className="mx-auto w-full max-w-4xl px-4 py-10 sm:px-6 lg:px-8">
-          <Link href="/blog" asChild>
+          <Link href={mergeRouteLang('/blog', {}, language) as Href} asChild>
             <Pressable className="flex-row items-center gap-2 self-start">
               <Feather name="arrow-left" color="#15803d" size={16} />
               <Text className="font-sans text-sm font-semibold text-green-700 dark:text-green-300">
@@ -343,39 +322,22 @@ export function BlogDetailNative({ initialDetail }: { initialDetail?: BlogDetail
         </View>
 
         <View className="mx-auto w-full max-w-3xl px-4 py-10 sm:px-6 lg:px-8">
-          <View className="mb-8 gap-3 border-b border-gray-100 pb-6 dark:border-slate-800 sm:flex-row sm:items-center sm:justify-between">
-            <View className="flex-row items-center gap-2">
+          <View className="mb-8 flex-row items-center justify-between gap-3 border-b border-gray-100 pb-6 dark:border-slate-800">
+            <View className="min-w-0 flex-1 flex-row items-center gap-2">
               <Feather name="share-2" color="#475569" size={16} />
               <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">
                 {t('blog_page.share_article')}
               </Text>
             </View>
-            <View className="flex-row flex-wrap gap-2">
-              {shareLinks.map((link) => (
-                <Pressable
-                  key={link.label}
-                  onPress={() => void Linking.openURL(link.url)}
-                  accessibilityLabel={`${t('blog_page.share_on')} ${link.label}`}
-                  className="h-9 flex-row items-center gap-2 rounded-md border border-gray-200 px-3 dark:border-slate-700">
-                  <View className="h-5 min-w-5 items-center justify-center rounded-full bg-gray-100 px-1 dark:bg-slate-700">
-                    <Text className="font-sans text-[10px] font-bold text-gray-800 dark:text-slate-100">
-                      {link.icon}
-                    </Text>
-                  </View>
-                  <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-200">
-                    {link.label}
-                  </Text>
-                </Pressable>
-              ))}
-              <Pressable
-                onPress={shareNative}
-                className="h-9 flex-row items-center gap-2 rounded-md border border-gray-200 px-3 dark:border-slate-700">
-                <Feather name={copied ? 'check' : 'link'} color={copied ? '#16a34a' : '#475569'} size={16} />
-                <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-200">
-                  {copied ? t('blog_page.copied') : t('blog_page.copy_link')}
-                </Text>
-              </Pressable>
-            </View>
+            <Pressable
+              onPress={() => setShareOpen(true)}
+              accessibilityLabel={t('blog_page.share_article')}
+              className="h-9 flex-row items-center gap-2 rounded-md border border-gray-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900">
+              <Feather name="share-2" color="#16a34a" size={16} />
+              <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-200">
+                {t('blog_page.share_on')}
+              </Text>
+            </Pressable>
           </View>
 
           <View className="gap-5">

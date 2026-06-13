@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react';
 import { Platform, Pressable, Text, View } from 'react-native';
 
 import { NATIVE_BOTTOM_TAB_OFFSET_CLASS } from '@/constants/layout';
-import { useAppTranslation } from '@/i18n';
+import { useAppTranslation, useLocalizedHref } from '@/i18n';
 import {
   getCompareCount,
   hydrateCompareFromStorage,
@@ -15,6 +15,7 @@ import {
 export function FloatingCompareButtonNative() {
   const pathname = usePathname();
   const { t } = useAppTranslation();
+  const href = useLocalizedHref();
   const [count, setCount] = useState(() => getCompareCount());
 
   useEffect(() => {
@@ -42,7 +43,7 @@ export function FloatingCompareButtonNative() {
         Platform.OS === 'web' ? 'bottom-6' : NATIVE_BOTTOM_TAB_OFFSET_CLASS
       }`}
       accessibilityElementsHidden={false}>
-      <Link href="/compare" asChild>
+      <Link href={href('/compare')} asChild>
         <Pressable
           accessibilityRole="button"
           accessibilityLabel={t('compare.floating_label', { count })}

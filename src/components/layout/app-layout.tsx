@@ -116,7 +116,9 @@ export function Header() {
   const { count: wishlistCount } = useWishlist();
   const user = auth.user;
   const isBuyer = !user || hasUserRole(user, "buyer");
-  const dashboardHref = user ? getRoleDestination(user) : "/login";
+  const dashboardHref = user
+    ? (mergeRouteLang(String(getRoleDestination(user)), {}, activeLanguage) as Href)
+    : (mergeRouteLang("/login", {}, activeLanguage) as Href);
   const userInitial = user?.name?.charAt(0)?.toUpperCase() || "U";
   const userRole = user?.type || user?.roles?.[0] || "buyer";
 
@@ -128,13 +130,14 @@ export function Header() {
     () =>
       mainRoutes.map((route) => ({
         ...route,
+        href: mergeRouteLang(String(route.href), {}, activeLanguage) as Href,
         active:
           route.href === "/"
             ? pathname === "/"
             : pathname.startsWith(String(route.href)),
         translatedLabel: t(headerRouteKeys[String(route.href)] || route.label),
       })),
-    [pathname, t],
+    [activeLanguage, pathname, t],
   );
 
   const submitSearch = () => {
@@ -179,7 +182,7 @@ export function Header() {
     setUserMenuOpen(false);
     setMobileOpen(false);
     await auth.logout();
-    router.replace("/");
+    router.replace(mergeRouteLang("/", {}, activeLanguage) as Href);
   };
 
   return (
@@ -189,7 +192,7 @@ export function Header() {
     >
       <View className={`${SITE_CONTAINER_CLASS} min-w-0`}>
         <View className="h-16 min-w-0 flex-row items-center justify-between gap-2 sm:gap-3">
-          <Link href="/" asChild>
+          <Link href={mergeRouteLang("/", {}, activeLanguage) as Href} asChild>
             <Pressable className="shrink-0 flex-row items-center gap-2">
               <BrandLogo size={36} />
               <Text
@@ -282,7 +285,7 @@ export function Header() {
 
             {isBuyer ? (
               <>
-                <Link href="/wishlist" asChild>
+                <Link href={mergeRouteLang("/wishlist", {}, activeLanguage) as Href} asChild>
                   <Pressable
                     accessibilityLabel={t("buyer_dashboard.wishlist", "Wishlist")}
                     className="relative h-10 w-10 items-center justify-center rounded-lg"
@@ -301,7 +304,7 @@ export function Header() {
                     ) : null}
                   </Pressable>
                 </Link>
-                <Link href="/cart" asChild>
+                <Link href={mergeRouteLang("/cart", {}, activeLanguage) as Href} asChild>
                 <Pressable
                   accessibilityLabel="Cart"
                   className="relative h-10 w-10 items-center justify-center rounded-lg"
@@ -372,7 +375,7 @@ export function Header() {
                 ) : null}
               </View>
             ) : (
-              <Link href="/login" asChild>
+              <Link href={mergeRouteLang("/login", {}, activeLanguage) as Href} asChild>
                 <Pressable className="flex-row items-center gap-1.5 rounded-lg border border-green-300 px-3 py-2 dark:border-green-700">
                   <Feather name="user" color="#15803d" size={16} />
                   <Text className="hidden font-sans text-sm font-semibold text-green-700 dark:text-green-300 sm:flex">
@@ -521,7 +524,7 @@ export function Header() {
             </View>
           ) : (
             <>
-              <Link href="/login" asChild>
+              <Link href={mergeRouteLang("/login", {}, activeLanguage) as Href} asChild>
                 <Pressable
                   onPress={() => setMobileOpen(false)}
                   className="mx-3 rounded-xl bg-green-600 px-4 py-3"
@@ -533,7 +536,7 @@ export function Header() {
               </Link>
               <Text className="mt-2 text-center font-sans text-sm text-gray-500 dark:text-slate-400">
                 {t("header.new_user")}{" "}
-                <Link href="/register" asChild>
+                <Link href={mergeRouteLang("/register", {}, activeLanguage) as Href} asChild>
                   <Text className="font-sans font-bold text-green-600">
                     {t("header.sign_up")}
                   </Text>

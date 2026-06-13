@@ -159,4 +159,25 @@ body.dark {
   .native-date-field-input:focus {
     outline: none;
   }
+
+  /* Product detail delivery zone ticker — match legacy Pyonea ProductDetail.jsx */
+  @keyframes dzSlideUp {
+    0% {
+      opacity: 0;
+      transform: translateY(20px) rotateX(45deg);
+      filter: blur(2px);
+    }
+    100% {
+      opacity: 1;
+      transform: translateY(0) rotateX(0deg);
+      filter: blur(0);
+    }
+  }
+
+  .dz-word {
+    display: inline-block;
+    transform-origin: center bottom;
+    animation: dzSlideUp 420ms ease-out both;
+    perspective: 800px;
+  }
 }

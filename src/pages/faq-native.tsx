@@ -4,7 +4,7 @@ import { ComponentProps, useMemo, useState } from 'react';
 import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
-import { useAppTranslation } from '@/i18n';
+import { useAppTranslation, useLocalizedHref } from '@/i18n';
 
 type CategoryId = 'general' | 'buying' | 'selling' | 'payments' | 'shipping' | 'account';
 type FeatherName = ComponentProps<typeof Feather>['name'];
@@ -37,22 +37,22 @@ const categoryIcons: Record<CategoryId, FeatherName> = {
 };
 
 const relatedLinks: {
-  href: Href;
+  path: string;
   labelKey: string;
   descKey: string;
 }[] = [
   {
-    href: '/seller-guidelines',
+    path: '/seller-guidelines',
     labelKey: 'faq_page.links.seller_guidelines_label',
     descKey: 'faq_page.links.seller_guidelines_desc',
   },
   {
-    href: '/return-policy',
+    path: '/return-policy',
     labelKey: 'faq_page.links.return_policy_label',
     descKey: 'faq_page.links.return_policy_desc',
   },
   {
-    href: '/pricing',
+    path: '/pricing',
     labelKey: 'faq_page.links.pricing_label',
     descKey: 'faq_page.links.pricing_desc',
   },
@@ -108,6 +108,7 @@ function AccordionItem({
 
 export function FaqNative() {
   const { t } = useAppTranslation();
+  const href = useLocalizedHref();
   const [activeCategory, setActiveCategory] = useState<CategoryId>('general');
   const [openItem, setOpenItem] = useState<number | null>(null);
   const [search, setSearch] = useState('');
@@ -248,7 +249,7 @@ export function FaqNative() {
                 <Text className="mb-3 font-sans text-xs leading-5 text-green-700 dark:text-green-400">
                   {t('faq_page.sidebar.need_help_desc')}
                 </Text>
-                <Link href="/contact" asChild>
+                <Link href={href('/contact')} asChild>
                   <Pressable>
                     <Text className="font-sans text-xs font-medium text-green-700 underline dark:text-green-400">
                       {t('faq_page.sidebar.contact_support')}
@@ -360,7 +361,7 @@ export function FaqNative() {
                   </Text>
                 </View>
                 <View className="gap-3 sm:flex-row">
-                  <Link href="/contact" asChild>
+                  <Link href={href('/contact')} asChild>
                     <Pressable className="flex-row items-center justify-center gap-2 rounded-lg bg-white px-5 py-2.5">
                       <Text className="font-sans text-sm font-semibold text-green-700">
                         {t('faq_page.cta.contact_us')}
@@ -368,7 +369,7 @@ export function FaqNative() {
                       <Feather name="arrow-right" color="#15803d" size={16} />
                     </Pressable>
                   </Link>
-                  <Link href="/help" asChild>
+                  <Link href={href('/help')} asChild>
                     <Pressable className="flex-row items-center justify-center gap-2 rounded-lg border border-green-300 px-5 py-2.5">
                       <Text className="font-sans text-sm font-medium text-white">
                         {t('faq_page.cta.help_center')}
@@ -380,8 +381,8 @@ export function FaqNative() {
             </View>
 
             <View className="mt-8 gap-4 sm:flex-row">
-              {relatedLinks.map(({ href, labelKey, descKey }) => (
-                <Link key={String(href)} href={href} asChild>
+              {relatedLinks.map(({ path, labelKey, descKey }) => (
+                <Link key={path} href={href(path)} asChild>
                   <Pressable className="min-w-0 flex-1 rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
                     <Text className="font-sans text-sm font-semibold text-gray-800 dark:text-slate-100">
                       {t(labelKey)}
@@ -398,7 +399,7 @@ export function FaqNative() {
               <Text className="font-sans text-xs text-gray-400 dark:text-slate-500">
                 {t('faq_page.footer')}
               </Text>
-              <Link href="/contact" asChild>
+              <Link href={href('/contact')} asChild>
                 <Pressable>
                   <Text className="font-sans text-xs text-green-600 dark:text-green-400">
                     {t('faq_page.footer_suggest')}

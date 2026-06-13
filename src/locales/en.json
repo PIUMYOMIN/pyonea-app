@@ -36,6 +36,66 @@
       "title": "Local Deals | Pyonea",
       "description": "Browse active coupon offers from verified Myanmar sellers by region. Save on wholesale orders and support local businesses."
     },
+    "blog": {
+      "title": "Wholesale Myanmar Blog & Business Guides | Pyonea",
+      "description": "Read Pyonea guides for Myanmar wholesale buying, supplier sourcing, online shops, B2B marketplace selling, MOQ, delivery, and business growth."
+    },
+    "bulk_order_tool": {
+      "title": "Bulk Order Tool for Myanmar B2B Buyers | Pyonea",
+      "description": "Request and compare bulk order options from Myanmar suppliers using Pyonea's B2B sourcing tool."
+    },
+    "pricing": {
+      "title": "Pricing & Plans | Pyonea Myanmar B2B Marketplace",
+      "description": "Choose a seller plan that fits your business. Start free on Pyonea and upgrade as your store grows."
+    },
+    "about_us": {
+      "title": "About Pyonea | Myanmar B2B Wholesale Marketplace",
+      "description": "Pyonea is Myanmar's trusted B2B marketplace connecting verified suppliers with business buyers. Learn about our mission and commitment to Myanmar commerce."
+    },
+    "help": {
+      "title": "Help Center | Pyonea",
+      "description": "Get help with buying, selling, bulk orders, shipping, payments, and account support on Pyonea."
+    },
+    "faq": {
+      "title": "FAQ | Pyonea Myanmar B2B Marketplace",
+      "description": "Frequently asked questions about buying, selling, payments, shipping, and accounts on Pyonea, Myanmar's B2B wholesale marketplace."
+    },
+    "shipping": {
+      "title": "Shipping Information | Pyonea Myanmar B2B Marketplace",
+      "description": "Learn how shipping works on Pyonea, including delivery areas, estimated timelines, packaging standards, tracking, and support for lost or damaged orders."
+    },
+    "contact": {
+      "title": "Contact Pyonea | Myanmar B2B Marketplace Support",
+      "description": "Contact Pyonea for buyer support, seller support, partnership questions, and Myanmar marketplace assistance."
+    },
+    "seller_guidelines": {
+      "title": "Seller Guidelines | Pyonea Myanmar B2B Marketplace",
+      "description": "Everything you need to know to sell successfully on Pyonea: eligibility, product standards, prohibited items, performance requirements, and fees."
+    },
+    "terms": {
+      "title": "Terms of Service | Pyonea",
+      "description": "Read the Pyonea terms of service for buyers, sellers, and marketplace users."
+    },
+    "privacy_policy": {
+      "title": "Privacy Policy | Pyonea",
+      "description": "Read how Pyonea protects buyer, seller, order, payment, delivery, and verification data on Myanmar's B2B wholesale marketplace."
+    },
+    "return_policy": {
+      "title": "Return & Refund Policy | Pyonea",
+      "description": "Learn how returns, exchanges, refunds, seller policies, buyer responsibilities, and dispute support work on Pyonea's Myanmar B2B marketplace."
+    },
+    "legal": {
+      "title": "Legal Information | Pyonea",
+      "description": "Pyonea's legal centre: terms of service, privacy policy, return policy, and platform guidelines for buyers and sellers on Myanmar's B2B marketplace."
+    },
+    "compare": {
+      "title": "Product Comparison | Pyonea",
+      "description": "Compare Myanmar wholesale products, pricing, sellers, and product details on Pyonea."
+    },
+    "report": {
+      "title": "Report a Marketplace Issue | Pyonea",
+      "description": "Report product, seller, order, payment, or safety issues to Pyonea support and receive a ticket ID."
+    },
     "default": {
       "title": "Pyonea | Myanmar B2B Wholesale Marketplace",
       "description": "Myanmar's trusted B2B wholesale marketplace for suppliers, bulk buyers, and business trade."
@@ -713,11 +773,7 @@
     "share_text": "Read \"{{title}}\" on Pyonea.",
     "share_on": "Share on",
     "copy_link": "Copy link",
-    "copied": "Copied",
-    "seo": {
-      "title": "Wholesale Myanmar Blog & Business Guides | Pyonea",
-      "description": "Read Pyonea guides for Myanmar wholesale buying, supplier sourcing, online shops, B2B marketplace selling, MOQ, delivery, and business growth."
-    }
+    "copied": "Copied"
   },
   "compare": {
     "title": "Product Comparison",
@@ -2117,9 +2173,6 @@
   },
   "about": {
     "title": "About Pyonea",
-    "seo": {
-      "description": "Pyonea is Myanmar's trusted B2B marketplace connecting verified suppliers with business buyers. Learn about our mission and commitment to Myanmar commerce."
-    },
     "mission": {
       "title": "Our Mission",
       "paragraph1": "Pyonea is a Myanmar-focused B2B marketplace that helps business buyers source products from verified suppliers—faster, with clearer terms, and with better accountability.",
@@ -2152,9 +2205,6 @@
   "legal": {
     "title": "Legal Information",
     "subtitle": "Key policies for using Pyonea. These summaries are for convenience—please read the full policy pages for details.",
-    "seo": {
-      "description": "Pyonea's legal centre: terms of service, privacy policy, return policy, and platform guidelines for buyers and sellers on Myanmar's B2B marketplace."
-    },
     "terms": {
       "title": "Terms of Service",
       "content": "By using Pyonea, you agree to these Terms.\n\n1) Accounts & eligibility: You must provide accurate information and keep your account secure. We may suspend accounts used for fraud, abuse, or policy violations.\n\n2) Marketplace role: Pyonea is a platform that connects buyers and independent sellers. Product listings, pricing, fulfillment, and warranties are the seller’s responsibility unless explicitly stated otherwise.\n\n3) Orders & payments: When you place an order you agree to pay the displayed total and follow the seller’s stated policies. Payment methods and processing may vary by seller and may involve third‑party providers.\n\n4) Content & conduct: You may not post illegal, misleading, or infringing content. Harassment, spam, and manipulation of reviews or ratings are not allowed.\n\n5) Changes: We may update these Terms to reflect product, legal, or operational changes. Continued use of Pyonea after updates means you accept the revised Terms.\n\nFor questions, contact us using the details below."
@@ -2221,9 +2271,6 @@
   "returnPolicy": {
     "title": "Return Policy",
     "subtitle": "How returns work on Pyonea",
-    "seo": {
-      "description": "Learn how returns, exchanges, refunds, seller policies, buyer responsibilities, and dispute support work on Pyonea's Myanmar B2B marketplace."
-    },
     "platformPolicy": {
       "title": "Platform Policy",
       "description": "Pyonea is a marketplace where independent sellers offer their products. Each seller may have their own return, exchange, and refund policy. By placing an order, you agree to the seller’s policy as displayed on the product page and during checkout.",
@@ -2267,9 +2314,6 @@
   "privacyPolicy": {
     "title": "Privacy Policy",
     "subtitle": "How Pyonea collects, uses, and protects your information",
-    "seo": {
-      "description": "Read how Pyonea protects buyer, seller, order, payment, delivery, and verification data on Myanmar's B2B wholesale marketplace."
-    },
     "lastUpdated": "Last updated: {{date}}",
     "intro": "Pyonea is a B2B marketplace. We collect only the information we need to run the platform—verify sellers, process orders, support shipping and payments, prevent fraud, and improve the buying and selling experience.",
     "dataCollection": {
@@ -3090,10 +3134,6 @@
     "order_header_meta": "Order #{{number}} · Placed on {{date}}"
   },
   "seller_guidelines": {
-    "seo": {
-      "title": "Seller Guidelines | Pyonea Myanmar B2B Marketplace",
-      "description": "Everything you need to know to sell successfully on Pyonea: eligibility, product standards, prohibited items, performance requirements, and fees."
-    },
     "hero": {
       "for_sellers": "For Sellers",
       "title": "Seller Guidelines",
@@ -3283,10 +3323,6 @@
     }
   },
   "faq_page": {
-    "seo": {
-      "title": "FAQ | Pyonea Myanmar B2B Marketplace",
-      "description": "Frequently asked questions about buying, selling, payments, shipping, and accounts on Pyonea, Myanmar's B2B wholesale marketplace."
-    },
     "hero": {
       "label": "Help Center",
       "title": "Frequently Asked Questions",
@@ -3411,10 +3447,6 @@
     "footer_suggest": "Suggest a question"
   },
   "shipping_page": {
-    "seo": {
-      "title": "Shipping Information | Pyonea Myanmar B2B Marketplace",
-      "description": "Learn how shipping works on Pyonea, including delivery areas, estimated timelines, packaging standards, tracking, and support for lost or damaged orders."
-    },
     "hero": {
       "label": "Shipping",
       "title": "Shipping Information",
@@ -4847,10 +4879,6 @@
   },
   "pricing_page": {
     "label": "Seller Plans",
-    "seo": {
-      "title": "Pricing & Plans | Pyonea Myanmar B2B Marketplace",
-      "description": "Choose a seller plan that fits your business. Start free on Pyonea and upgrade as your store grows."
-    },
     "hero": {
       "badge_label": "Plans for sellers",
       "title": "Choose the right plan for your business",

@@ -2,7 +2,17 @@ import Head from 'expo-router/head';
 import { useGlobalSearchParams, usePathname } from 'expo-router';
 
 import { SITE_PUBLIC_URL } from '@/config/native';
+import { Platform } from 'react-native';
+
 import { normalizeLanguage, useAppTranslation, type SupportedLanguage } from '@/i18n';
+import { resolveStaticRouteSeo } from '@/utils/seo-localization';
+
+function readLangFromLocation(): SupportedLanguage | null {
+  if (typeof window === 'undefined') return null;
+
+  const value = new URLSearchParams(window.location.search).get('lang');
+  return value ? normalizeLanguage(value) : null;
+}
 
 type SeoSchema = Record<string, unknown>;
 
@@ -226,12 +236,20 @@ export function NativeSeo({
 }: NativeSeoProps) {
   const pathname = usePathname() || '/';
   const params = useGlobalSearchParams<{ lang?: string }>();
-  const { language } = useAppTranslation();
-  const activeLanguage = normalizeLanguage(params.lang || language);
-  const routeSeo = indexableRoutes[routeKeyFor(pathname)];
+  const { language, t } = useAppTranslation();
+  const routeLang = Array.isArray(params.lang) ? params.lang[0] : params.lang;
+  const activeLanguage = normalizeLanguage(
+    routeLang || (Platform.OS === 'web' ? readLangFromLocation() : null) || language,
+  );
+  const routeBucket = routeKeyFor(pathname);
+  const routeSeo = indexableRoutes[routeBucket];
   const routePrivate = isPrivateRoute(pathname);
-  const resolvedTitle = title || routeSeo?.title || defaultTitle;
-  const resolvedDescription = description || routeSeo?.description || defaultDescription;
+  const staticSeo = resolveStaticRouteSeo(routeBucket, activeLanguage, t, {
+    title: routeSeo?.title || defaultTitle,
+    description: routeSeo?.description || defaultDescription,
+  });
+  const resolvedTitle = title || staticSeo.title;
+  const resolvedDescription = description || staticSeo.description;
   const resolvedType = type || routeSeo?.type || 'website';
   const shouldNoindex = Boolean(noindex || routeSeo?.noindex || routePrivate);
   const canonicalBase = ensureAbsolute(url || pathname || '/');

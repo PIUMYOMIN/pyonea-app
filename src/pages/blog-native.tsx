@@ -168,7 +168,7 @@ function BlogCard({ post }: { post: BlogPost }) {
       : post.excerptEn || post.excerptMm || post.excerpt;
 
   return (
-    <Link href={`/blog/${post.slug}` as Href} asChild>
+    <Link href={mergeRouteLang(`/blog/${post.slug}`, {}, language) as Href} asChild>
       <Pressable className={`group ${blogCardSurfaceClass} ${blogCardHoverClass}`}>
         <View className="aspect-[16/9] overflow-hidden bg-gray-100 dark:bg-slate-800">
           <Image
@@ -223,7 +223,7 @@ function FeaturedPost({ post }: { post: BlogPost }) {
 
   return (
     <View className="overflow-hidden rounded-lg border border-gray-100 bg-white shadow-sm dark:border-slate-800 dark:bg-slate-900">
-      <Link href={`/blog/${post.slug}` as Href} asChild>
+      <Link href={mergeRouteLang(`/blog/${post.slug}`, {}, language) as Href} asChild>
         <Pressable
           className={
             isWeb ? 'grid gap-0 lg:grid-cols-[1.05fr_0.95fr]' : 'flex-col lg:flex-row'
@@ -434,16 +434,16 @@ export function BlogNative() {
   return (
     <>
       <NativeSeo
-        title={t('blog_page.seo.title')}
-        description={t('blog_page.seo.description')}
+        title={t('seo.blog.title')}
+        description={t('seo.blog.description')}
         url={seoUrl}
         type="website"
         noindex={hasActiveFilters}
         schema={{
           '@context': 'https://schema.org',
           '@type': 'Blog',
-          name: t('blog_page.seo.title'),
-          description: t('blog_page.seo.description'),
+          name: t('seo.blog.title'),
+          description: t('seo.blog.description'),
           url: `${SITE_PUBLIC_URL}/blog`,
         }}
       />

@@ -4,7 +4,7 @@ import { Linking, Pressable, Text, View } from 'react-native';
 import { BrandLogo } from '@/components/ui/brand-logo';
 import { FOOTER_LINK_GRID_CLASS, SITE_CONTAINER_CLASS } from '@/constants/layout';
 import { useCookies } from '@/context/cookies';
-import { useAppTranslation } from '@/i18n';
+import { useAppTranslation, useLocalizedHref } from '@/i18n';
 
 import { NewsletterWidget } from './newsletter-widget';
 
@@ -37,6 +37,7 @@ function FooterHeading({ children }: { children: string }) {
 /** Web footer — structure and content aligned with legacy pyonea Footer.jsx */
 export function SiteFooter() {
   const { t } = useAppTranslation();
+  const href = useLocalizedHref();
   const { openBanner } = useCookies();
   const year = new Date().getFullYear();
 
@@ -44,7 +45,7 @@ export function SiteFooter() {
     <View className="min-w-0 border-t border-white/5 bg-gray-900 text-white dark:bg-slate-950">
       <View className={`${SITE_CONTAINER_CLASS} min-w-0 pb-8 pt-12`}>
         <View className="gap-4 border-b border-white/10 pb-10 sm:flex-row sm:items-center sm:justify-between">
-          <Link href="/" asChild>
+          <Link href={href('/')} asChild>
             <Pressable className="w-fit flex-row items-center gap-2.5 self-start">
               <BrandLogo size={36} opacity={0.9} />
               <View className="min-w-0">
@@ -63,47 +64,47 @@ export function SiteFooter() {
           <View className="min-w-0">
             <FooterHeading>{t('footer.section_discover')}</FooterHeading>
             <View className="gap-1.5">
-              <FooterLink href="/local-deals" label={t('footer.local_deals')} />
-              <FooterLink href="/compare" label={t('footer.compare_product')} />
-              <FooterLink href="/bulk-order-tool" label={t('footer.bulk_order_tool')} />
-              <FooterLink href="/blog" label={t('footer.blog')} />
+              <FooterLink href={href('/local-deals')} label={t('footer.local_deals')} />
+              <FooterLink href={href('/compare')} label={t('footer.compare_product')} />
+              <FooterLink href={href('/bulk-order-tool')} label={t('footer.bulk_order_tool')} />
+              <FooterLink href={href('/blog')} label={t('footer.blog')} />
             </View>
           </View>
 
           <View className="min-w-0">
             <FooterHeading>{t('footer.section_help')}</FooterHeading>
             <View className="gap-1.5">
-              <FooterLink href="/help" label={t('footer.help_center')} />
-              <FooterLink href="/faq" label={t('footer.faq')} />
-              <FooterLink href="/shipping" label={t('footer.shipping')} />
-              <FooterLink href="/track-order" label={t('footer.track_order')} />
-              <FooterLink href="/return-policy" label={t('footer.returns')} />
-              <FooterLink href="/report" label={t('footer.report_issue')} />
+              <FooterLink href={href('/help')} label={t('footer.help_center')} />
+              <FooterLink href={href('/faq')} label={t('footer.faq')} />
+              <FooterLink href={href('/shipping')} label={t('footer.shipping')} />
+              <FooterLink href={href('/track-order')} label={t('footer.track_order')} />
+              <FooterLink href={href('/return-policy')} label={t('footer.returns')} />
+              <FooterLink href={href('/report')} label={t('footer.report_issue')} />
             </View>
           </View>
 
           <View className="min-w-0">
             <FooterHeading>{t('footer.section_sell')}</FooterHeading>
             <View className="gap-1.5">
-              <FooterLink href="/seller-guidelines" label={t('footer.seller_guidelines')} />
-              <FooterLink href="/pricing" label={t('footer.pricing')} />
+              <FooterLink href={href('/seller-guidelines')} label={t('footer.seller_guidelines')} />
+              <FooterLink href={href('/pricing')} label={t('footer.pricing')} />
             </View>
           </View>
 
           <View className="min-w-0">
             <FooterHeading>{t('footer.section_company')}</FooterHeading>
             <View className="gap-1.5">
-              <FooterLink href="/about-us" label={t('footer.about')} />
-              <FooterLink href="/contact" label={t('footer.contact')} />
+              <FooterLink href={href('/about-us')} label={t('footer.about')} />
+              <FooterLink href={href('/contact')} label={t('footer.contact')} />
             </View>
           </View>
 
           <View className="min-w-0">
             <FooterHeading>{t('footer.section_legal')}</FooterHeading>
             <View className="gap-1.5">
-              <FooterLink href="/terms" label={t('footer.terms')} />
-              <FooterLink href="/privacy-policy" label={t('footer.privacy')} />
-              <FooterLink href="/legal" label={t('footer.legal')} />
+              <FooterLink href={href('/terms')} label={t('footer.terms')} />
+              <FooterLink href={href('/privacy-policy')} label={t('footer.privacy')} />
+              <FooterLink href={href('/legal')} label={t('footer.legal')} />
               <Pressable onPress={openBanner} className="self-start py-0.5">
                 <Text className="text-left font-sans text-sm text-gray-400">
                   {t('footer.cookie_settings')}

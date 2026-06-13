@@ -5,10 +5,9 @@ import { SITE_PUBLIC_URL } from '@/config/native';
 import { ProductDetailNative } from '@/pages/product-detail-native';
 import { fetchProductDetail, type ProductDetail } from '@/utils/native-api';
 import {
-  buildBilingualSeoContent,
+  buildProductPageSeo,
   compactSeoText,
   resolveSeoLanguage,
-  withPyoneaTitle,
 } from '@/utils/seo-localization';
 import { fetchAllProductSlugs, loadSeoDataWithRetry } from '@/utils/seo-export';
 import { shouldSkipDynamicSeoExport } from '@/utils/static-export';
@@ -19,15 +18,17 @@ const buildProductSchema = (
   product: ProductDetail,
   language: ReturnType<typeof resolveSeoLanguage>
 ) => {
-  const seo = buildBilingualSeoContent({
+  const seo = buildProductPageSeo(
+    {
+      name: product.name,
+      nameEn: product.nameEn,
+      nameMm: product.nameMm,
+      descriptionEn: product.descriptionEn,
+      descriptionMm: product.descriptionMm,
+      moq: product.moq,
+    },
     language,
-    titleEn: product.nameEn,
-    titleMm: product.nameMm,
-    descriptionEn: product.descriptionEn,
-    descriptionMm: product.descriptionMm,
-    fallbackTitle: product.name,
-    fallbackDescription: `Buy ${product.name} from verified Myanmar suppliers on Pyonea.`,
-  });
+  );
 
   const schema: Record<string, unknown> = {
     '@context': 'https://schema.org',
@@ -46,7 +47,7 @@ const buildProductSchema = (
     category: product.categoryName,
     offers: {
       '@type': 'Offer',
-      url: `${SITE_PUBLIC_URL}/products/${product.slug}`,
+      url: `${SITE_PUBLIC_URL}/products/${product.slug}?lang=${language}`,
       priceCurrency: 'MMK',
       price: product.priceValue,
       availability:
@@ -107,22 +108,24 @@ export default function ProductDetailRoute() {
   const resolvedSlug = product?.slug || productSlug || '';
   const seoLanguage = resolveSeoLanguage(params.lang);
   const seo = product
-    ? buildBilingualSeoContent({
-        language: seoLanguage,
-        titleEn: product.nameEn,
-        titleMm: product.nameMm,
-        descriptionEn: product.descriptionEn,
-        descriptionMm: product.descriptionMm,
-        fallbackTitle: product.name,
-        fallbackDescription: `Buy ${product.name} from verified Myanmar suppliers on Pyonea.`,
-      })
+    ? buildProductPageSeo(
+        {
+          name: product.name,
+          nameEn: product.nameEn,
+          nameMm: product.nameMm,
+          descriptionEn: product.descriptionEn,
+          descriptionMm: product.descriptionMm,
+          moq: product.moq,
+        },
+        seoLanguage,
+      )
     : null;
 
   return (
     <>
       {product && seo ? (
         <NativeSeo
-          title={withPyoneaTitle(seo.title)}
+          title={seo.title}
           description={seo.description}
           image={product.images[0]}
           imageAlt={seo.schemaName}

@@ -5,10 +5,9 @@ import { SITE_PUBLIC_URL } from '@/config/native';
 import { SellerProfileNative } from '@/pages/seller-profile-native';
 import { fetchSellerProfile, type SellerProfile } from '@/utils/native-api';
 import {
-  buildBilingualSeoContent,
+  buildSellerPageSeo,
   compactSeoText,
   resolveSeoLanguage,
-  withPyoneaTitle,
 } from '@/utils/seo-localization';
 import { fetchAllSellerSlugs, loadSeoDataWithRetry } from '@/utils/seo-export';
 import { shouldSkipDynamicSeoExport } from '@/utils/static-export';
@@ -16,15 +15,14 @@ import { shouldSkipDynamicSeoExport } from '@/utils/static-export';
 const firstParam = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
 
 const buildSellerSchema = (seller: SellerProfile, language: ReturnType<typeof resolveSeoLanguage>) => {
-  const seo = buildBilingualSeoContent({
+  const seo = buildSellerPageSeo(
+    {
+      name: seller.name,
+      businessName: seller.businessName,
+      description: seller.description,
+    },
     language,
-    titleEn: seller.businessName || seller.name,
-    titleMm: seller.name,
-    descriptionEn: seller.description,
-    descriptionMm: seller.description,
-    fallbackTitle: seller.businessName || seller.name,
-    fallbackDescription: `View ${seller.name} products and wholesale seller profile on Pyonea.`,
-  });
+  );
 
   const schema: Record<string, unknown> = {
     '@context': 'https://schema.org',
@@ -34,7 +32,7 @@ const buildSellerSchema = (seller: SellerProfile, language: ReturnType<typeof re
     description: compactSeoText(seller.description, `${seller.name} seller profile on Pyonea`, 300),
     image: seller.bannerUrl || seller.imageUrl,
     logo: seller.imageUrl,
-    url: `${SITE_PUBLIC_URL}/sellers/${seller.slug || seller.id}`,
+    url: `${SITE_PUBLIC_URL}/sellers/${seller.slug || seller.id}?lang=${language}`,
     telephone: seller.phone,
     email: seller.email,
     address: {
@@ -85,22 +83,21 @@ export default function SellerProfileRoute() {
   const resolvedSlug = seller?.slug || sellerSlug || '';
   const seoLanguage = resolveSeoLanguage(params.lang);
   const seo = seller
-    ? buildBilingualSeoContent({
-        language: seoLanguage,
-        titleEn: seller.businessName || seller.name,
-        titleMm: seller.name,
-        descriptionEn: seller.description,
-        descriptionMm: seller.description,
-        fallbackTitle: seller.businessName || seller.name,
-        fallbackDescription: `View ${seller.name} products, business details, and wholesale seller profile on Pyonea.`,
-      })
+    ? buildSellerPageSeo(
+        {
+          name: seller.name,
+          businessName: seller.businessName,
+          description: seller.description,
+        },
+        seoLanguage,
+      )
     : null;
 
   return (
     <>
       {seller && seo ? (
         <NativeSeo
-          title={withPyoneaTitle(`${seo.title} | Seller`)}
+          title={seo.title}
           description={seo.description}
           image={seller.bannerUrl || seller.imageUrl}
           imageAlt={seo.schemaName}

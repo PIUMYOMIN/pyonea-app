@@ -226,6 +226,11 @@ export default function RootHtml({ children }: PropsWithChildren) {
           <link key={`${origin}-dns`} rel="dns-prefetch" href={origin} />
         ))}
         {headNodes}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var l=new URLSearchParams(location.search).get('lang');if(l==='my'||l==='en'){document.documentElement.lang=l;}}catch(e){}})();`,
+          }}
+        />
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
         <style dangerouslySetInnerHTML={{ __html: loaderStyles }} />
       </head>

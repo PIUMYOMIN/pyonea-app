@@ -27,7 +27,7 @@ import {
   CategoryCardSkeleton,
 } from '@/components/ui/category-card';
 import { useNativeAuth } from '@/context/native-auth';
-import { useAppTranslation } from '@/i18n';
+import { useAppTranslation, useLocalizedHref } from '@/i18n';
 import { hasUserRole } from '@/utils/auth-routing';
 import {
   fetchFeaturedProducts,
@@ -107,11 +107,12 @@ type HomeErrorState = {
 
 function QuickAccessRow({ links }: { links: QuickLink[] }) {
   const { t } = useAppTranslation();
+  const href = useLocalizedHref();
 
   return (
     <View className="flex-row flex-wrap gap-2">
       {links.map((link) => (
-        <Link key={String(link.href)} href={link.href} asChild>
+        <Link key={String(link.href)} href={href(String(link.href))} asChild>
           <Pressable className="min-w-[47%] flex-1 flex-row items-center gap-2 rounded-xl border border-gray-200 bg-white px-3 py-3 dark:border-slate-700 dark:bg-slate-900">
             <View className="h-9 w-9 items-center justify-center rounded-lg bg-green-50 dark:bg-green-900/30">
               <Feather name={link.icon} color="#16a34a" size={18} />
@@ -160,9 +161,10 @@ function SectionShell({
 
 function SellerCard({ seller }: { seller: HomeSeller }) {
   const { t } = useAppTranslation();
+  const href = useLocalizedHref();
   const rating = Number(seller.rating) || 0;
   const roundedRating = Math.floor(rating);
-  const storeHref = `/sellers/${seller.slug || seller.id}` as Href;
+  const storeHref = href(`/sellers/${seller.slug || seller.id}`);
 
   return (
     <View className="w-full overflow-hidden rounded-lg border border-gray-100 bg-white shadow-md shadow-gray-200/70 dark:border-slate-700 dark:bg-slate-800 dark:shadow-slate-900/50">
@@ -318,6 +320,7 @@ function SellerCardSkeleton() {
 
 export default function HomeNative() {
   const { t, language } = useAppTranslation();
+  const href = useLocalizedHref();
   const { user, isAuthenticated } = useNativeAuth();
   const { width } = useWindowDimensions();
   const sellerColumns = useSellerGridColumns();
@@ -351,7 +354,7 @@ export default function HomeNative() {
   const isSeller = hasUserRole(user, 'seller');
   const isBuyer = hasUserRole(user, 'buyer');
   const isAdmin = hasUserRole(user, 'admin');
-  const ctaHref = (
+  const ctaHref = href(
     !isAuthenticated
       ? '/register'
       : isSeller
@@ -360,8 +363,8 @@ export default function HomeNative() {
           ? '/products'
           : isAdmin
             ? '/admin/dashboard'
-            : '/register'
-  ) as Href;
+            : '/register',
+  );
   const ctaLabel = !isAuthenticated
     ? t('home.become_seller')
     : isSeller
@@ -506,7 +509,7 @@ export default function HomeNative() {
                     </Text>
                   </Pressable>
                 </Link>
-                <Link href="/products" asChild>
+                <Link href={href('/products')} asChild>
                   <Pressable className="w-full items-center justify-center rounded-md bg-green-900/60 px-6 py-3 shadow-sm sm:w-auto sm:px-8 md:py-4">
                     <Text className="font-sans text-sm font-medium text-white sm:text-base md:text-lg">
                       {t('home.browse_products')}
@@ -515,7 +518,7 @@ export default function HomeNative() {
                 </Link>
               </View>
               {isAuthenticated && isBuyer ? (
-                <Link href="/register-seller" asChild>
+                <Link href={href('/register-seller')} asChild>
                   <Pressable className="mt-4">
                     <Text className="text-center font-sans text-sm font-semibold text-white sm:text-base">
                       {t('home.become_seller_link')} →
@@ -544,7 +547,7 @@ export default function HomeNative() {
               {t('home.popular_categories')}
             </Text>
             <View className="mt-2">
-              <ArrowLink href="/categories" label={t('home.browse_all_categories')} />
+              <ArrowLink href={href('/categories')} label={t('home.browse_all_categories')} />
             </View>
           </View>
           <View className="mt-8 sm:mt-10">
@@ -580,7 +583,7 @@ export default function HomeNative() {
               <Text className="font-sans text-xl font-black text-gray-950 dark:text-slate-100 sm:text-2xl md:text-3xl">
                 {t('home.local_deals', { defaultValue: 'Local Deals' })}
               </Text>
-              <ArrowLink href="/local-deals" label={t('home.view_all')} />
+              <ArrowLink href={href('/local-deals')} label={t('home.view_all')} />
             </View>
             <View className="mt-8 sm:mt-10">
               {dealsLoading ? (
@@ -605,7 +608,7 @@ export default function HomeNative() {
             <Text className="font-sans text-xl font-black text-gray-950 dark:text-slate-100 sm:text-2xl md:text-3xl">
               {t('home.featured_products')}
             </Text>
-            <ArrowLink href="/products" label={t('home.view_all')} />
+            <ArrowLink href={href('/products')} label={t('home.view_all')} />
           </View>
           <View className="mt-8 sm:mt-10">
             {loading.products ? (
@@ -627,7 +630,7 @@ export default function HomeNative() {
             <Text className="font-sans text-xl font-black text-gray-950 dark:text-slate-100 sm:text-2xl md:text-3xl">
               {t('home.top_sellers')}
             </Text>
-            <ArrowLink href="/sellers" label={t('home.view_all')} />
+            <ArrowLink href={href('/sellers')} label={t('home.view_all')} />
           </View>
           <View className={`mt-6 ${isMarketplaceWeb ? HOME_SELLER_GRID_CLASS : ''}`}>
             {loading.sellers ? (
@@ -700,7 +703,7 @@ export default function HomeNative() {
                 </Text>
               </View>
               <View className="lg:ml-8">
-                <Link href="/register" asChild>
+                <Link href={href('/register')} asChild>
                   <Pressable className="rounded-md bg-white px-5 py-3 shadow-sm">
                     <Text className="text-center font-sans text-sm font-bold text-green-700 sm:text-base">
                       {t('home.get_started')}

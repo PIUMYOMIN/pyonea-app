@@ -5,7 +5,7 @@ import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { NativeSeo } from '@/components/SEO/native-seo';
-import { mergeRouteLang, useAppTranslation } from '@/i18n';
+import { mergeRouteLang, useAppTranslation, useLocalizedHref } from '@/i18n';
 
 type Tone = 'blue' | 'green' | 'purple' | 'amber';
 
@@ -373,6 +373,7 @@ function DeliveryZonesTable({
 
 export function ShippingNative() {
   const { t, language } = useAppTranslation();
+  const href = useLocalizedHref();
   const [openFaq, setOpenFaq] = useState<number | null>(null);
   const seoUrl = mergeRouteLang('/shipping', {}, language);
 
@@ -496,17 +497,17 @@ export function ShippingNative() {
   const relatedLinks = [
     {
       label: t('shipping_page.links.return_policy_label'),
-      href: '/return-policy' as Href,
+      href: href('/return-policy'),
       desc: t('shipping_page.links.return_policy_desc'),
     },
     {
       label: t('shipping_page.links.seller_guidelines_label'),
-      href: '/seller-guidelines' as Href,
+      href: href('/seller-guidelines'),
       desc: t('shipping_page.links.seller_guidelines_desc'),
     },
     {
       label: t('shipping_page.links.faq_label'),
-      href: '/faq' as Href,
+      href: href('/faq'),
       desc: t('shipping_page.links.faq_desc'),
     },
   ];
@@ -515,8 +516,8 @@ export function ShippingNative() {
   return (
     <>
       <NativeSeo
-        title={t('shipping_page.seo.title')}
-        description={t('shipping_page.seo.description')}
+        title={t('seo.shipping.title')}
+        description={t('seo.shipping.description')}
         url={seoUrl}
       />
       <AppLayout>
@@ -534,7 +535,7 @@ export function ShippingNative() {
                 {t('shipping_page.hero.desc')}
               </Text>
               <View className="mt-8 flex-row flex-wrap gap-3">
-                <Link href="/track-order" asChild>
+                <Link href={href('/track-order')} asChild>
                   <Pressable className="flex-row items-center gap-2 rounded-lg bg-white px-5 py-2.5">
                     <Text className="font-sans text-sm font-semibold text-green-700">
                       {t('shipping_page.hero.track_order')}
@@ -542,7 +543,7 @@ export function ShippingNative() {
                     <Feather name="arrow-right" color="#15803d" size={16} />
                   </Pressable>
                 </Link>
-                <Link href="/contact" asChild>
+                <Link href={href('/contact')} asChild>
                   <Pressable className="rounded-lg border border-green-400 px-5 py-2.5">
                     <Text className="font-sans text-sm font-semibold text-white">
                       {t('shipping_page.hero.contact_support')}
@@ -751,7 +752,7 @@ export function ShippingNative() {
                 </Text>
               </View>
               <View className="gap-3 sm:flex-row">
-                <Link href="/contact" asChild>
+                <Link href={href('/contact')} asChild>
                   <Pressable className="flex-row items-center justify-center gap-2 rounded-lg bg-white px-5 py-2.5">
                     <Text className="font-sans text-sm font-semibold text-green-700">
                       {t('shipping_page.cta.contact_support')}
@@ -759,7 +760,7 @@ export function ShippingNative() {
                     <Feather name="arrow-right" color="#15803d" size={16} />
                   </Pressable>
                 </Link>
-                <Link href="/track-order" asChild>
+                <Link href={href('/track-order')} asChild>
                   <Pressable className="items-center rounded-lg border border-green-300 px-5 py-2.5">
                     <Text className="font-sans text-sm font-semibold text-white">
                       {t('shipping_page.cta.track_order')}
@@ -789,7 +790,7 @@ export function ShippingNative() {
             <Text className="text-center font-sans text-xs text-gray-400 dark:text-slate-500">
               {t('shipping_page.footer')}
             </Text>
-            <Link href="/contact" asChild>
+            <Link href={href('/contact')} asChild>
               <Pressable>
                 <Text className="font-sans text-xs font-semibold text-green-600 dark:text-green-400">
                   {t('shipping_page.footer_contact')}

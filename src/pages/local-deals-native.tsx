@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Modal, Pressable, Text, TextInput, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
-import { useAppTranslation } from '@/i18n';
+import { useAppTranslation, useLocalizedHref } from '@/i18n';
 import { fetchLocalDealsPage, type LocalDeal } from '@/utils/native-api';
 
 const PER_PAGE = 12;
@@ -99,7 +99,8 @@ function DealModal({
   onCopy: () => void;
 }) {
   const { t } = useAppTranslation();
-  const sellerHref = deal?.sellerSlug ? (`/sellers/${deal.sellerSlug}` as Href) : undefined;
+  const href = useLocalizedHref();
+  const sellerHref = deal?.sellerSlug ? href(`/sellers/${deal.sellerSlug}`) : undefined;
 
   return (
     <Modal visible={visible} transparent animationType="fade" onRequestClose={onClose}>
@@ -155,7 +156,7 @@ function DealModal({
               </Link>
             ) : null}
 
-            <Link href="/products" asChild>
+            <Link href={href('/products')} asChild>
               <Pressable
                 onPress={onClose}
                 className="rounded-lg border border-green-600 py-2.5 dark:border-green-500">

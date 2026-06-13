@@ -16,7 +16,7 @@ import {
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { ProductMarketplaceGrid } from '@/components/marketplace/marketplace-grid';
-import { SocialSharePanel } from '@/components/ui/social-share-panel';
+import { SocialShareModal } from '@/components/ui/social-share-modal';
 import { useNativeAuth } from '@/context/native-auth';
 import { useAppTranslation } from '@/i18n';
 import {
@@ -819,7 +819,7 @@ export function SellerProfileNative({
   const socialLinks = Object.entries(seller.socialLinks).filter(([, value]) => Boolean(value));
 
   const shareProfile = () => {
-    setShareOpen((current) => !current);
+    setShareOpen(true);
   };
 
   const openContact = () => {
@@ -828,6 +828,25 @@ export function SellerProfileNative({
 
   return (
     <AppLayout>
+      {shareOpen ? (
+        <SocialShareModal
+          open={shareOpen}
+          payload={sharePayload}
+          onClose={() => setShareOpen(false)}
+          labels={{
+            heading: t('seller.share_product'),
+            shareOn: t('seller.share_on'),
+            copyLink: t('productDetail.copy_link'),
+            copied: t('productDetail.copied'),
+            close: t('common.close'),
+            shareFacebook: t('productDetail.share_facebook'),
+            shareWhatsapp: t('productDetail.share_whatsapp'),
+            shareViber: t('productDetail.share_viber'),
+            shareTelegram: t('productDetail.share_telegram'),
+            shareX: t('productDetail.share_x'),
+          }}
+        />
+      ) : null}
       <View className="bg-gray-50 dark:bg-slate-950">
         {seller.vacationMode ? (
           <View className="bg-amber-500 px-4 py-3">
@@ -923,24 +942,6 @@ export function SellerProfileNative({
                 </Pressable>
               ) : null}
             </View>
-
-            {shareOpen ? (
-              <SocialSharePanel
-                payload={sharePayload}
-                heading={t('seller.share_product')}
-                shareOnLabel={t('seller.share_on')}
-                copyLinkLabel={t('productDetail.copy_link')}
-                copiedLabel={t('productDetail.copied')}
-                platformLabels={{
-                  facebook: t('productDetail.share_facebook'),
-                  whatsapp: t('productDetail.share_whatsapp'),
-                  viber: t('productDetail.share_viber'),
-                  telegram: t('productDetail.share_telegram'),
-                  x: t('productDetail.share_x'),
-                }}
-                className="mt-4"
-              />
-            ) : null}
           </View>
 
           <View className="mb-6 flex-row flex-wrap gap-3">

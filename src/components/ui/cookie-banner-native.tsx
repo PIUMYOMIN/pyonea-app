@@ -5,7 +5,7 @@ import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useCookies, type CookiePreferences } from '@/context/cookies';
-import { useAppTranslation } from '@/i18n';
+import { useAppTranslation, useLocalizedHref } from '@/i18n';
 
 type PreferenceKey = keyof CookiePreferences;
 
@@ -167,6 +167,7 @@ function PreferencesModal({ visible, onClose }: { visible: boolean; onClose: () 
 export function CookieBannerNative() {
   const { showBanner, acceptAll, declineAll } = useCookies();
   const { language } = useAppTranslation();
+  const href = useLocalizedHref();
   const [showPrefs, setShowPrefs] = useState(false);
   const isMM = language === 'my';
 
@@ -194,7 +195,7 @@ export function CookieBannerNative() {
                   {isMM
                     ? 'We use cookies to enhance your experience and analyse site usage.'
                     : 'We use cookies to enhance your experience and analyse site usage.'}{' '}
-                  <Link href="/privacy-policy" asChild>
+                  <Link href={href('/privacy-policy')} asChild>
                     <Text className="font-sans text-xs font-semibold text-green-700 dark:text-green-300">
                       {isMM ? 'Learn more' : 'Learn more'}
                     </Text>

@@ -10,27 +10,28 @@
   RewriteCond %{REQUEST_FILENAME} -f
   RewriteRule ^ - [L]
 
-  # 2) Expo static export: /products -> /products.html, /products/slug -> /products/slug.html.
-  #    MUST run before directory handling: /products is both products.html and the
-  #    products/ directory, and the directory-slash redirect would end in 403.
-  RewriteCond %{DOCUMENT_ROOT}/$1.html -f
-  RewriteRule ^(.+?)/?$ $1.html [L]
-
-  # 3) Directory-style static export fallback: /path -> /path/index.html
-  RewriteCond %{DOCUMENT_ROOT}/$1/index.html -f
-  RewriteRule ^(.+?)/?$ $1/index.html [L]
-
-  # 4) Missing build assets must 404 — never serve the SPA shell as JS/CSS.
-  RewriteCond %{REQUEST_URI} ^/(_expo|assets|fonts)/ [NC]
-  RewriteRule ^ - [R=404,L]
-
-  # 5) Crawlers without a static HTML match — OG proxy fetches server-rendered meta.
+  # 2) Social/search crawlers — build OG HTML from API with ?lang= BEFORE static .html.
+  #    Static export bakes English meta only; without this, Facebook ignores ?lang=my.
   RewriteCond %{REQUEST_URI} !^/_expo/ [NC]
   RewriteCond %{REQUEST_URI} !^/assets/ [NC]
   RewriteCond %{REQUEST_URI} !^/fonts/ [NC]
   RewriteCond %{REQUEST_URI} !\.(js|css|png|jpg|jpeg|gif|ico|svg|webp|woff|woff2|xml|txt|json|map|php)$ [NC]
   RewriteCond %{HTTP_USER_AGENT} (facebookexternalhit|Facebot|Twitterbot|WhatsApp|TelegramBot|LinkedInBot|Slackbot|Discordbot|Googlebot|bingbot|Snapchat|Pinterest|viber|vkShare) [NC]
   RewriteRule ^ og-proxy.php [L]
+
+  # 3) Expo static export: /products -> /products.html, /products/slug -> /products/slug.html.
+  #    MUST run before directory handling: /products is both products.html and the
+  #    products/ directory, and the directory-slash redirect would end in 403.
+  RewriteCond %{DOCUMENT_ROOT}/$1.html -f
+  RewriteRule ^(.+?)/?$ $1.html [L]
+
+  # 4) Directory-style static export fallback: /path -> /path/index.html
+  RewriteCond %{DOCUMENT_ROOT}/$1/index.html -f
+  RewriteRule ^(.+?)/?$ $1/index.html [L]
+
+  # 5) Missing build assets must 404 — never serve the SPA shell as JS/CSS.
+  RewriteCond %{REQUEST_URI} ^/(_expo|assets|fonts)/ [NC]
+  RewriteRule ^ - [R=404,L]
 
   # 6) SPA fallback for client-side routes.
   RewriteCond %{REQUEST_FILENAME} !-f

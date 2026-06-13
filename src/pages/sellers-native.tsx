@@ -13,7 +13,7 @@ import {
   useSellerDirectoryColumns,
 } from '@/components/marketplace/marketplace-grid';
 import { SELLER_DIRECTORY_GRID_CLASS, SITE_CONTAINER_CLASS } from '@/constants/layout';
-import { useAppTranslation } from '@/i18n';
+import { useAppTranslation, useLocalizedHref } from '@/i18n';
 import { fetchSellers, type HomeSeller } from '@/utils/native-api';
 import { getThumbUrl } from '@/utils/image-thumbs';
 
@@ -57,8 +57,9 @@ function SellerStarRow({ rating, reviews }: { rating: number; reviews: number })
 
 function SellerDirectoryCard({ seller }: { seller: HomeSeller }) {
   const { t } = useAppTranslation();
+  const href = useLocalizedHref();
   const rating = Number(seller.rating) || 0;
-  const storeHref = `/sellers/${seller.slug || seller.id}` as Href;
+  const storeHref = href(`/sellers/${seller.slug || seller.id}`);
 
   return (
     <View className="w-full min-w-0 overflow-hidden rounded-lg border border-gray-100 bg-white shadow-md shadow-gray-200/70 dark:border-slate-700 dark:bg-slate-800 dark:shadow-slate-900/50">
@@ -266,6 +267,7 @@ function SellerDirectoryGrid({
 
 export function SellersNative() {
   const { t } = useAppTranslation();
+  const href = useLocalizedHref();
   const [sellers, setSellers] = useState<HomeSeller[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [selectedCategory, setSelectedCategory] = useState('all');
@@ -553,7 +555,7 @@ export function SellersNative() {
                 {t('sellers.become_seller_description')}
               </Text>
             </View>
-            <Link href="/register" asChild>
+            <Link href={href('/register')} asChild>
               <Pressable className="self-start rounded-md bg-white px-5 py-3 shadow">
                 <Text className="font-sans text-base font-medium text-green-700">
                   {t('sellers.join_now')}

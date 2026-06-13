@@ -9,7 +9,7 @@ import { AppLayout } from "@/components/layout/app-layout";
 import { SiteSection } from "@/components/layout/site-container";
 import { ProductMarketplaceGrid } from "@/components/marketplace/marketplace-grid";
 import { CategoryCardFromHome } from "@/components/ui/category-card";
-import { useAppTranslation } from "@/i18n";
+import { useAppTranslation, useLocalizedHref } from "@/i18n";
 import { getThumbUrl } from "@/utils/image-thumbs";
 import {
   type BlogPost,
@@ -126,9 +126,10 @@ export function CategoryListCard({ category }: { category: HomeCategory }) {
 
 export function SellerListCard({ seller }: { seller: HomeSeller }) {
   const { t } = useAppTranslation();
+  const href = useLocalizedHref();
   const rating = Number(seller.rating) || 0;
   const roundedRating = Math.floor(rating);
-  const storeHref = `/sellers/${seller.slug || seller.id}` as Href;
+  const storeHref = href(`/sellers/${seller.slug || seller.id}`);
 
   return (
     <View className="w-[48%] overflow-hidden rounded-lg border border-gray-100 bg-white shadow-md shadow-gray-200/70 dark:border-slate-700 dark:bg-slate-800 dark:shadow-slate-900/50 sm:w-[48%] lg:w-[23%]">

@@ -1,7 +1,7 @@
 import * as Localization from 'expo-localization';
-import { useGlobalSearchParams, usePathname } from 'expo-router';
+import { useGlobalSearchParams, usePathname, type Href } from 'expo-router';
 import { createInstance } from 'i18next';
-import { useEffect, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { Platform } from 'react-native';
 
 import en from '@/locales/en.json';
@@ -96,6 +96,25 @@ export function mergeRouteLang(
 
   search.set('lang', language);
   return `${pathname}?${search.toString()}`;
+}
+
+/** Shorthand for internal links that should preserve the active language. */
+export function localizedHref(
+  pathname: string,
+  language: SupportedLanguage,
+  params: Record<string, string | string[] | undefined> = {},
+) {
+  return mergeRouteLang(pathname, params, language);
+}
+
+export function useLocalizedHref() {
+  const { language } = useAppTranslation();
+
+  return useCallback(
+    (pathname: string, params: Record<string, string | string[] | undefined> = {}) =>
+      mergeRouteLang(pathname, params, language) as Href,
+    [language],
+  );
 }
 
 const initialLanguage = detectInitialLanguage();
