@@ -39,9 +39,8 @@ function RootStack() {
 
 export default function RootLayout() {
   const [fontsLoaded, fontError] = useFonts({
-    'NotoSansMyanmar-Regular': require('@/fonts/NotoSansMyanmar/NotoSansMyanmar-Regular.ttf'),
-    'Roboto-Bold': require('@/fonts/Roboto/Roboto-Bold.ttf'),
-    'Torus-SemiBold': require('@/fonts/Torus/Torus-SemiBold.ttf'),
+    'NotoSansMyanmar-Regular': require('@/fonts/NotoSansMyanmar/NotoSansMyanmar-Regular.woff2'),
+    'Torus-SemiBold': require('@/fonts/Torus/Torus-SemiBold.woff2'),
   });
   const isWeb = Platform.OS === 'web';
   const [languageReady, setLanguageReady] = useState(isWeb);

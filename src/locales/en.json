@@ -295,6 +295,8 @@
     },
     "mmqr_how_title": "How MMQR works:",
     "mmqr_how_text": "After placing your order, scan the QR code to pay. Your order confirmation email is sent once payment is confirmed.",
+    "mmqr_official_badge": "Official MMQR payment",
+    "mmqr_powered_by": "PAYMENT POWERED BY MYANMYANPAY",
     "cod_title": "Cash on Delivery:",
     "cod_text": "Pay the delivery person when you receive your order.",
     "order_notes_optional": "Order Notes (Optional)",

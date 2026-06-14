@@ -281,28 +281,29 @@ function OtpModal({
       animationType="fade"
       onRequestClose={onClose}
     >
-      <View className="flex-1 items-center justify-center bg-black/60 p-4">
-        <View className="w-full max-w-sm rounded-2xl bg-white shadow-2xl dark:bg-slate-800">
-          <View className="flex-row items-center justify-between border-b border-gray-100 p-6 dark:border-slate-700">
-            <View className="flex-row items-center gap-3">
-              <View className="h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/40">
-                <Feather name="shield" color="#16a34a" size={20} />
+      <KeyboardAvoidingView behavior="padding" className="flex-1" enabled>
+        <View className="flex-1 items-center justify-center bg-black/60 p-4">
+          <View className="w-full max-w-sm rounded-2xl bg-white shadow-2xl dark:bg-slate-800">
+            <View className="flex-row items-center justify-between border-b border-gray-100 px-4 py-4 dark:border-slate-700">
+              <View className="flex-row items-center gap-3">
+                <View className="h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/40">
+                  <Feather name="shield" color="#16a34a" size={20} />
+                </View>
+                <View>
+                  <Text className="font-sans text-base font-semibold text-gray-900 dark:text-slate-100">
+                    {t("checkout.otp_title")}
+                  </Text>
+                  <Text className="mt-0.5 font-sans text-xs text-gray-500 dark:text-slate-500">
+                    {t("checkout.otp_subtitle")}
+                  </Text>
+                </View>
               </View>
-              <View>
-                <Text className="font-sans text-base font-semibold text-gray-900 dark:text-slate-100">
-                  {t("checkout.otp_title")}
-                </Text>
-                <Text className="mt-0.5 font-sans text-xs text-gray-500 dark:text-slate-500">
-                  {t("checkout.otp_subtitle")}
-                </Text>
-              </View>
+              <Pressable onPress={onClose}>
+                <Feather name="x" color="#64748b" size={22} />
+              </Pressable>
             </View>
-            <Pressable onPress={onClose}>
-              <Feather name="x" color="#64748b" size={22} />
-            </Pressable>
-          </View>
 
-          <View className="gap-4 p-6">
+            <View className="gap-3 px-4 py-4">
             {verified ? (
               <View className="items-center py-4">
                 <View className="mb-3 h-14 w-14 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/40">
@@ -325,7 +326,7 @@ function OtpModal({
                   </Text>
                 </Text>
 
-                <View className="flex-row justify-center gap-2">
+                <View className="w-full flex-row gap-1.5">
                   {otpDigits.map((digit, index) => (
                     <TextInput
                       key={`otp-input-${index}`}
@@ -347,7 +348,7 @@ function OtpModal({
                       keyboardType="number-pad"
                       maxLength={1}
                       selectTextOnFocus
-                      className={`h-12 w-11 rounded-xl border-2 text-center font-sans text-xl font-bold text-gray-900 transition-colors dark:bg-slate-700 dark:text-slate-100 ${
+                      className={`h-12 min-w-0 flex-1 max-w-10 rounded-xl border-2 text-center font-sans text-lg font-bold text-gray-900 transition-colors dark:bg-slate-700 dark:text-slate-100 ${
                         error
                           ? "border-red-400 bg-red-50 dark:border-red-600 dark:bg-red-900/30"
                           : "border-gray-200 bg-white focus:border-green-500 dark:border-slate-600"
@@ -401,9 +402,10 @@ function OtpModal({
                 </Pressable>
               </>
             )}
+            </View>
           </View>
         </View>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }

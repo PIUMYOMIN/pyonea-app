@@ -1,6 +1,8 @@
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
-import Feather from '@expo/vector-icons/Feather';
+import { useAppTranslation } from '@/i18n';
 import { ActivityIndicator, Platform, Text, View } from 'react-native';
+
+const mmqrLogo = require('@/assets/images/MMQR_Logo.png');
 
 type PaymentQrDisplayProps = {
   qrImageUrl?: string;
@@ -76,14 +78,35 @@ export function PaymentQrDisplay({
 }
 
 export function PaymentQrBadge({ paymentMethod }: { paymentMethod: string }) {
+  const { t } = useAppTranslation();
+
   if (paymentMethod !== 'mmqr') return null;
 
   return (
     <View className="flex-row items-center justify-center gap-2 rounded-xl border border-gray-200 bg-white px-4 py-2 dark:border-slate-700 dark:bg-slate-900">
-      <Feather name="grid" color="#16a34a" size={18} />
+      <Image
+        source={mmqrLogo}
+        style={{ height: 32, width: 96 }}
+        contentFit="contain"
+        transition={0}
+        priority="high"
+        loading="eager"
+      />
       <Text className="font-sans text-xs font-semibold tracking-wide text-gray-600 dark:text-slate-300">
-        Official MMQR payment
+        {t('checkout.mmqr_official_badge', { defaultValue: 'Official MMQR payment' })}
       </Text>
     </View>
+  );
+}
+
+export function PaymentMmqrPoweredBy({ paymentMethod }: { paymentMethod: string }) {
+  const { t } = useAppTranslation();
+
+  if (paymentMethod !== 'mmqr') return null;
+
+  return (
+    <Text className="text-center font-sans text-[11px] font-extrabold tracking-[0.16em] text-gray-700 dark:text-slate-200">
+      {t('checkout.mmqr_powered_by', { defaultValue: 'PAYMENT POWERED BY MYANMYANPAY' })}
+    </Text>
   );
 }

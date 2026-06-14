@@ -2,7 +2,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Linking, Modal, Pressable, Text, View } from 'react-native';
 
-import { PaymentQrBadge, PaymentQrDisplay } from '@/components/checkout/payment-qr-display';
+import { PaymentQrBadge, PaymentMmqrPoweredBy, PaymentQrDisplay } from '@/components/checkout/payment-qr-display';
 import { useAppTranslation } from '@/i18n';
 import {
   createSellerSubscriptionPaymentSession,
@@ -284,6 +284,7 @@ function PaymentModal({
                       loadingLabel="QR code is being generated."
                     />
                   </View>
+                  <PaymentMmqrPoweredBy paymentMethod={method} />
                   <Text className="text-center font-sans text-xs leading-4 text-gray-500 dark:text-slate-400">
                     Scan this QR code with your payment app, enter your PIN there, then return here.
                   </Text>

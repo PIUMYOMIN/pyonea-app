@@ -10,7 +10,6 @@ module.exports = {
         sans: ["NotoSansMyanmar-Regular", "sans-serif"],
         display: ["Torus-SemiBold", "sans-serif"],
         notosansmyanmar: ["NotoSansMyanmar-Regular", "sans-serif"],
-        roboto: ["Roboto-Bold", "sans-serif"],
         torus: ["Torus-SemiBold", "sans-serif"],
       },
 

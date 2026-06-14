@@ -11,7 +11,7 @@ import {
   View,
 } from "react-native";
 
-import { PaymentQrBadge, PaymentQrDisplay } from "@/components/checkout/payment-qr-display";
+import { PaymentQrBadge, PaymentMmqrPoweredBy, PaymentQrDisplay } from "@/components/checkout/payment-qr-display";
 import { useAppTranslation } from "@/i18n";
 import {
   initiateOrderPayment,
@@ -370,6 +370,7 @@ export function CheckoutPaymentModal({
                         })}
                       />
                     </View>
+                    <PaymentMmqrPoweredBy paymentMethod={paymentMethod} />
                     {canOpenWallet ? (
                       <Pressable onPress={openWallet} className="w-full rounded-xl bg-purple-600 px-5 py-3">
                         <Text className="text-center font-sans text-sm font-bold text-white">
