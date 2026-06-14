@@ -1,11 +1,15 @@
-import { useLocalSearchParams } from 'expo-router';
-
 import { EmailVerificationNative } from '@/pages/email-verification-native';
+import { resolveVerifyEmailPathParams } from '@/utils/route-params';
+import { useLocalSearchParams } from 'expo-router';
 
 export default function VerifyEmailLinkRoute() {
   const params = useLocalSearchParams<{ id?: string; hash?: string }>();
-  const linkId = typeof params.id === 'string' ? params.id : undefined;
-  const linkHash = typeof params.hash === 'string' ? params.hash : undefined;
+  const { id: linkId, hash: linkHash } = resolveVerifyEmailPathParams(params);
 
-  return <EmailVerificationNative linkId={linkId} linkHash={linkHash} />;
+  return (
+    <EmailVerificationNative
+      linkId={linkId || undefined}
+      linkHash={linkHash || undefined}
+    />
+  );
 }

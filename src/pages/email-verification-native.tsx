@@ -22,6 +22,7 @@ import {
   verifyEmailWithCode,
   verifyEmailWithLink,
 } from '@/utils/native-api';
+import { useMergedRouteParams } from '@/utils/route-params';
 
 function EmailCodeInput({
   value,
@@ -103,6 +104,7 @@ export function EmailVerificationNative({
     expires?: string;
     signature?: string;
   }>();
+  const mergedParams = useMergedRouteParams(params);
   const auth = useNativeAuth();
   const { user, isLoading: authLoading, refreshUser, logout } = auth;
 
@@ -118,9 +120,9 @@ export function EmailVerificationNative({
   const [resendCooldown, setResendCooldown] = useState(60);
   const linkSuccessKeyRef = useRef<string | null>(null);
 
-  const returnTo = typeof params.returnTo === 'string' ? params.returnTo : undefined;
-  const expires = typeof params.expires === 'string' ? params.expires : '';
-  const signature = typeof params.signature === 'string' ? params.signature : '';
+  const returnTo = mergedParams.returnTo || undefined;
+  const expires = typeof mergedParams.expires === 'string' ? mergedParams.expires : '';
+  const signature = typeof mergedParams.signature === 'string' ? mergedParams.signature : '';
 
   const redirectAfterSuccess = useCallback(() => {
     if (user) {

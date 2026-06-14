@@ -11,6 +11,7 @@ import {
   resolveStoredLanguage,
   PYONEA_LANGUAGE_STORAGE_KEY,
 } from '@/utils/language-storage';
+import { mergeRouterAndWebParams, readWebQueryParams } from '@/utils/route-params';
 
 export { PYONEA_LANGUAGE_STORAGE_KEY };
 
@@ -40,6 +41,17 @@ function readLangFromUrl(): SupportedLanguage | null {
 
   const value = new URLSearchParams(window.location.search).get('lang');
   return value ? normalizeLanguage(value) : null;
+}
+
+/** Re-export for callers that already import from `@/i18n`. */
+export { readWebQueryParams } from '@/utils/route-params';
+
+export function mergeRouteLangFromLocation(
+  pathname: string,
+  routerParams: Record<string, string | string[] | undefined>,
+  language: SupportedLanguage,
+): string {
+  return mergeRouteLang(pathname, mergeRouterAndWebParams(routerParams), language);
 }
 
 export function getPreferredLanguage(): SupportedLanguage {
@@ -209,7 +221,7 @@ function RouteLanguageSyncWeb() {
       if (currentLang === preferred) return;
     }
 
-    router.replace(mergeRouteLang(pathname, params, preferred) as Href);
+    router.replace(mergeRouteLangFromLocation(pathname, params, preferred) as Href);
   }, [i18n, params, pathname, router]);
 
   useEffect(() => {
@@ -217,7 +229,7 @@ function RouteLanguageSyncWeb() {
       const language = normalizeLanguage(nextLanguage);
       if (readLangFromUrl() === language) return;
 
-      router.replace(mergeRouteLang(pathname, params, language) as Href);
+      router.replace(mergeRouteLangFromLocation(pathname, params, language) as Href);
     };
 
     i18n.on('languageChanged', syncUrlToLanguage);

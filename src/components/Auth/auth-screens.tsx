@@ -31,6 +31,7 @@ import {
 } from "@/utils/native-api";
 import { preloadGoogleIdentityServices, requestGoogleAccessToken } from "@/utils/google-auth";
 import { executeRecaptcha } from "@/utils/recaptcha";
+import { useResolvedRouteParam } from "@/utils/route-params";
 import { supportsNativeGoogleSignIn } from "@/utils/expo-go";
 import {
   clearSocialPending,
@@ -469,6 +470,7 @@ export function LoginScreen() {
   const { t } = useAppTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ returnTo?: string }>();
+  const returnTo = useResolvedRouteParam(params, "returnTo");
   const auth = useNativeAuth();
   const { applySession, login } = auth;
   const [isLoading, setIsLoading] = useState(false);
@@ -498,9 +500,9 @@ export function LoginScreen() {
 
   useEffect(() => {
     if (!auth.isLoading && auth.user) {
-      router.replace(getPostAuthDestination(auth.user, params.returnTo));
+      router.replace(getPostAuthDestination(auth.user, returnTo));
     }
-  }, [auth.isLoading, auth.user, params.returnTo, router]);
+  }, [auth.isLoading, auth.user, returnTo, router]);
 
   const handleSubmit = async () => {
     if (!phone || !password || errors.phone || errors.password) {
@@ -524,7 +526,7 @@ export function LoginScreen() {
         recaptcha_token: recaptchaToken,
       });
       trackLogin("phone");
-      router.replace(getPostAuthDestination(session.user, params.returnTo));
+      router.replace(getPostAuthDestination(session.user, returnTo));
     } catch (submitError) {
       setError(
         getApiMessage(
@@ -543,7 +545,7 @@ export function LoginScreen() {
 
     try {
       const accessToken = await requestGoogleAccessToken();
-      await finishGoogleAuth(accessToken, applySession, router, params.returnTo);
+      await finishGoogleAuth(accessToken, applySession, router, returnTo);
     } catch (submitError) {
       setError(
         getApiMessage(
@@ -646,6 +648,7 @@ export function RegisterScreen() {
   const auth = useNativeAuth();
   const { applySession, register } = auth;
   const params = useLocalSearchParams<{ type?: string; ref?: string }>();
+  const refCode = useResolvedRouteParam(params, "ref");
   const [isLoading, setIsLoading] = useState(false);
   const [userType, setUserType] = useState<RegisterUserType>(
     params.type === "seller" ? "seller" : "buyer",
@@ -741,7 +744,7 @@ export function RegisterScreen() {
         password_confirmation: confirmPassword,
         type: userType,
         recaptcha_token: recaptchaToken,
-        ...(params.ref ? { ref_code: String(params.ref) } : {}),
+        ...(refCode ? { ref_code: refCode } : {}),
       });
 
       trackSignUp(userType);
@@ -779,7 +782,7 @@ export function RegisterScreen() {
 
   return (
     <AuthLayout mode="register">
-      {params.ref ? (
+      {refCode ? (
         <Message tone="success">
           {t("register.referred_by_suffix", {
             defaultValue: "Referral code applied.",
@@ -1068,13 +1071,15 @@ export function ResetPasswordScreen() {
   const { t } = useAppTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ token?: string; email?: string }>();
+  const token = useResolvedRouteParam(params, "token");
+  const email = useResolvedRouteParam(params, "email");
   const [isLoading, setIsLoading] = useState(false);
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
-  const hasValidLink = Boolean(params.token && params.email);
+  const hasValidLink = Boolean(token && email);
 
   const handleSubmit = async () => {
     if (!password || password.length < 6) {
@@ -1100,8 +1105,8 @@ export function ResetPasswordScreen() {
     try {
       const recaptchaToken = await executeRecaptcha("reset_password");
       await resetUserPassword({
-        token: String(params.token),
-        email: String(params.email),
+        token,
+        email,
         password,
         password_confirmation: confirmPassword,
         recaptcha_token: recaptchaToken,

@@ -9,6 +9,11 @@ const projectRoot = __dirname;
 /** @type {import('expo/metro-config').MetroConfig} */
 const config = getDefaultConfig(projectRoot);
 
+// Metro treats .ttf as assets by default, but not .woff2 — required for web font loading.
+if (!config.resolver.assetExts.includes("woff2")) {
+  config.resolver.assetExts.push("woff2");
+}
+
 const blockList = [
   /\.git\//,
   /\.cursor\//,

@@ -16,6 +16,7 @@ import {
   type TrackedOrderItem,
 } from '@/utils/native-api';
 import { getThumbUrl } from '@/utils/image-thumbs';
+import { useMergedRouteParams } from '@/utils/route-params';
 
 import { BRAND_LOGO, BRAND_LOGO_PUBLIC_URL } from '@/constants/brand';
 
@@ -291,7 +292,8 @@ export function PaymentSuccessNative() {
   const { t } = useAppTranslation();
   const router = useRouter();
   const params = useLocalSearchParams();
-  const orderIds = useMemo(() => parseOrderIds(params as Record<string, string | string[] | undefined>), [params]);
+  const mergedParams = useMergedRouteParams(params as Record<string, string | string[] | undefined>);
+  const orderIds = useMemo(() => parseOrderIds(mergedParams), [mergedParams]);
   const orderId = orderIds[0] || '';
   const relatedOrderIds = useMemo(() => orderIds.slice(1), [orderIds]);
   const [order, setOrder] = useState<PaymentReceiptOrder | null>(null);

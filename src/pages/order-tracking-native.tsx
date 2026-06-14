@@ -7,6 +7,7 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 import { AppLayout } from '@/components/layout/app-layout';
 import { useAppTranslation } from '@/i18n';
 import { trackOrder, type TrackedOrder } from '@/utils/native-api';
+import { useResolvedRouteParam } from '@/utils/route-params';
 import { getThumbUrl } from '@/utils/image-thumbs';
 
 const orderSteps = ['pending', 'confirmed', 'processing', 'shipped', 'delivered'];
@@ -513,14 +514,19 @@ export function OrderTrackingNative() {
   const { t } = useAppTranslation();
   const router = useRouter();
   const params = useLocalSearchParams<{ order?: string; email?: string }>();
-  const initialOrder = typeof params.order === 'string' ? params.order : '';
-  const initialEmail = typeof params.email === 'string' ? params.email : '';
+  const initialOrder = useResolvedRouteParam(params, 'order');
+  const initialEmail = useResolvedRouteParam(params, 'email');
   const [input, setInput] = useState(initialOrder);
   const [email, setEmail] = useState(initialEmail);
   const [order, setOrder] = useState<TrackedOrder | null>(null);
   const [loading, setLoading] = useState(Boolean(initialOrder));
   const [error, setError] = useState('');
   const [emailOpen, setEmailOpen] = useState(false);
+
+  useEffect(() => {
+    if (initialOrder) setInput(initialOrder);
+    if (initialEmail) setEmail(initialEmail);
+  }, [initialEmail, initialOrder]);
 
   const doSearch = async (value = input) => {
     const trimmed = value.trim().toUpperCase();

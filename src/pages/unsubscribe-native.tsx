@@ -5,10 +5,10 @@ import { ActivityIndicator, Linking, Pressable, Text, View } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import { useAppTranslation } from '@/i18n';
-import { confirmNewsletterSubscription } from '@/utils/native-api';
+import { unsubscribeNewsletter } from '@/utils/native-api';
 import { useResolvedRouteParam } from '@/utils/route-params';
 
-type ConfirmStatus = 'loading' | 'success' | 'error' | 'invalid';
+type UnsubscribeStatus = 'loading' | 'success' | 'error' | 'invalid';
 
 function BrandLink() {
   return (
@@ -22,7 +22,7 @@ function BrandLink() {
   );
 }
 
-function StatusIcon({ status }: { status: ConfirmStatus }) {
+function StatusIcon({ status }: { status: UnsubscribeStatus }) {
   if (status === 'loading') {
     return (
       <View className="h-12 w-12 items-center justify-center">
@@ -47,12 +47,12 @@ function StatusIcon({ status }: { status: ConfirmStatus }) {
   );
 }
 
-export function NewsletterConfirmNative() {
+export function UnsubscribeNative() {
   const { t } = useAppTranslation();
   const params = useLocalSearchParams();
   const router = useRouter();
   const token = useResolvedRouteParam(params, 'token');
-  const [status, setStatus] = useState<ConfirmStatus>(token ? 'loading' : 'invalid');
+  const [status, setStatus] = useState<UnsubscribeStatus>(token ? 'loading' : 'invalid');
   const [message, setMessage] = useState('');
 
   useEffect(() => {
@@ -60,22 +60,22 @@ export function NewsletterConfirmNative() {
 
     const controller = new AbortController();
 
-    const confirm = async () => {
+    const unsubscribe = async () => {
       setStatus('loading');
       setMessage('');
       try {
-        const result = await confirmNewsletterSubscription(token, controller.signal);
+        const result = await unsubscribeNewsletter(token, controller.signal);
         if (controller.signal.aborted) return;
 
         setStatus(result.success ? 'success' : 'error');
         setMessage(
           result.message ||
             (result.success
-              ? t('newsletter_confirm.success_default', {
-                  defaultValue: 'Your subscription has been confirmed!',
+              ? t('unsubscribe_page.success_default', {
+                  defaultValue: 'You have been unsubscribed.',
                 })
-              : t('newsletter_confirm.error_default', {
-                  defaultValue: 'Something went wrong. Please try again.',
+              : t('unsubscribe_page.error_default', {
+                  defaultValue: 'This unsubscribe link is invalid or has already been used.',
                 }))
         );
       } catch (error) {
@@ -84,38 +84,38 @@ export function NewsletterConfirmNative() {
           setMessage(
             error instanceof Error
               ? error.message
-              : t('newsletter_confirm.error_default', {
-                  defaultValue: 'This confirmation link is invalid or has already been used.',
+              : t('unsubscribe_page.error_default', {
+                  defaultValue: 'This unsubscribe link is invalid or has already been used.',
                 })
           );
         }
       }
     };
 
-    void confirm();
+    void unsubscribe();
 
     return () => controller.abort();
   }, [token, t]);
 
   const isSuccess = status === 'success';
   const title = isSuccess
-    ? t('newsletter_confirm.success_title', { defaultValue: "You're subscribed!" })
-    : t('newsletter_confirm.error_title', { defaultValue: 'Link not valid' });
+    ? t('unsubscribe_page.success_title', { defaultValue: 'Unsubscribed' })
+    : t('unsubscribe_page.error_title', { defaultValue: 'Link not valid' });
   const body =
     status === 'loading'
-      ? t('newsletter_confirm.processing', { defaultValue: 'Confirming your subscription...' })
+      ? t('unsubscribe_page.processing', { defaultValue: 'Processing your request...' })
       : status === 'invalid'
-        ? t('newsletter_confirm.invalid_message', {
+        ? t('unsubscribe_page.invalid_message', {
             defaultValue:
-              'No confirmation token was found in this link. Please use the link from your confirmation email.',
+              'No unsubscribe token was found in this link. Please use the unsubscribe link from a Pyonea email.',
           })
         : message ||
           (isSuccess
-            ? t('newsletter_confirm.success_default', {
-                defaultValue: 'Your subscription has been confirmed!',
+            ? t('unsubscribe_page.success_default', {
+                defaultValue: 'You have been unsubscribed.',
               })
-            : t('newsletter_confirm.error_default', {
-                defaultValue: 'This confirmation link is invalid or has already been used.',
+            : t('unsubscribe_page.error_default', {
+                defaultValue: 'This unsubscribe link is invalid or has already been used.',
               }));
 
   return (
@@ -144,21 +144,21 @@ export function NewsletterConfirmNative() {
 
                 {isSuccess ? (
                   <Text className="mt-2 text-center font-sans text-xs leading-5 text-gray-400">
-                    {t('newsletter_confirm.success_note', {
+                    {t('unsubscribe_page.success_note', {
                       defaultValue:
-                        "You'll receive Pyonea updates, promotions, and new seller highlights. You can unsubscribe at any time from any email we send.",
+                        'You will no longer receive marketing emails from Pyonea. Transactional emails such as order confirmations and password resets are not affected.',
                     })}
                   </Text>
                 ) : null}
 
                 <View className="w-full gap-2 pt-4">
                   <Pressable
-                    onPress={() => router.push(isSuccess ? '/products' : '/')}
+                    onPress={() => router.push('/')}
                     className="rounded-xl bg-green-600 px-5 py-2.5">
                     <Text className="text-center font-sans text-sm font-semibold text-white">
                       {isSuccess
-                        ? t('newsletter_confirm.browse_products', { defaultValue: 'Browse Products' })
-                        : t('newsletter_confirm.go_home', { defaultValue: 'Go to Pyonea' })}
+                        ? t('unsubscribe_page.back_home', { defaultValue: 'Back to Pyonea' })
+                        : t('unsubscribe_page.go_home', { defaultValue: 'Go to Pyonea' })}
                     </Text>
                   </Pressable>
 
@@ -167,7 +167,9 @@ export function NewsletterConfirmNative() {
                       onPress={() => router.push('/')}
                       className="rounded-xl border border-gray-200 px-5 py-2.5">
                       <Text className="text-center font-sans text-sm text-gray-600">
-                        {t('newsletter_confirm.back_home', { defaultValue: 'Back to Pyonea' })}
+                        {t('unsubscribe_page.resubscribe', {
+                          defaultValue: 'Changed your mind? Re-subscribe',
+                        })}
                       </Text>
                     </Pressable>
                   ) : (
@@ -176,7 +178,7 @@ export function NewsletterConfirmNative() {
                       className="flex-row items-center justify-center gap-2 pt-1">
                       <Feather name="mail" color="#6b7280" size={16} />
                       <Text className="font-sans text-sm text-gray-500">
-                        {t('newsletter_confirm.contact_support', { defaultValue: 'Contact support' })}
+                        {t('unsubscribe_page.contact_support', { defaultValue: 'Contact support' })}
                       </Text>
                     </Pressable>
                   )}
@@ -186,7 +188,7 @@ export function NewsletterConfirmNative() {
           </View>
 
           <Text className="mt-6 text-center font-sans text-xs text-gray-400">
-            {t('newsletter_confirm.footer', {
+            {t('unsubscribe_page.footer', {
               year: new Date().getFullYear(),
               defaultValue: `© ${new Date().getFullYear()} Pyonea Marketplace · Yangon, Myanmar`,
             })}
