@@ -4,10 +4,18 @@ import {
 } from "expo-router/html";
 import type { PropsWithChildren } from "react";
 
-import { BRAND_LOGO_BACKGROUND } from "@/constants/brand";
+import { BRAND_FONT_FAMILY, BRAND_LOGO_BACKGROUND } from "@/constants/brand";
 import { IMAGE_BASE_URL, SITE_PUBLIC_URL } from "@/config/native";
 
 const loaderStyles = `
+@font-face {
+  font-family: '${BRAND_FONT_FAMILY}';
+  src: url('/fonts/Torus-SemiBold.woff2') format('woff2');
+  font-weight: 600;
+  font-style: normal;
+  font-display: block;
+}
+
 :root {
   --app-bg: #f9fafb;
   --welcome-fill: ${BRAND_LOGO_BACKGROUND};
@@ -50,8 +58,9 @@ body {
 .pyonea-fill-wrap {
   position: relative;
   display: inline-grid;
-  line-height: 1.15;
+  line-height: 1.2;
   overflow: visible;
+  padding-bottom: 0.12em;
 }
 
 .pyonea-fill-outline,
@@ -62,13 +71,14 @@ body {
 
 .pyonea-fill-outline,
 .pyonea-fill-text {
-  font-family: ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  font-family: '${BRAND_FONT_FAMILY}', ui-sans-serif, system-ui, sans-serif;
   font-size: clamp(3rem, 12vw, 8rem);
   font-weight: 600;
-  line-height: 1.15;
+  line-height: 1.2;
   letter-spacing: -0.02em;
   white-space: nowrap;
   user-select: none;
+  font-synthesis: none;
 }
 
 .pyonea-fill-outline {
@@ -88,6 +98,9 @@ body {
   max-width: 100%;
   justify-self: start;
   align-self: stretch;
+  box-sizing: content-box;
+  padding-bottom: 0.2em;
+  margin-bottom: -0.2em;
   will-change: width;
 }
 
@@ -226,6 +239,13 @@ export default function RootHtml({ children }: PropsWithChildren) {
           <link key={`${origin}-dns`} rel="dns-prefetch" href={origin} />
         ))}
         {headNodes}
+        <link
+          rel="preload"
+          href="/fonts/Torus-SemiBold.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
         <script
           dangerouslySetInnerHTML={{
             __html: `(function(){try{var l=new URLSearchParams(location.search).get('lang');document.documentElement.lang=(l==='my'||l==='en')?l:'my';}catch(e){}})();`,

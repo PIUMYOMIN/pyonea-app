@@ -92,17 +92,29 @@ function InfoBox({
   children: React.ReactNode;
 }) {
   const classes = {
-    blue: 'border-blue-100 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20 text-blue-800 dark:text-blue-300',
-    amber:
-      'border-amber-100 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20 text-amber-800 dark:text-amber-300',
-    green:
-      'border-green-100 bg-green-50 dark:border-green-800 dark:bg-green-900/20 text-green-800 dark:text-green-300',
-    gray: 'border-gray-200 bg-gray-50 dark:border-slate-600 dark:bg-slate-700/50 text-gray-700 dark:text-slate-300',
+    blue: {
+      box: 'border-blue-100 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20',
+      text: 'text-blue-800 dark:text-blue-300',
+    },
+    amber: {
+      box: 'border-amber-100 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20',
+      text: 'text-amber-800 dark:text-amber-300',
+    },
+    green: {
+      box: 'border-green-100 bg-green-50 dark:border-green-800 dark:bg-green-900/20',
+      text: 'text-green-800 dark:text-green-300',
+    },
+    gray: {
+      box: 'border-gray-200 bg-gray-50 dark:border-slate-600 dark:bg-slate-700/50',
+      text: 'text-gray-700 dark:text-slate-300',
+    },
   };
 
+  const toneClass = classes[tone];
+
   return (
-    <View className={`rounded-lg border p-4 ${classes[tone]}`}>
-      <Text className="font-sans text-sm leading-6">
+    <View className={`rounded-lg border p-4 ${toneClass.box}`}>
+      <Text className={`font-sans text-sm leading-6 ${toneClass.text}`}>
         <Text className="font-semibold">{label}</Text> {children}
       </Text>
     </View>
@@ -401,12 +413,21 @@ export function SellerGuidelinesNative() {
                         ) : null}
                       </View>
                       <Text className="flex-1 font-sans text-sm text-gray-700 dark:text-slate-300">
+                        <Text className="font-medium text-gray-500 dark:text-slate-400 sm:hidden">
+                          {t('seller_guidelines.pricing.col_monthly')}:{' '}
+                        </Text>
                         {fee.monthly}
                       </Text>
                       <Text className="flex-1 font-sans text-sm text-gray-700 dark:text-slate-300">
+                        <Text className="font-medium text-gray-500 dark:text-slate-400 sm:hidden">
+                          {t('seller_guidelines.pricing.col_commission')}:{' '}
+                        </Text>
                         {fee.commission}
                       </Text>
                       <Text className="flex-1 font-sans text-sm text-gray-700 dark:text-slate-300">
+                        <Text className="font-medium text-gray-500 dark:text-slate-400 sm:hidden">
+                          {t('seller_guidelines.pricing.col_listings')}:{' '}
+                        </Text>
                         {fee.listing}
                       </Text>
                     </View>
