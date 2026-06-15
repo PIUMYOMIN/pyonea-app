@@ -20,6 +20,8 @@ import {
   uploadSellerDeliveryProof,
   type SellerDelivery,
   type NativeUploadFile,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 import { pickImageFromCamera, pickImagesFromLibrary } from '@/utils/native-image-picker';
 
@@ -493,7 +495,7 @@ function ProofModal({ delivery, actionLoading, onClose, onUpload, onMessage }: {
         setProofName(file.name);
       }
     } catch (error) {
-      onMessage({ type: 'error', text: error instanceof Error ? error.message : 'Camera is not available.' });
+      onMessage({ type: 'error', text: formatApiErrorMessage(error, 'Camera is not available.') });
     }
   };
 
@@ -677,7 +679,7 @@ export function DeliveryManagementNative({ onRefresh }: { onRefresh?: () => Prom
       setDeliveries(await fetchSellerDeliveries());
     } catch (error) {
       setDeliveries([]);
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : t('seller.delivery.errors.load_failed', { defaultValue: 'Failed to load deliveries. Please try again.' }) });
+      setMessage({ type: 'error', text: formatApiErrorMessage(error, t('seller.delivery.errors.load_failed', { defaultValue: 'Failed to load deliveries. Please try again.' })) });
     } finally {
       setLoading(false);
     }
@@ -710,7 +712,7 @@ export function DeliveryManagementNative({ onRefresh }: { onRefresh?: () => Prom
       await onRefresh?.();
       setMessage({ type: 'success', text: 'Delivery status updated.' });
     } catch (error) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : t('seller.delivery.errors.status_failed', { defaultValue: 'Failed to update status' }) });
+      setMessage({ type: 'error', text: formatApiErrorMessage(error, t('seller.delivery.errors.status_failed', { defaultValue: 'Failed to update status' })) });
     } finally {
       setActionLoading(null);
     }
@@ -735,7 +737,7 @@ export function DeliveryManagementNative({ onRefresh }: { onRefresh?: () => Prom
       setMethodDelivery(null);
       setMessage({ type: 'success', text: 'Delivery method updated.' });
     } catch (error) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : t('seller.delivery.errors.method_failed', { defaultValue: 'Failed to set delivery method' }) });
+      setMessage({ type: 'error', text: formatApiErrorMessage(error, t('seller.delivery.errors.method_failed', { defaultValue: 'Failed to set delivery method' })) });
     } finally {
       setActionLoading(null);
     }
@@ -751,7 +753,7 @@ export function DeliveryManagementNative({ onRefresh }: { onRefresh?: () => Prom
       setProofDelivery(null);
       setMessage({ type: 'success', text: 'Delivery proof uploaded.' });
     } catch (error) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : t('seller.delivery.errors.proof_failed', { defaultValue: 'Failed to upload proof' }) });
+      setMessage({ type: 'error', text: formatApiErrorMessage(error, t('seller.delivery.errors.proof_failed', { defaultValue: 'Failed to upload proof' })) });
     } finally {
       setActionLoading(null);
     }
@@ -774,7 +776,7 @@ export function DeliveryManagementNative({ onRefresh }: { onRefresh?: () => Prom
     } catch (error) {
       setMessage({
         type: 'error',
-        text: error instanceof Error ? error.message : t('seller.delivery.fee.failed', { defaultValue: 'Failed to submit delivery fee.' }),
+        text: formatApiErrorMessage(error, t('seller.delivery.fee.failed', { defaultValue: 'Failed to submit delivery fee.' })),
       });
     } finally {
       setActionLoading(null);

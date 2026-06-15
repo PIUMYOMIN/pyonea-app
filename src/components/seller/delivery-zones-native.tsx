@@ -11,6 +11,8 @@ import {
   syncSellerDeliveryZones,
   type SellerDeliveryArea,
   type SellerDeliveryZonePayload,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type FeeConfig = {
@@ -202,7 +204,7 @@ export function DeliveryZonesNative({ onSaveSuccess }: { onSaveSuccess?: () => v
       setFees(nextFees);
       setWholeMyanmar(nextSelected.has('country|Myanmar'));
     } catch (error) {
-      showToast(error instanceof Error ? error.message : t('seller.delivery_zones.error_load', 'Failed to load delivery zones.'), 'error');
+      showToast(formatApiErrorMessage(error, t('seller.delivery_zones.error_load', 'Failed to load delivery zones.')), 'error');
     } finally {
       setLoading(false);
     }
@@ -359,7 +361,7 @@ export function DeliveryZonesNative({ onSaveSuccess }: { onSaveSuccess?: () => v
       await onSaveSuccess?.();
       await loadZones();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : t('seller.delivery_zones.error_save', 'Failed to save delivery zones.'), 'error');
+      showToast(formatApiErrorMessage(error, t('seller.delivery_zones.error_save', 'Failed to save delivery zones.')), 'error');
     } finally {
       setSaving(false);
     }

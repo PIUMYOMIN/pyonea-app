@@ -4404,12 +4404,171 @@
       },
       "messages": {
         "statusUpdated": "Seller status updated to {{status}}.",
-        "bulkApplied": "{{count}} seller(s) updated."
+        "bulkApplied": "{{count}} seller(s) updated.",
+        "bulkPartialFailed": "{{count}} failed: {{reason}}"
       },
       "errors": {
         "load": "Failed to load sellers.",
         "update": "Failed to update seller status.",
         "bulk": "Bulk action failed."
+      }
+    },
+    "sellerCenter": {
+      "title": "Sellers",
+      "subtitle": "Directory, document verification, and verified-seller reporting in one place.",
+      "sections": {
+        "directory": {
+          "label": "All sellers",
+          "description": "Search, filter, and update store status for every seller account."
+        },
+        "verification": {
+          "label": "Verification queue",
+          "description": "Review KYC documents, NRC, and approve or reject pending sellers."
+        },
+        "verified": {
+          "label": "Verified directory",
+          "description": "Export and manage sellers who already passed verification."
+        }
+      }
+    },
+    "sellerVerification": {
+      "stats": {
+        "pending": "Pending Review",
+        "underReview": "Under Review",
+        "verified": "Verified",
+        "rejected": "Rejected"
+      },
+      "queueTitle": "Pending applications",
+      "queueSubtitle": "Review documents and national ID, then approve or reject",
+      "search": "Search sellers…",
+      "retry": "Retry",
+      "empty": "No sellers in verification queue",
+      "review": "Review",
+      "close": "Close",
+      "cancel": "Cancel",
+      "save": "Save",
+      "columns": {
+        "store": "Store",
+        "owner": "Owner",
+        "status": "Status",
+        "nrc": "NRC",
+        "docs": "Docs",
+        "action": "Action"
+      },
+      "tabs": {
+        "info": "Seller Info",
+        "nrc": "National ID",
+        "documents": "Documents",
+        "verify": "Verify / Reject"
+      },
+      "fields": {
+        "owner": "Owner",
+        "email": "Contact Email",
+        "phone": "Contact Phone",
+        "businessType": "Business Type",
+        "address": "Address",
+        "profileStatus": "Profile Status",
+        "verificationStatus": "Verification Status",
+        "documentStatus": "Document Status",
+        "docsSubmitted": "Docs Submitted",
+        "submittedAt": "Documents Submitted",
+        "yes": "Yes",
+        "no": "No"
+      },
+      "docs": {
+        "front": "NRC Front Side",
+        "back": "NRC Back Side",
+        "idFront": "ID / NRC Front",
+        "idBack": "ID / NRC Back",
+        "identity": "Identity Documents",
+        "business": "Business Documents",
+        "registration": "Business Registration",
+        "tax": "Tax Registration",
+        "certificate": "Business Certificate",
+        "notUploaded": "Not uploaded",
+        "open": "Open",
+        "preview": "Preview",
+        "pdf": "PDF document",
+        "document": "Document"
+      },
+      "nrc": {
+        "cardTitle": "Myanmar NRC",
+        "notSubmitted": "NRC number not submitted",
+        "verifiedOn": "Verified on {{date}}",
+        "editTitle": "Review / correct NRC number",
+        "editHint": "Compare the structured NRC below with the uploaded ID photos, then save before setting verification status.",
+        "saveDetails": "Save NRC details",
+        "setStatus": "Set NRC Verification Status",
+        "statusHint": "Save NRC details first, then choose a verification verdict.",
+        "confirmTitle": "Confirm NRC Status",
+        "confirmBody": "Set NRC status to {{status}} for {{name}}?",
+        "notesPlaceholder": "Optional notes…"
+      },
+      "nrcStatus": {
+        "unverified": "Unverified",
+        "pending": "Pending",
+        "verified": "Verified",
+        "mismatch": "Mismatch",
+        "rejected": "Rejected"
+      },
+      "verify": {
+        "level": "Verification Level",
+        "badge": "Badge Type",
+        "notes": "Approval Notes",
+        "notesPlaceholder": "Optional notes for the seller…",
+        "submit": "Verify Seller",
+        "levels": {
+          "basic": "Basic",
+          "verified": "Verified",
+          "premium": "Premium"
+        },
+        "badges": {
+          "verified": "Verified",
+          "premium": "Premium",
+          "featured": "Featured",
+          "top_rated": "Top Rated"
+        }
+      },
+      "reject": {
+        "title": "Rejection",
+        "placeholder": "Explain clearly why this seller is being rejected…",
+        "submit": "Reject Verification"
+      },
+      "status": {
+        "change": "Change Store Status",
+        "title": "Change Store Status",
+        "reasonPlaceholder": "Reason for status change…",
+        "apply": "Apply Status",
+        "options": {
+          "active": "Active",
+          "approved": "Approved",
+          "pending": "Pending Review",
+          "suspended": "Suspended",
+          "rejected": "Rejected",
+          "closed": "Closed",
+          "setup_pending": "Setup Pending"
+        }
+      },
+      "confirm": {
+        "approveTitle": "Confirm Verification",
+        "rejectTitle": "Confirm Rejection",
+        "approveBody": "Verify {{name}} as {{level}}?",
+        "rejectBody": "Reject verification for {{name}}?",
+        "approveAction": "Verify Seller",
+        "rejectAction": "Reject Verification"
+      },
+      "messages": {
+        "verified": "{{name}} has been verified.",
+        "rejected": "{{name}} has been rejected.",
+        "nrcUpdated": "NRC verification status updated.",
+        "nrcSaved": "NRC details saved.",
+        "statusUpdated": "Seller status changed to {{status}}."
+      },
+      "errors": {
+        "load": "Failed to load queue",
+        "action": "Action failed",
+        "rejectReason": "Please provide a rejection reason.",
+        "nrcIncomplete": "Please complete all NRC fields."
       }
     },
     "platformLogistics": {

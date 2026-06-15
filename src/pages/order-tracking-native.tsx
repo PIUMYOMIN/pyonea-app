@@ -6,7 +6,9 @@ import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { useAppTranslation } from '@/i18n';
-import { trackOrder, type TrackedOrder } from '@/utils/native-api';
+import { trackOrder, type TrackedOrder ,
+  formatApiErrorMessage,
+} from '@/utils/native-api';
 import { useResolvedRouteParam } from '@/utils/route-params';
 import { getThumbUrl } from '@/utils/image-thumbs';
 
@@ -545,7 +547,7 @@ export function OrderTrackingNative() {
       setInput(trimmed);
       router.setParams({ order: trimmed });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('order_tracking.not_found_sub'));
+      setError(formatApiErrorMessage(err, t('order_tracking.not_found_sub')));
     } finally {
       setLoading(false);
     }
@@ -566,7 +568,7 @@ export function OrderTrackingNative() {
         }
       } catch (err) {
         if (!controller.signal.aborted) {
-          setError(err instanceof Error ? err.message : t('order_tracking.not_found_sub'));
+          setError(formatApiErrorMessage(err, t('order_tracking.not_found_sub')));
         }
       } finally {
         if (!controller.signal.aborted) setLoading(false);

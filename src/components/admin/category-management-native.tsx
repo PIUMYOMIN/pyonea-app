@@ -23,6 +23,8 @@ import {
   type AdminCategoryFormPayload,
   type AdminManagedCategory,
   type NativeUploadFile,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type FlatCategory = AdminManagedCategory & {
@@ -208,7 +210,7 @@ function CategoryFormModal({
       await onSaved();
       onClose();
     } catch (err) {
-      setErrors({ submit: err instanceof Error ? err.message : 'Failed to save category.' });
+      setErrors({ submit: formatApiErrorMessage(err, 'Failed to save category.') });
     } finally {
       setSaving(false);
     }
@@ -398,7 +400,7 @@ export function CategoryManagementNative() {
     try {
       setCategories(await fetchAdminManagedCategories());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load categories');
+      setError(formatApiErrorMessage(err, 'Failed to load categories'));
     } finally {
       setLoading(false);
     }
@@ -450,7 +452,7 @@ export function CategoryManagementNative() {
       setMessage(`Category ${!currentStatus ? 'activated' : 'deactivated'} successfully.`);
     } catch (err) {
       setCategories((prev) => updateCategoryRecursively(prev, categoryId, { isActive: currentStatus }));
-      setError(err instanceof Error ? err.message : 'Failed to update status.');
+      setError(formatApiErrorMessage(err, 'Failed to update status.'));
     }
   };
 
@@ -462,7 +464,7 @@ export function CategoryManagementNative() {
       setDeleteTarget(null);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete category.');
+      setError(formatApiErrorMessage(err, 'Failed to delete category.'));
       setDeleteTarget(null);
     }
   };

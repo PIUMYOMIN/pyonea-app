@@ -21,6 +21,8 @@ import {
   type SellerCouponPayload,
   type SellerCouponType,
   type SellerManagedProduct,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type CouponForm = {
@@ -254,7 +256,7 @@ export function CouponsNative() {
       setProducts(productResult.products);
       setError('');
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Failed to fetch coupons');
+      setError(formatApiErrorMessage(requestError, 'Failed to fetch coupons'));
     } finally {
       setLoading(false);
     }
@@ -379,7 +381,7 @@ export function CouponsNative() {
       setShowForm(false);
       setMessage(editingCoupon ? 'Coupon updated.' : 'Coupon created.');
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Failed to save coupon');
+      setError(formatApiErrorMessage(requestError, 'Failed to save coupon'));
     } finally {
       setSubmitting(false);
     }
@@ -392,7 +394,7 @@ export function CouponsNative() {
       await loadData();
       setMessage('Coupon deleted.');
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Failed to delete coupon');
+      setError(formatApiErrorMessage(requestError, 'Failed to delete coupon'));
     } finally {
       setDeleteTarget(null);
     }
@@ -404,7 +406,7 @@ export function CouponsNative() {
       await toggleSellerCouponStatus(coupon.id);
     } catch (requestError) {
       setCoupons((current) => current.map((item) => item.id === coupon.id ? coupon : item));
-      setError(requestError instanceof Error ? requestError.message : 'Failed to update coupon status');
+      setError(formatApiErrorMessage(requestError, 'Failed to update coupon status'));
     }
   };
 

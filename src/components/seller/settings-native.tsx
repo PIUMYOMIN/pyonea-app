@@ -1,5 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -14,20 +14,32 @@ import {
 } from 'react-native';
 
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
+import { MyanmarRegionPicker } from '@/components/ui/myanmar-region-picker-native';
 import { NativeDateField } from '@/components/ui/native-date-field';
 import {
-  ApiError,
+  isNrcInputComplete,
+  NrcInputNative,
+  nrcValueFromSeller,
+  type NrcInputValue,
+} from '@/components/seller/nrc-input-native';
+import { useAppTranslation } from '@/i18n';
+import {
+  DEFAULT_SELLER_BUSINESS_HOURS,
   deleteSellerAccount,
+  fetchSellerSettings,
+  formatApiErrorMessage,
   submitSellerDocumentsForVerification,
   updateSellerPassword,
   updateSellerProfile,
   updateSellerSettings,
   updateSellerStoreIdentity,
+  updateSellerStoreProfile,
   uploadSellerStoreBanner,
   uploadSellerStoreLogo,
   uploadSellerVerificationDocument,
   type NativeUser,
   type NativeUploadFile,
+  type SellerBusinessHours,
   type SellerDashboardOverview,
   type SellerDocumentType,
   type SellerSettingsPayload,
@@ -39,7 +51,7 @@ import {
   pickImagesFromLibrary,
 } from '@/utils/native-image-picker';
 
-type SettingsTab = 'personal' | 'brand' | 'general' | 'payment' | 'notifications' | 'security' | 'account';
+type SettingsTab = 'personal' | 'store' | 'brand' | 'general' | 'payment' | 'notifications' | 'security' | 'account';
 type Message = { type: 'success' | 'error'; text: string } | null;
 type DocumentPickerAsset = import('expo-document-picker').DocumentPickerAsset;
 
@@ -72,34 +84,188 @@ type SettingsForm = Required<
   warranty_policy: string;
   privacy_policy: string;
   terms_of_service: string;
+  business_hours: SellerBusinessHours;
 };
 
-type IdentityForm = {
+type StoreForm = {
+  store_name: string;
+  store_description: string;
+  business_type: string;
+  contact_email: string;
+  contact_phone: string;
+  website: string;
+  address: string;
+  city: string;
+  state: string;
+  country: string;
+  postal_code: string;
   business_registration_number: string;
   tax_id: string;
-  website: string;
   account_number: string;
-  nrc_division: string;
-  nrc_township_code: string;
-  nrc_township_mm: string;
-  nrc_type: string;
-  nrc_number: string;
 };
 
 const SETTINGS_TABS: {
   key: SettingsTab;
-  label: string;
-  description: string;
+  labelKey: string;
+  descriptionKey: string;
   icon: keyof typeof Feather.glyphMap;
 }[] = [
-  { key: 'personal', label: 'Personal', description: 'Login identity and contact profile', icon: 'user' },
-  { key: 'brand', label: 'Brand & Verification', description: 'Store media, documents, and national ID', icon: 'image' },
-  { key: 'general', label: 'General', description: 'Store display and business hours', icon: 'settings' },
-  { key: 'payment', label: 'Payment', description: 'Payout preferences and thresholds', icon: 'credit-card' },
-  { key: 'notifications', label: 'Notifications', description: 'Email and dashboard alerts', icon: 'bell' },
-  { key: 'security', label: 'Security', description: 'Password and login protection', icon: 'key' },
-  { key: 'account', label: 'Account', description: 'Store status and account actions', icon: 'shield' },
+  {
+    key: 'personal',
+    labelKey: 'sellerSettings.tabs.personal.label',
+    descriptionKey: 'sellerSettings.tabs.personal.description',
+    icon: 'user',
+  },
+  {
+    key: 'store',
+    labelKey: 'sellerSettings.tabs.store.label',
+    descriptionKey: 'sellerSettings.tabs.store.description',
+    icon: 'shopping-bag',
+  },
+  {
+    key: 'brand',
+    labelKey: 'sellerSettings.tabs.brand.label',
+    descriptionKey: 'sellerSettings.tabs.brand.description',
+    icon: 'image',
+  },
+  {
+    key: 'general',
+    labelKey: 'sellerSettings.tabs.general.label',
+    descriptionKey: 'sellerSettings.tabs.general.description',
+    icon: 'settings',
+  },
+  {
+    key: 'payment',
+    labelKey: 'sellerSettings.tabs.payment.label',
+    descriptionKey: 'sellerSettings.tabs.payment.description',
+    icon: 'credit-card',
+  },
+  {
+    key: 'notifications',
+    labelKey: 'sellerSettings.tabs.notifications.label',
+    descriptionKey: 'sellerSettings.tabs.notifications.description',
+    icon: 'bell',
+  },
+  {
+    key: 'security',
+    labelKey: 'sellerSettings.tabs.security.label',
+    descriptionKey: 'sellerSettings.tabs.security.description',
+    icon: 'key',
+  },
+  {
+    key: 'account',
+    labelKey: 'sellerSettings.tabs.account.label',
+    descriptionKey: 'sellerSettings.tabs.account.description',
+    icon: 'shield',
+  },
 ];
+
+const BUSINESS_DAYS = [
+  ['monday', 'Mon'],
+  ['tuesday', 'Tue'],
+  ['wednesday', 'Wed'],
+  ['thursday', 'Thu'],
+  ['friday', 'Fri'],
+  ['saturday', 'Sat'],
+  ['sunday', 'Sun'],
+] as const;
+
+const SETTINGS_TAB_FIELDS: Partial<Record<SettingsTab, Array<keyof SettingsForm>>> = {
+  general: [
+    'return_policy',
+    'shipping_policy',
+    'warranty_policy',
+    'privacy_policy',
+    'terms_of_service',
+    'show_sold_out',
+    'show_reviews',
+    'show_inventory_count',
+    'business_hours_enabled',
+    'business_hours',
+  ],
+  payment: ['withdrawal_threshold', 'currency', 'preferred_payment_method', 'auto_withdrawal'],
+  notifications: [
+    'email_notifications',
+    'order_notifications',
+    'inventory_alerts',
+    'review_notifications',
+  ],
+  security: ['two_factor_auth', 'login_notifications'],
+  account: [
+    'is_active',
+    'vacation_mode',
+    'vacation_message',
+    'vacation_start_date',
+    'vacation_end_date',
+  ],
+};
+
+const mergeSettingsForm = (
+  store: SellerStoreSummary | null,
+  remote?: SellerSettingsPayload | null
+): SettingsForm => ({
+  ...initialSettingsForm(store),
+  ...(remote
+    ? {
+        return_policy: remote.return_policy ?? store?.returnPolicy ?? '',
+        shipping_policy: remote.shipping_policy ?? store?.shippingPolicy ?? '',
+        warranty_policy: remote.warranty_policy ?? store?.warrantyPolicy ?? '',
+        privacy_policy: remote.privacy_policy ?? store?.privacyPolicy ?? '',
+        terms_of_service: remote.terms_of_service ?? store?.termsOfService ?? '',
+        email_notifications: remote.email_notifications !== false,
+        order_notifications: remote.order_notifications !== false,
+        inventory_alerts: remote.inventory_alerts !== false,
+        review_notifications: remote.review_notifications !== false,
+        auto_withdrawal: Boolean(remote.auto_withdrawal),
+        withdrawal_threshold: remote.withdrawal_threshold ?? store?.withdrawalThreshold ?? 100000,
+        preferred_payment_method:
+          remote.preferred_payment_method || store?.preferredPaymentMethod || 'bank_transfer',
+        is_active: remote.is_active !== false,
+        vacation_mode: Boolean(remote.vacation_mode),
+        vacation_message: remote.vacation_message ?? store?.vacationMessage ?? '',
+        vacation_start_date: remote.vacation_start_date ?? store?.vacationStartDate ?? '',
+        vacation_end_date: remote.vacation_end_date ?? store?.vacationEndDate ?? '',
+        two_factor_auth: Boolean(remote.two_factor_auth),
+        login_notifications: remote.login_notifications !== false,
+        show_sold_out: remote.show_sold_out !== false,
+        show_reviews: remote.show_reviews !== false,
+        show_inventory_count: Boolean(remote.show_inventory_count),
+        currency: remote.currency || store?.currency || 'MMK',
+        business_hours_enabled: Boolean(remote.business_hours_enabled ?? store?.businessHoursEnabled),
+        business_hours: remote.business_hours || store?.businessHours || { ...DEFAULT_SELLER_BUSINESS_HOURS },
+      }
+    : {}),
+});
+
+const buildTabSettingsPayload = (
+  tab: SettingsTab,
+  settings: SettingsForm
+): SellerSettingsPayload => {
+  if (tab === 'personal' || tab === 'brand' || tab === 'store') {
+    return {};
+  }
+
+  const fields = SETTINGS_TAB_FIELDS[tab];
+  if (!fields?.length) {
+    return {};
+  }
+  const payload: SellerSettingsPayload = {};
+
+  for (const field of fields) {
+    const value = settings[field];
+    if (field === 'withdrawal_threshold') {
+      payload.withdrawal_threshold = Number(value) || 0;
+      continue;
+    }
+    if (field === 'business_hours') {
+      payload.business_hours = value as SellerBusinessHours;
+      continue;
+    }
+    (payload as Record<string, unknown>)[field] = value;
+  }
+
+  return payload;
+};
 
 const initialSettingsForm = (store: SellerStoreSummary | null): SettingsForm => ({
   return_policy: store?.returnPolicy || '',
@@ -126,30 +292,38 @@ const initialSettingsForm = (store: SellerStoreSummary | null): SettingsForm => 
   show_inventory_count: Boolean(store?.showInventoryCount),
   currency: store?.currency || 'MMK',
   business_hours_enabled: Boolean(store?.businessHoursEnabled),
+  business_hours: store?.businessHours
+    ? { ...DEFAULT_SELLER_BUSINESS_HOURS, ...store.businessHours }
+    : { ...DEFAULT_SELLER_BUSINESS_HOURS },
 });
 
-const initialProfileForm = (user: NativeUser | null, store: SellerStoreSummary | null) => ({
+const initialProfileForm = (user: NativeUser | null) => ({
   name: user?.name || '',
-  email: user?.email || store?.email || '',
-  phone: user?.phone || store?.phone || '',
-  address: user?.address || store?.address || '',
-  city: user?.city || store?.city || '',
-  state: user?.state || store?.state || '',
-  country: user?.country || store?.country || 'Myanmar',
+  email: user?.email || '',
+  phone: user?.phone || '',
+  address: user?.address || '',
+  city: user?.city || '',
+  state: user?.state || '',
+  country: user?.country || 'Myanmar',
   postal_code: user?.postalCode || '',
   date_of_birth: user?.dateOfBirth ? user.dateOfBirth.split('T')[0] : '',
 });
 
-const initialIdentityForm = (store: SellerStoreSummary | null): IdentityForm => ({
+const initialStoreForm = (store: SellerStoreSummary | null): StoreForm => ({
+  store_name: store?.name || '',
+  store_description: store?.description || '',
+  business_type: store?.businessType || '',
+  contact_email: store?.email || '',
+  contact_phone: store?.phone || '',
+  website: store?.website || '',
+  address: store?.address || '',
+  city: store?.city || '',
+  state: store?.state || '',
+  country: store?.country || 'Myanmar',
+  postal_code: '',
   business_registration_number: store?.registrationNumber || '',
   tax_id: store?.taxId || '',
-  website: store?.website || '',
   account_number: store?.accountNumber || '',
-  nrc_division: store?.nrcDivision || '',
-  nrc_township_code: store?.nrcTownshipCode || '',
-  nrc_township_mm: store?.nrcTownshipMm || '',
-  nrc_type: store?.nrcType || '',
-  nrc_number: store?.nrcNumber || '',
 });
 
 function StatusToast({ message, onClose }: { message: Message; onClose: () => void }) {
@@ -246,14 +420,93 @@ function ToggleRow({
   );
 }
 
-function SectionHeading({ tab }: { tab: (typeof SETTINGS_TABS)[number] }) {
+function BusinessHoursEditor({
+  hours,
+  onChange,
+}: {
+  hours: SellerBusinessHours;
+  onChange: (day: string, field: 'open' | 'close' | 'closed', value: string | boolean) => void;
+}) {
+  return (
+    <View className="overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700">
+      {BUSINESS_DAYS.map(([day, label], index) => {
+        const entry = hours[day] || DEFAULT_SELLER_BUSINESS_HOURS[day];
+        return (
+          <View
+            key={day}
+            className={`gap-3 p-4 ${index % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-gray-50 dark:bg-slate-900/40'} ${
+              index < BUSINESS_DAYS.length - 1 ? 'border-b border-gray-100 dark:border-slate-700' : ''
+            }`}
+          >
+            <View className="flex-row items-center justify-between gap-3">
+              <Text className="w-10 font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">
+                {label}
+              </Text>
+              <Pressable
+                onPress={() => onChange(day, 'closed', !entry.closed)}
+                className={`h-7 w-12 justify-center rounded-full px-1 ${
+                  !entry.closed ? 'items-end bg-green-600' : 'items-start bg-gray-300 dark:bg-slate-600'
+                }`}
+              >
+                <View className="h-5 w-5 rounded-full bg-white" />
+              </Pressable>
+              <Text className="min-w-0 flex-1 font-sans text-xs text-gray-500 dark:text-slate-400">
+                {entry.closed ? 'Closed' : 'Open'}
+              </Text>
+            </View>
+            {!entry.closed ? (
+              <View className="flex-row gap-3">
+                <View className="min-w-0 flex-1">
+                  <Text className="mb-1 font-sans text-xs font-medium text-gray-500 dark:text-slate-400">
+                    Opens
+                  </Text>
+                  <TextInput
+                    value={entry.open}
+                    onChangeText={(value) => onChange(day, 'open', value)}
+                    placeholder="09:00"
+                    placeholderTextColor="#9ca3af"
+                    className="h-11 rounded-xl border border-gray-300 bg-white px-3 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  />
+                </View>
+                <View className="min-w-0 flex-1">
+                  <Text className="mb-1 font-sans text-xs font-medium text-gray-500 dark:text-slate-400">
+                    Closes
+                  </Text>
+                  <TextInput
+                    value={entry.close}
+                    onChangeText={(value) => onChange(day, 'close', value)}
+                    placeholder="18:00"
+                    placeholderTextColor="#9ca3af"
+                    className="h-11 rounded-xl border border-gray-300 bg-white px-3 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
+                  />
+                </View>
+              </View>
+            ) : null}
+          </View>
+        );
+      })}
+    </View>
+  );
+}
+
+function SectionHeading({
+  tab,
+  t,
+}: {
+  tab: (typeof SETTINGS_TABS)[number];
+  t: (key: string, fallback: string) => string;
+}) {
   return (
     <View className="mb-6 border-b border-gray-100 pb-5 dark:border-slate-700">
       <Text className="font-sans text-xs font-semibold uppercase tracking-wide text-green-600 dark:text-green-400">
-        {tab.label}
+        {t(tab.labelKey, tab.key)}
       </Text>
-      <Text className="mt-1 font-sans text-xl font-bold text-gray-900 dark:text-white">{tab.label} Settings</Text>
-      <Text className="mt-1 font-sans text-sm text-gray-500 dark:text-slate-400">{tab.description}</Text>
+      <Text className="mt-1 font-sans text-xl font-bold text-gray-900 dark:text-white">
+        {t(tab.labelKey, tab.key)} {t('sellerSettings.settingsSuffix', 'Settings')}
+      </Text>
+      <Text className="mt-1 font-sans text-sm text-gray-500 dark:text-slate-400">
+        {t(tab.descriptionKey, '')}
+      </Text>
     </View>
   );
 }
@@ -423,19 +676,61 @@ export function SellerSettingsNative({
   onLogout: () => Promise<void>;
 }) {
   const store = overview?.store || null;
+  const { t } = useAppTranslation();
   const [activeTab, setActiveTab] = useState<SettingsTab>('personal');
   const [message, setMessage] = useState<Message>(null);
   const [saving, setSaving] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
+  const [storeSaving, setStoreSaving] = useState(false);
+  const [nrcSaving, setNrcSaving] = useState(false);
   const [settings, setSettings] = useState<SettingsForm>(() => initialSettingsForm(store));
-  const [profile, setProfile] = useState(() => initialProfileForm(user, store));
-  const [identity, setIdentity] = useState<IdentityForm>(() => initialIdentityForm(store));
+  const [profile, setProfile] = useState(() => initialProfileForm(user));
+  const [storeForm, setStoreForm] = useState<StoreForm>(() => initialStoreForm(store));
+  const [nrcValue, setNrcValue] = useState<NrcInputValue>(() => nrcValueFromSeller(store || {}));
   const [password, setPassword] = useState({ current: '', next: '', confirm: '' });
   const [deleteOpen, setDeleteOpen] = useState(false);
   const [deleteText, setDeleteText] = useState('');
   const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [submittingVerification, setSubmittingVerification] = useState(false);
+  const [settingsLoading, setSettingsLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+
+    const hydrateSettings = async () => {
+      setSettingsLoading(true);
+      try {
+        const remote = await fetchSellerSettings();
+        if (cancelled) return;
+        setSettings(mergeSettingsForm(store, remote));
+      } catch {
+        if (cancelled) return;
+        setSettings(mergeSettingsForm(store));
+      } finally {
+        if (!cancelled) {
+          setSettingsLoading(false);
+        }
+      }
+    };
+
+    void hydrateSettings();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [store?.id]);
+
+  useEffect(() => {
+    setProfile(initialProfileForm(user));
+  }, [user?.id]);
+
+  useEffect(() => {
+    if (store?.id) {
+      setStoreForm(initialStoreForm(store));
+      setNrcValue(nrcValueFromSeller(store));
+    }
+  }, [store?.id]);
 
   const activeSettings = useMemo(
     () => SETTINGS_TABS.find((tab) => tab.key === activeTab) || SETTINGS_TABS[0],
@@ -444,6 +739,23 @@ export function SellerSettingsNative({
 
   const setSetting = <K extends keyof SettingsForm>(key: K, value: SettingsForm[K]) => {
     setSettings((current) => ({ ...current, [key]: value }));
+  };
+
+  const setBusinessHour = (
+    day: string,
+    field: 'open' | 'close' | 'closed',
+    value: string | boolean
+  ) => {
+    setSettings((current) => ({
+      ...current,
+      business_hours: {
+        ...current.business_hours,
+        [day]: {
+          ...(current.business_hours[day] || DEFAULT_SELLER_BUSINESS_HOURS[day]),
+          [field]: value,
+        },
+      },
+    }));
   };
 
   const setIdentityField = <K extends keyof IdentityForm>(key: K, value: IdentityForm[K]) => {
@@ -469,7 +781,7 @@ export function SellerSettingsNative({
     } catch (error) {
       setMessage({
         type: 'error',
-        text: error instanceof Error ? error.message : 'Document picker is not available. Please restart Expo Go.',
+        text: formatApiErrorMessage(error, 'Document picker is not available. Please restart Expo Go.'),
       });
       return null;
     }
@@ -496,7 +808,7 @@ export function SellerSettingsNative({
       await onRefresh();
       setMessage({ type: 'success', text: kind === 'logo' ? 'Store logo updated.' : 'Store banner updated.' });
     } catch (error) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Upload failed.' });
+      setMessage({ type: 'error', text: formatApiErrorMessage(error, 'Upload failed.') });
     } finally {
       setUploading(null);
     }
@@ -512,7 +824,7 @@ export function SellerSettingsNative({
       await onRefresh();
       setMessage({ type: 'success', text: 'Verification document uploaded.' });
     } catch (error) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Document upload failed.' });
+      setMessage({ type: 'error', text: formatApiErrorMessage(error, 'Document upload failed.') });
     } finally {
       setUploading(null);
     }
@@ -534,13 +846,10 @@ export function SellerSettingsNative({
         text: `${result.message} Review usually takes 1–3 business days.`,
       });
     } catch (error) {
-      const text =
-        error instanceof ApiError
-          ? error.message
-          : error instanceof Error
-            ? error.message
-            : 'Failed to submit documents for verification.';
-      setMessage({ type: 'error', text });
+      setMessage({
+        type: 'error',
+        text: formatApiErrorMessage(error, 'Failed to submit documents for verification.'),
+      });
     } finally {
       setSubmittingVerification(false);
     }
@@ -554,7 +863,10 @@ export function SellerSettingsNative({
       await onRefresh();
       setMessage({ type: 'success', text: 'Business and identity details updated.' });
     } catch (error) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to update business details.' });
+      setMessage({
+        type: 'error',
+        text: formatApiErrorMessage(error, 'Failed to update business details.'),
+      });
     } finally {
       setSaving(false);
     }
@@ -572,26 +884,30 @@ export function SellerSettingsNative({
       await onRefresh();
       setMessage({ type: 'success', text: 'Profile updated!' });
     } catch (error) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Update failed.' });
+      setMessage({ type: 'error', text: formatApiErrorMessage(error, 'Update failed.') });
     } finally {
       setProfileSaving(false);
     }
   };
 
   const saveSettings = async () => {
+    const payload = buildTabSettingsPayload(activeTab, settings);
+    if (Object.keys(payload).length === 0) {
+      return;
+    }
+
     setSaving(true);
     setMessage(null);
     try {
-      await updateSellerSettings({
-        ...settings,
-        withdrawal_threshold: Number(settings.withdrawal_threshold) || 0,
-      });
+      await updateSellerSettings(payload);
+      const refreshed = await fetchSellerSettings();
+      setSettings(mergeSettingsForm(store, refreshed));
       await onRefresh();
       setMessage({ type: 'success', text: 'Store settings updated successfully!' });
     } catch (error) {
       setMessage({
         type: 'error',
-        text: error instanceof Error ? error.message : 'Failed to update store settings',
+        text: formatApiErrorMessage(error, 'Failed to update store settings.'),
       });
     } finally {
       setSaving(false);
@@ -618,7 +934,7 @@ export function SellerSettingsNative({
       setPassword({ current: '', next: '', confirm: '' });
       setMessage({ type: 'success', text: 'Password changed successfully!' });
     } catch (error) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to change password' });
+      setMessage({ type: 'error', text: formatApiErrorMessage(error, 'Failed to change password.') });
     } finally {
       setSaving(false);
     }
@@ -635,7 +951,7 @@ export function SellerSettingsNative({
       await deleteSellerAccount(user.id);
       await onLogout();
     } catch (error) {
-      setMessage({ type: 'error', text: error instanceof Error ? error.message : 'Failed to delete account' });
+      setMessage({ type: 'error', text: formatApiErrorMessage(error, 'Failed to delete account.') });
       setDeleting(false);
     }
   };
@@ -756,7 +1072,16 @@ export function SellerSettingsNative({
         <View className="p-6">
           <SectionHeading tab={activeSettings} />
 
-          {activeTab === 'personal' ? (
+          {settingsLoading ? (
+            <View className="items-center py-10">
+              <ActivityIndicator color="#16a34a" />
+              <Text className="mt-3 font-sans text-sm text-gray-500 dark:text-slate-400">
+                Loading store settings...
+              </Text>
+            </View>
+          ) : null}
+
+          {!settingsLoading && activeTab === 'personal' ? (
             <View className="max-w-3xl gap-4">
               <View className="gap-4 md:flex-row">
                 <Field label="Full name" required value={profile.name} onChangeText={(value) => setProfile((p) => ({ ...p, name: value }))} />
@@ -795,7 +1120,7 @@ export function SellerSettingsNative({
             </View>
           ) : null}
 
-          {activeTab === 'brand' ? (
+          {!settingsLoading && activeTab === 'brand' ? (
             <View className="gap-6">
               <View className="gap-4 md:flex-row">
                 <MediaUploadCard
@@ -1025,7 +1350,7 @@ export function SellerSettingsNative({
             </View>
           ) : null}
 
-          {activeTab === 'general' ? (
+          {!settingsLoading && activeTab === 'general' ? (
             <View className="gap-5">
               <View className="gap-4 md:flex-row">
                 <Field label="Return policy" multiline value={settings.return_policy} onChangeText={(value) => setSetting('return_policy', value)} />
@@ -1040,10 +1365,18 @@ export function SellerSettingsNative({
               <ToggleRow title="Show reviews" description="Display customer ratings and reviews on public pages." value={settings.show_reviews} onValueChange={(value) => setSetting('show_reviews', value)} />
               <ToggleRow title="Show inventory count" description="Let buyers see remaining stock quantity." value={settings.show_inventory_count} onValueChange={(value) => setSetting('show_inventory_count', value)} />
               <ToggleRow title="Business hours enabled" description="Use business hours on your public profile." value={settings.business_hours_enabled} onValueChange={(value) => setSetting('business_hours_enabled', value)} />
+              {settings.business_hours_enabled ? (
+                <View className="gap-3">
+                  <Text className="font-sans text-sm font-medium text-gray-700 dark:text-slate-300">
+                    Weekly business hours
+                  </Text>
+                  <BusinessHoursEditor hours={settings.business_hours} onChange={setBusinessHour} />
+                </View>
+              ) : null}
             </View>
           ) : null}
 
-          {activeTab === 'payment' ? (
+          {!settingsLoading && activeTab === 'payment' ? (
             <View className="max-w-3xl gap-5">
               <View className="gap-4 md:flex-row">
                 <Field
@@ -1061,8 +1394,10 @@ export function SellerSettingsNative({
                 <View className="flex-row flex-wrap gap-2">
                   {[
                     ['bank_transfer', 'Bank transfer'],
-                    ['mobile_wallet', 'Mobile wallet'],
-                    ['cash', 'Cash'],
+                    ['wave_money', 'Wave Money'],
+                    ['kbz_pay', 'KBZ Pay'],
+                    ['mpu', 'MPU'],
+                    ['visa_master', 'Visa / Mastercard'],
                   ].map(([key, label]) => {
                     const active = settings.preferred_payment_method === key;
                     return (
@@ -1087,7 +1422,7 @@ export function SellerSettingsNative({
             </View>
           ) : null}
 
-          {activeTab === 'notifications' ? (
+          {!settingsLoading && activeTab === 'notifications' ? (
             <View className="gap-4">
               <ToggleRow title="Email notifications" description="Receive general account and marketplace updates." value={settings.email_notifications} onValueChange={(value) => setSetting('email_notifications', value)} />
               <ToggleRow title="Order notifications" description="Get notified when new orders are placed." value={settings.order_notifications} onValueChange={(value) => setSetting('order_notifications', value)} />
@@ -1096,7 +1431,7 @@ export function SellerSettingsNative({
             </View>
           ) : null}
 
-          {activeTab === 'security' ? (
+          {!settingsLoading && activeTab === 'security' ? (
             <View className="gap-5">
               <ToggleRow title="Two-Factor Authentication" description="Add an extra layer of security to your account." value={settings.two_factor_auth} onValueChange={(value) => setSetting('two_factor_auth', value)} />
               <ToggleRow title="Login notifications" description="Get notified when someone logs into your account." value={settings.login_notifications} onValueChange={(value) => setSetting('login_notifications', value)} />
@@ -1121,7 +1456,7 @@ export function SellerSettingsNative({
             </View>
           ) : null}
 
-          {activeTab === 'account' ? (
+          {!settingsLoading && activeTab === 'account' ? (
             <View className="gap-5">
               <ToggleRow title="Store Active" description="Enable or disable your store temporarily." value={settings.is_active} onValueChange={(value) => setSetting('is_active', value)} />
               <ToggleRow title="Vacation Mode" description="Pause orders and show vacation message." value={settings.vacation_mode} onValueChange={(value) => setSetting('vacation_mode', value)} />
@@ -1160,7 +1495,7 @@ export function SellerSettingsNative({
             </View>
           ) : null}
 
-          {activeTab !== 'personal' && activeTab !== 'brand' && activeTab !== 'security' ? (
+          {!settingsLoading && activeTab !== 'personal' && activeTab !== 'brand' ? (
             <View className="mt-8 flex-row justify-end gap-3 border-t border-gray-200 pt-6 dark:border-slate-700">
               <Pressable onPress={() => setActiveTab('personal')} className="rounded-xl border border-gray-300 px-6 py-2.5 dark:border-slate-600">
                 <Text className="font-sans text-sm font-medium text-gray-700 dark:text-slate-300">Back to Personal</Text>

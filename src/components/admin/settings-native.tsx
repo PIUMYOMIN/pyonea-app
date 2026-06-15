@@ -20,6 +20,8 @@ import {
   type AdminPaymentMethod,
   type NativeUser,
   type SellerProfilePayload,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type Message = { type: 'success' | 'error'; text: string } | null;
@@ -194,7 +196,7 @@ function ProfileSettingsPanel({
     } catch (error) {
       setMessage({
         type: 'error',
-        text: error instanceof Error ? error.message : 'Profile update failed.',
+        text: formatApiErrorMessage(error, 'Profile update failed.'),
       });
     } finally {
       setSaving(false);
@@ -325,7 +327,7 @@ function PaymentMethodsPanel() {
       );
       showToast(
         'error',
-        error instanceof Error ? error.message : 'Failed to update payment method.',
+        formatApiErrorMessage(error, 'Failed to update payment method.'),
       );
     } finally {
       setSavingMethod(null);
@@ -425,7 +427,7 @@ function ChangePasswordPanel() {
     } catch (error) {
       setMessage({
         type: 'error',
-        text: error instanceof Error ? error.message : 'Failed to change password.',
+        text: formatApiErrorMessage(error, 'Failed to change password.'),
       });
     } finally {
       setSaving(false);

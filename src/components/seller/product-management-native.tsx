@@ -10,6 +10,8 @@ import {
   updateSellerManagedProductStatus,
   type SellerManagedProduct,
   type SellerProductLimitUsage,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type StatusFilter = 'all' | 'active' | 'inactive';
@@ -219,7 +221,7 @@ export function ProductManagementNative() {
       setProducts(result.products);
       setLimitUsage(result.limitUsage);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load products.');
+      setError(formatApiErrorMessage(err, 'Failed to load products.'));
     } finally {
       if (showLoading) setLoading(false);
     }
@@ -288,7 +290,7 @@ export function ProductManagementNative() {
       setProducts((current) =>
         current.map((item) => (item.id === product.id ? { ...item, isActive: product.isActive } : item))
       );
-      setError(err instanceof Error ? err.message : 'Failed to update status.');
+      setError(formatApiErrorMessage(err, 'Failed to update status.'));
     }
   };
 
@@ -301,7 +303,7 @@ export function ProductManagementNative() {
       await deleteSellerManagedProduct(product.id);
       void loadProducts(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete product.');
+      setError(formatApiErrorMessage(err, 'Failed to delete product.'));
       void loadProducts(true);
     }
   };

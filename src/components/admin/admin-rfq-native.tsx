@@ -22,6 +22,8 @@ import {
   submitSellerRfqQuote,
   type SellerRfq,
   type SellerRfqQuote,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type RfqTab = 'sent' | 'received';
@@ -235,7 +237,7 @@ function QuoteCard({
           : await rejectRfqQuote(rfqId, quote.id);
       onUpdated(next);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('rfq.errors.submit_failed'));
+      setError(formatApiErrorMessage(err, t('rfq.errors.submit_failed')));
     } finally {
       setLoading(false);
     }
@@ -335,7 +337,7 @@ function RfqDetailModal({
       await refresh();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('rfq.errors.cancel_failed'));
+      setError(formatApiErrorMessage(err, t('rfq.errors.cancel_failed')));
     } finally {
       setClosing(false);
     }
@@ -349,7 +351,7 @@ function RfqDetailModal({
       await refresh();
       onClose();
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('rfq.errors.close_failed'));
+      setError(formatApiErrorMessage(err, t('rfq.errors.close_failed')));
     } finally {
       setClosing(false);
     }
@@ -518,7 +520,7 @@ function SubmitQuoteModal({
       });
       onSuccess(next);
     } catch (error) {
-      onError(error instanceof Error ? error.message : t('rfq.errors.submit_quotation_failed'));
+      onError(formatApiErrorMessage(error, t('rfq.errors.submit_quotation_failed')));
     } finally {
       setSubmitting(false);
     }
@@ -632,7 +634,7 @@ export function AdminRfqNative() {
     } catch (error) {
       setMessage({
         type: 'error',
-        text: error instanceof Error ? error.message : t('rfq.errors.load_failed'),
+        text: formatApiErrorMessage(error, t('rfq.errors.load_failed')),
       });
     } finally {
       setLoading(false);

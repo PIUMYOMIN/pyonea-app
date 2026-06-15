@@ -22,6 +22,8 @@ import {
   type AnnouncementDisplayStyle,
   type AnnouncementPayload,
   type NativeUploadFile,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 import { clearAnnouncementCache } from '@/components/ui/announcement-native';
 import { pickImagesFromLibrary } from '@/utils/native-image-picker';
@@ -447,7 +449,7 @@ export function AnnouncementManagementNative() {
     try {
       setItems(await fetchAdminAnnouncements());
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Failed to load announcements.');
+      setMessage(formatApiErrorMessage(error, 'Failed to load announcements.'));
     } finally {
       setLoading(false);
     }
@@ -505,7 +507,7 @@ export function AnnouncementManagementNative() {
       setFormOpen(false);
       await load();
     } catch (error) {
-      setFormMessage(error instanceof Error ? error.message : 'Failed to save announcement.');
+      setFormMessage(formatApiErrorMessage(error, 'Failed to save announcement.'));
     } finally {
       setSaving(false);
     }
@@ -520,7 +522,7 @@ export function AnnouncementManagementNative() {
         current.map((next) => (next.id === item.id ? { ...next, isActive: !next.isActive } : next))
       );
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Failed to toggle announcement.');
+      setMessage(formatApiErrorMessage(error, 'Failed to toggle announcement.'));
     } finally {
       setBusyId(null);
     }
@@ -536,7 +538,7 @@ export function AnnouncementManagementNative() {
       setDeleteTarget(null);
       setMessage('Announcement deleted.');
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : 'Failed to delete announcement.');
+      setMessage(formatApiErrorMessage(error, 'Failed to delete announcement.'));
     } finally {
       setBusyId(null);
     }

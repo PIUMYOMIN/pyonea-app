@@ -1671,6 +1671,65 @@ export class ApiError extends Error {
   }
 }
 
+const humanizeApiField = (field: string) =>
+  field
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (character) => character.toUpperCase());
+
+const collectApiValidationMessages = (errors: unknown): string[] => {
+  if (!errors) return [];
+
+  if (Array.isArray(errors)) {
+    return errors.map((entry) => getString(entry)).filter(Boolean);
+  }
+
+  if (!isRecord(errors)) return [];
+
+  return Object.entries(errors).flatMap(([field, messages]) => {
+    if (Array.isArray(messages)) {
+      return messages
+        .map((message) => {
+          const text = getString(message);
+          return text ? `${humanizeApiField(field)}: ${text}` : '';
+        })
+        .filter(Boolean);
+    }
+
+    const text = getString(messages);
+    return text ? [`${humanizeApiField(field)}: ${text}`] : [];
+  });
+};
+
+const isGenericApiValidationMessage = (message: string) => {
+  const normalized = message.trim().toLowerCase();
+  return (
+    !normalized ||
+    normalized.includes('given data was invalid') ||
+    normalized.includes('validation failed') ||
+    normalized === 'unprocessable entity' ||
+    normalized.startsWith('api request failed')
+  );
+};
+
+/** Turn API/validation failures into a user-readable message. */
+export function formatApiErrorMessage(error: unknown, fallback: string): string {
+  if (!(error instanceof ApiError)) {
+    return error instanceof Error && error.message.trim() ? error.message : fallback;
+  }
+
+  const validationMessages = collectApiValidationMessages(error.errors);
+  if (validationMessages.length) {
+    return validationMessages.join(' ');
+  }
+
+  const message = error.message?.trim();
+  if (message && !isGenericApiValidationMessage(message)) {
+    return message;
+  }
+
+  return fallback;
+}
+
 const isRecord = (value: unknown): value is UnknownRecord =>
   typeof value === 'object' && value !== null && !Array.isArray(value);
 
@@ -1783,9 +1842,11 @@ const parseApiResponse = async <T>(response: Response, path: string): Promise<T>
 
   if (!response.ok) {
     const data = isRecord(payload) ? payload : {};
+    const validationMessages = collectApiValidationMessages(data.errors);
     const message =
       getString(data.message) ||
       getString(data.error) ||
+      (validationMessages.length ? validationMessages.join(' ') : '') ||
       `API request failed (${response.status}) for ${path}`;
     throw new ApiError(message, response.status, data.errors, getString(data.error) || undefined, data.data);
   }
@@ -2445,6 +2506,77 @@ export async function updateSellerPassword(
   );
 }
 
+export type SellerBusinessHourDay = {
+  open: string;
+  close: string;
+  closed: boolean;
+};
+
+export type SellerBusinessHours = Record<string, SellerBusinessHourDay>;
+
+export const DEFAULT_SELLER_BUSINESS_HOURS: SellerBusinessHours = {
+  monday: { open: '09:00', close: '18:00', closed: false },
+  tuesday: { open: '09:00', close: '18:00', closed: false },
+  wednesday: { open: '09:00', close: '18:00', closed: false },
+  thursday: { open: '09:00', close: '18:00', closed: false },
+  friday: { open: '09:00', close: '18:00', closed: false },
+  saturday: { open: '09:00', close: '18:00', closed: false },
+  sunday: { open: '09:00', close: '18:00', closed: true },
+};
+
+const mapSellerBusinessHours = (value: unknown): SellerBusinessHours => {
+  if (!isRecord(value)) return { ...DEFAULT_SELLER_BUSINESS_HOURS };
+
+  const merged: SellerBusinessHours = { ...DEFAULT_SELLER_BUSINESS_HOURS };
+  for (const day of Object.keys(DEFAULT_SELLER_BUSINESS_HOURS)) {
+    const entry = value[day];
+    if (!isRecord(entry)) continue;
+    merged[day] = {
+      open: getString(entry.open, merged[day].open),
+      close: getString(entry.close, merged[day].close),
+      closed: Boolean(entry.closed),
+    };
+  }
+  return merged;
+};
+
+export function mapSellerSettingsPayload(data: UnknownRecord): SellerSettingsPayload {
+  return {
+    return_policy: getString(data.return_policy),
+    shipping_policy: getString(data.shipping_policy),
+    warranty_policy: getString(data.warranty_policy),
+    privacy_policy: getString(data.privacy_policy),
+    terms_of_service: getString(data.terms_of_service),
+    email_notifications: data.email_notifications !== false,
+    order_notifications: data.order_notifications !== false,
+    inventory_alerts: data.inventory_alerts !== false,
+    review_notifications: data.review_notifications !== false,
+    auto_withdrawal: Boolean(data.auto_withdrawal),
+    withdrawal_threshold: getNumber(data.withdrawal_threshold, 100000),
+    preferred_payment_method: getString(data.preferred_payment_method, 'bank_transfer'),
+    is_active: data.is_active !== false,
+    vacation_mode: Boolean(data.vacation_mode),
+    vacation_message: getString(data.vacation_message),
+    vacation_start_date: getString(data.vacation_start_date),
+    vacation_end_date: getString(data.vacation_end_date),
+    two_factor_auth: Boolean(data.two_factor_auth),
+    login_notifications: data.login_notifications !== false,
+    show_sold_out: data.show_sold_out !== false,
+    show_reviews: data.show_reviews !== false,
+    show_inventory_count: Boolean(data.show_inventory_count),
+    currency: getString(data.currency, 'MMK'),
+    business_hours_enabled: Boolean(data.business_hours_enabled),
+    business_hours: mapSellerBusinessHours(data.business_hours),
+  };
+}
+
+export async function fetchSellerSettings(signal?: AbortSignal): Promise<SellerSettingsPayload> {
+  const payload = await apiGet('/seller/settings', signal);
+  const data = isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
+  if (!isRecord(data)) throw new Error('Seller settings not found');
+  return mapSellerSettingsPayload(data);
+}
+
 export async function updateSellerSettings(
   settings: SellerSettingsPayload,
   signal?: AbortSignal
@@ -2465,6 +2597,34 @@ export type SellerStoreIdentityPayload = {
   nrc_type?: string;
   nrc_number?: string;
 };
+
+export type SellerStoreProfilePayload = {
+  store_name?: string;
+  store_description?: string;
+  business_type?: string;
+  contact_email?: string;
+  contact_phone?: string;
+  website?: string;
+  address?: string;
+  city?: string;
+  state?: string;
+  country?: string;
+  postal_code?: string;
+  year_established?: string | number;
+  employees_count?: string;
+  business_registration_number?: string;
+  tax_id?: string;
+  account_number?: string;
+};
+
+export async function updateSellerStoreProfile(
+  payload: SellerStoreProfilePayload,
+  signal?: AbortSignal
+): Promise<SellerStoreSummary | null> {
+  const response = await apiPut('/seller/my-store/update', payload, signal);
+  const data = isRecord(response) && isRecord(response.data) ? response.data : response;
+  return isRecord(data) ? mapSellerStoreSummary(data) : null;
+}
 
 export type SellerDocumentType =
   | 'identity_document_front'
@@ -7043,6 +7203,52 @@ export async function verifyAdminSellerNrc(
     },
     signal
   );
+}
+
+export type AdminSellerNrcDetails = {
+  nrcDivision: string;
+  nrcTownshipCode: string;
+  nrcTownshipMm: string;
+  nrcType: string;
+  nrcNumber: string;
+  nrcFull: string;
+  nrcFullMm: string;
+  nrcVerificationStatus: string;
+};
+
+export async function updateAdminSellerNrcDetails(
+  sellerId: string | number,
+  payload: {
+    nrcDivision: string;
+    nrcTownshipCode: string;
+    nrcTownshipMm?: string;
+    nrcType: string;
+    nrcNumber: string;
+  },
+  signal?: AbortSignal
+): Promise<AdminSellerNrcDetails> {
+  const response = await apiPatch(
+    `/admin/seller/${encodeURIComponent(String(sellerId))}/nrc`,
+    {
+      nrc_division: payload.nrcDivision,
+      nrc_township_code: payload.nrcTownshipCode,
+      nrc_township_mm: payload.nrcTownshipMm ?? '',
+      nrc_type: payload.nrcType,
+      nrc_number: payload.nrcNumber,
+    },
+    signal
+  );
+  const data = isRecord(response) && isRecord(response.data) ? response.data : response;
+  return {
+    nrcDivision: getString(data.nrc_division),
+    nrcTownshipCode: getString(data.nrc_township_code),
+    nrcTownshipMm: getString(data.nrc_township_mm),
+    nrcType: getString(data.nrc_type),
+    nrcNumber: getString(data.nrc_number),
+    nrcFull: getString(data.nrc_full),
+    nrcFullMm: getString(data.nrc_full_mm),
+    nrcVerificationStatus: getString(data.nrc_verification_status, 'pending'),
+  };
 }
 
 export async function setAdminSellerQuickStatus(

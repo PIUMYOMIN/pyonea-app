@@ -31,6 +31,8 @@ import {
   type SellerProfileResult,
   type SellerReview,
   type SellerReviewStats,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 import { getThumbUrl } from '@/utils/image-thumbs';
 import { hasUserRole } from '@/utils/auth-routing';
@@ -570,7 +572,7 @@ export function SellerProfileNative({
           setSeller(null);
           setProducts([]);
           setReviews([]);
-          setError(err instanceof Error ? err.message : 'Could not load this seller profile.');
+          setError(formatApiErrorMessage(err, 'Could not load this seller profile.'));
         }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
@@ -720,7 +722,7 @@ export function SellerProfileNative({
     } catch (err) {
       setReviewMessage({
         type: 'error',
-        text: err instanceof Error ? err.message : 'Failed to submit review.',
+        text: formatApiErrorMessage(err, 'Failed to submit review.'),
       });
     } finally {
       setSubmittingReview(false);

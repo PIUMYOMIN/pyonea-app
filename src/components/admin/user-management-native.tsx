@@ -21,6 +21,8 @@ import {
   type AdminManagedUser,
   type AdminUserFilters,
   type AdminUsersPagination,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type RoleFilter = 'all' | 'admin' | 'seller' | 'buyer';
@@ -408,7 +410,7 @@ export function UserManagementNative() {
       await loadUsers(false);
     } catch (err) {
       patchUser(user);
-      setError(err instanceof Error ? err.message : t('admin.userManagement.errors.update', 'Failed to update user.'));
+      setError(formatApiErrorMessage(err, t('admin.userManagement.errors.update', 'Failed to update user.')));
     } finally {
       setBusyId(null);
     }
@@ -431,7 +433,7 @@ export function UserManagementNative() {
       setMessage(t('admin.userManagement.messages.roleUpdated', 'Role updated.'));
       await loadUsers(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('admin.userManagement.errors.role', 'Failed to update role.'));
+      setError(formatApiErrorMessage(err, t('admin.userManagement.errors.role', 'Failed to update role.')));
     } finally {
       setBusyId(null);
     }
@@ -449,7 +451,7 @@ export function UserManagementNative() {
       setMessage(t('admin.userManagement.messages.deleted', 'User deleted.'));
       await loadUsers(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('admin.userManagement.errors.delete', 'Failed to delete user.'));
+      setError(formatApiErrorMessage(err, t('admin.userManagement.errors.delete', 'Failed to delete user.')));
       await loadUsers(false);
     } finally {
       setBusyId(null);

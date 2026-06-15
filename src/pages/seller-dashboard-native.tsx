@@ -50,7 +50,9 @@ import {
   type SellerSubscription,
   type SellerStoreSummary,
   type SellerWalletSummary,
-} from "@/utils/native-api";
+
+  formatApiErrorMessage,
+} from '@/utils/native-api';
 
 const ProductManagementNative = lazy(() =>
   import("@/components/seller/product-management-native").then((module) => ({
@@ -1571,7 +1573,7 @@ export function SellerDashboardNative() {
           return;
         }
         setError(
-          err instanceof Error ? err.message : "Error loading seller dashboard.",
+          formatApiErrorMessage(err, "Error loading seller dashboard."),
         );
       } finally {
         if (!silent) setLoading(false);

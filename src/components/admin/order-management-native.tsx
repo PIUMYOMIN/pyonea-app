@@ -16,6 +16,8 @@ import {
   fetchAdminOrders,
   updateAdminOrderStatus,
   type AdminManagedOrder,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type OrderStatusFilter =
@@ -475,7 +477,7 @@ export function OrderManagementNative() {
     try {
       setOrders(await fetchAdminOrders());
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('admin.orderManagement.errors.load', 'Failed to load orders.'));
+      setError(formatApiErrorMessage(err, t('admin.orderManagement.errors.load', 'Failed to load orders.')));
     } finally {
       if (showLoader) setLoading(false);
     }
@@ -540,7 +542,7 @@ export function OrderManagementNative() {
       setMessage(t('admin.orderManagement.messages.updated', 'Order status updated.'));
       setStatusPickerOrder(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('admin.orderManagement.errors.update', 'Failed to update status.'));
+      setError(formatApiErrorMessage(err, t('admin.orderManagement.errors.update', 'Failed to update status.')));
       try {
         const refreshed = await fetchAdminOrder(order.id);
         replaceOrder(refreshed);

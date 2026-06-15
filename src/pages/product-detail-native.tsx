@@ -45,6 +45,8 @@ import {
   type ProductVariant,
   type ProductReview,
   type SellerDeliveryArea,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 import {
   formatSpecKey,
@@ -373,10 +375,10 @@ export function ProductDetailNative({
           if (hasInitialProduct) {
             showInlineLoadMessage(
               'info',
-              err instanceof Error ? err.message : t('productDetail.failed_load')
+              formatApiErrorMessage(err, t('productDetail.failed_load'))
             );
           } else {
-            setError(err instanceof Error ? err.message : t('productDetail.failed_load'));
+            setError(formatApiErrorMessage(err, t('productDetail.failed_load')));
             setProduct(null);
           }
         }
@@ -615,7 +617,7 @@ export function ProductDetailNative({
     } catch (err) {
       showMessage(
         'error',
-        err instanceof Error ? err.message : t('productDetail.add_to_cart_failed')
+        formatApiErrorMessage(err, t('productDetail.add_to_cart_failed'))
       );
       return false;
     } finally {
@@ -653,7 +655,7 @@ export function ProductDetailNative({
     } catch (err) {
       showMessage(
         'error',
-        err instanceof Error ? err.message : t('productDetail.wishlist_update_failed')
+        formatApiErrorMessage(err, t('productDetail.wishlist_update_failed'))
       );
     } finally {
       setWishlistLoading(false);
@@ -748,7 +750,7 @@ export function ProductDetailNative({
     } catch (err) {
       setReviewMessage({
         type: 'error',
-        text: err instanceof Error ? err.message : t('productDetail.review_submit_failed'),
+        text: formatApiErrorMessage(err, t('productDetail.review_submit_failed')),
       });
       return false;
     } finally {

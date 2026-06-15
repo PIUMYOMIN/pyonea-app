@@ -19,6 +19,8 @@ import {
   updateAdminBusinessType,
   type AdminBusinessTypeFormPayload,
   type AdminManagedBusinessType,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 const slugify = (value: string) =>
@@ -320,7 +322,7 @@ export function BusinessTypeManagementNative() {
     try {
       setTypes(await fetchAdminManagedBusinessTypes());
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to load business types.');
+      setError(formatApiErrorMessage(err, 'Failed to load business types.'));
     } finally {
       setLoading(false);
     }
@@ -415,7 +417,7 @@ export function BusinessTypeManagementNative() {
       setMessage(editing ? 'Business type updated.' : 'Business type created.');
       await load();
     } catch (err) {
-      setFieldErrors({ submit: err instanceof Error ? err.message : 'Failed to save.' });
+      setFieldErrors({ submit: formatApiErrorMessage(err, 'Failed to save.') });
     } finally {
       setSaving(false);
     }
@@ -428,7 +430,7 @@ export function BusinessTypeManagementNative() {
       setTypes((prev) => prev.map((row) => (row.id === item.id ? { ...row, isActive: !row.isActive } : row)));
       setMessage(`"${item.nameEn}" ${item.isActive ? 'deactivated' : 'activated'}.`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update status.');
+      setError(formatApiErrorMessage(err, 'Failed to update status.'));
     } finally {
       setTogglingId(null);
     }
@@ -442,7 +444,7 @@ export function BusinessTypeManagementNative() {
       setDeleteTarget(null);
       await load();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to delete.');
+      setError(formatApiErrorMessage(err, 'Failed to delete.'));
       setDeleteTarget(null);
     }
   };

@@ -9,6 +9,8 @@ import {
   type SellerCodInvoice,
   type SellerWalletOverview,
   type SellerWalletTransaction,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 const invoiceStatuses = ['', 'outstanding', 'overdue', 'paid', 'waived'];
@@ -318,7 +320,7 @@ export function SellerWalletNative({ onRefresh }: { onRefresh?: () => void | Pro
     try {
       setOverview(await fetchSellerWalletOverview(invoiceFilter, signal));
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to load wallet data.', 'error');
+      showToast(formatApiErrorMessage(error, 'Failed to load wallet data.'), 'error');
     } finally {
       setLoading(false);
     }
@@ -340,7 +342,7 @@ export function SellerWalletNative({ onRefresh }: { onRefresh?: () => void | Pro
       const invoices = await fetchSellerCodInvoices(status);
       setOverview((current) => ({ ...current, invoices }));
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to load invoices.', 'error');
+      showToast(formatApiErrorMessage(error, 'Failed to load invoices.'), 'error');
     } finally {
       setInvoiceLoading(false);
     }
@@ -356,7 +358,7 @@ export function SellerWalletNative({ onRefresh }: { onRefresh?: () => void | Pro
       await load();
       await onRefresh?.();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Submission failed.', 'error');
+      showToast(formatApiErrorMessage(error, 'Submission failed.'), 'error');
     } finally {
       setSubmitting(false);
     }

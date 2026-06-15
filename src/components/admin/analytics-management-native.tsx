@@ -16,6 +16,8 @@ import {
   fetchAdminRevenueBreakdown,
   type AdminAnalyticsStats,
   type AdminRevenueBreakdownRow,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 const fmtK = (value: number) => {
@@ -257,7 +259,7 @@ export function AnalyticsManagementNative() {
     try {
       await fn();
     } catch (err) {
-      setExportError(err instanceof Error ? err.message : 'Export failed.');
+      setExportError(formatApiErrorMessage(err, 'Export failed.'));
     } finally {
       setExporting('');
     }

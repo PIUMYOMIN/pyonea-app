@@ -1,6 +1,6 @@
 import Feather from '@expo/vector-icons/Feather';
 import { Link } from 'expo-router';
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   ActivityIndicator,
   Modal,
@@ -19,6 +19,8 @@ import {
   type AdminSellerFilters,
   type AdminSellerStatus,
   type AdminSellersPagination,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type StatusFilter = 'all' | AdminSellerStatus;
@@ -43,6 +45,36 @@ const statusTone: Record<string, { wrap: string; text: string; icon: keyof typeo
   suspended: { wrap: 'bg-red-100 dark:bg-red-900/30', text: 'text-red-700 dark:text-red-300', icon: 'x-circle' },
   closed: { wrap: 'bg-gray-100 dark:bg-slate-700', text: 'text-gray-700 dark:text-slate-300', icon: 'minus-circle' },
 };
+
+type AdminToast = { msg: string; type: 'success' | 'error' };
+
+function AdminFlashToast({ toast, onDismiss }: { toast: AdminToast | null; onDismiss: () => void }) {
+  if (!toast) return null;
+
+  const success = toast.type === 'success';
+  return (
+    <Pressable onPress={onDismiss}>
+      <View
+        className={`flex-row items-center gap-2 rounded-xl border p-3 ${
+          success
+            ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
+            : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
+        }`}>
+        <Feather
+          name={success ? 'check-circle' : 'alert-circle'}
+          size={16}
+          color={success ? '#15803d' : '#dc2626'}
+        />
+        <Text
+          className={`min-w-0 flex-1 font-sans text-sm font-medium ${
+            success ? 'text-green-800 dark:text-green-300' : 'text-red-700 dark:text-red-300'
+          }`}>
+          {toast.msg}
+        </Text>
+      </View>
+    </Pressable>
+  );
+}
 
 function formatDate(value: string) {
   if (!value) return '—';
@@ -215,8 +247,9 @@ export function SellersManagementNative() {
   const [pagination, setPagination] = useState<AdminSellersPagination | null>(null);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [error, setError] = useState('');
-  const [message, setMessage] = useState('');
+  const [loadError, setLoadError] = useState('');
+  const [toast, setToast] = useState<AdminToast | null>(null);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const [search, setSearch] = useState('');
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
   const [page, setPage] = useState(1);
@@ -230,11 +263,32 @@ export function SellersManagementNative() {
   const [statusPickerTarget, setStatusPickerTarget] = useState<AdminManagedSeller | null>(null);
   const [showBulkModal, setShowBulkModal] = useState(false);
 
+  const dismissToast = useCallback(() => {
+    if (toastTimerRef.current) {
+      clearTimeout(toastTimerRef.current);
+      toastTimerRef.current = null;
+    }
+    setToast(null);
+  }, []);
+
+  const showToast = useCallback((msg: string, type: 'success' | 'error' = 'success') => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+    setToast({ msg, type });
+    toastTimerRef.current = setTimeout(() => {
+      setToast(null);
+      toastTimerRef.current = null;
+    }, type === 'success' ? 4000 : 5000);
+  }, []);
+
+  useEffect(() => () => {
+    if (toastTimerRef.current) clearTimeout(toastTimerRef.current);
+  }, []);
+
   const loadSellers = useCallback(
     async (showLoader = true) => {
       if (showLoader) setLoading(true);
       else setRefreshing(true);
-      setError('');
+      setLoadError('');
 
       const filters: AdminSellerFilters = {
         search: search.trim() || undefined,
@@ -248,7 +302,7 @@ export function SellersManagementNative() {
         setSellers(result.sellers);
         setPagination(result.pagination);
       } catch (err) {
-        setError(err instanceof Error ? err.message : t('admin.sellerManagement.errors.load', 'Failed to load sellers.'));
+        setLoadError(formatApiErrorMessage(err, t('admin.sellerManagement.errors.load', 'Failed to load sellers.')));
         setSellers([]);
         setPagination(null);
       } finally {
@@ -293,18 +347,18 @@ export function SellersManagementNative() {
     try {
       await updateAdminSellerStatus(seller.id, newStatus, statusReason);
       patchSeller(seller.id, { status: newStatus });
-      setMessage(
+      showToast(
         t('admin.sellerManagement.messages.statusUpdated', 'Seller status updated to {{status}}.', {
           status: t(`admin.sellerManagement.status.${newStatus}`, newStatus),
         }),
+        'success',
       );
       setStatusModal(null);
       setStatusReason('');
     } catch (err) {
-      setError(
-        err instanceof Error
-          ? err.message
-          : t('admin.sellerManagement.errors.update', 'Failed to update seller status.'),
+      showToast(
+        formatApiErrorMessage(err, t('admin.sellerManagement.errors.update', 'Failed to update seller status.')),
+        'error',
       );
     } finally {
       setBusyId(null);
@@ -323,22 +377,37 @@ export function SellersManagementNative() {
       );
       const successCount = results.filter((result) => result.status === 'fulfilled').length;
       const failureCount = selected.length - successCount;
+      const firstFailure = results.find((result) => result.status === 'rejected');
+      const firstFailureMessage = firstFailure?.status === 'rejected'
+        ? formatApiErrorMessage(firstFailure.reason, t('admin.sellerManagement.errors.bulk', 'Bulk action failed.'))
+        : t('admin.sellerManagement.errors.bulk', 'Bulk action failed.');
 
-      if (successCount > 0) {
-        setMessage(
+      if (successCount > 0 && failureCount === 0) {
+        showToast(
           t('admin.sellerManagement.messages.bulkApplied', '{{count}} seller(s) updated.', {
             count: successCount,
-          }) + (failureCount ? ` ${failureCount} failed.` : ''),
+          }),
+          'success',
+        );
+      } else if (successCount > 0) {
+        showToast(
+          `${t('admin.sellerManagement.messages.bulkApplied', '{{count}} seller(s) updated.', {
+            count: successCount,
+          })} ${t('admin.sellerManagement.messages.bulkPartialFailed', '{{count}} failed: {{reason}}', {
+            count: failureCount,
+            reason: firstFailureMessage,
+          })}`,
+          'error',
         );
       } else {
-        setError(t('admin.sellerManagement.errors.bulk', 'Bulk action failed.'));
+        showToast(firstFailureMessage, 'error');
       }
 
       setSelectedIds([]);
       setBulkAction('');
       await loadSellers(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('admin.sellerManagement.errors.bulk', 'Bulk action failed.'));
+      showToast(formatApiErrorMessage(err, t('admin.sellerManagement.errors.bulk', 'Bulk action failed.')), 'error');
     } finally {
       setBusyId(null);
     }
@@ -393,6 +462,7 @@ export function SellersManagementNative() {
 
   return (
     <View className="gap-5">
+      <AdminFlashToast toast={toast} onDismiss={dismissToast} />
       <StatusUpdateModal
         visible={Boolean(statusModal)}
         seller={statusModal?.seller || null}
@@ -489,21 +559,12 @@ export function SellersManagementNative() {
         </View>
       ) : null}
 
-      {message ? (
+      {loadError ? (
         <Pressable
-          onPress={() => setMessage('')}
-          className="flex-row items-center gap-2 rounded-xl border border-green-200 bg-green-50 p-3 dark:border-green-800 dark:bg-green-900/20">
-          <Feather name="check-circle" color="#15803d" size={16} />
-          <Text className="min-w-0 flex-1 font-sans text-sm text-green-800 dark:text-green-300">{message}</Text>
-        </Pressable>
-      ) : null}
-
-      {error ? (
-        <Pressable
-          onPress={() => setError('')}
+          onPress={() => setLoadError('')}
           className="flex-row items-center gap-2 rounded-xl border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
           <Feather name="alert-circle" color="#dc2626" size={16} />
-          <Text className="min-w-0 flex-1 font-sans text-sm text-red-700 dark:text-red-300">{error}</Text>
+          <Text className="min-w-0 flex-1 font-sans text-sm text-red-700 dark:text-red-300">{loadError}</Text>
           <Pressable onPress={() => void loadSellers()}>
             <Text className="font-sans text-sm font-semibold text-red-700 underline dark:text-red-300">
               {t('admin.orderManagement.retry', 'Retry')}

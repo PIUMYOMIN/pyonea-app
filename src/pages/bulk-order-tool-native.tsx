@@ -28,6 +28,8 @@ import {
   searchBulkOrderProducts,
   type BulkOrderProduct,
   type ProductVariant,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 import { emitCartCountChanged } from '@/utils/native-cart-events';
 
@@ -918,7 +920,7 @@ export function BulkOrderToolNative() {
     } catch (err) {
       setMessage({
         type: 'error',
-        text: err instanceof Error ? err.message : t('bulk_order.cart_partial'),
+        text: formatApiErrorMessage(err, t('bulk_order.cart_partial')),
       });
     } finally {
       setCartSubmitting(false);

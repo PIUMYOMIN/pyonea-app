@@ -14,6 +14,8 @@ import {
   fetchSellerCustomers,
   type SellerCustomer,
   type SellerCustomerStats,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type SortKey = 'last_order' | 'orders' | 'spent';
@@ -282,7 +284,7 @@ export function CustomersNative() {
         setTotal(result.total);
         setError('');
       } catch (requestError) {
-        setError(requestError instanceof Error ? requestError.message : 'Failed to load customers.');
+        setError(formatApiErrorMessage(requestError, 'Failed to load customers.'));
       } finally {
         setLoading(false);
       }
@@ -338,7 +340,7 @@ export function CustomersNative() {
       await Linking.openURL(`data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`);
       setMessage('Customer export prepared.');
     } catch (exportError) {
-      setError(exportError instanceof Error ? exportError.message : 'Customer export failed.');
+      setError(formatApiErrorMessage(exportError, 'Customer export failed.'));
     } finally {
       setExporting(false);
     }

@@ -14,6 +14,8 @@ import {
   fetchSellerFinancialReport,
   type SellerFinancialOrder,
   type SellerFinancialReportData,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type PeriodKey = 'today' | 'yesterday' | 'week' | 'last_week' | 'month' | 'last_month' | 'quarter' | 'year' | 'custom';
@@ -256,7 +258,7 @@ export function FinancialReportsNative({ storeName }: { storeName?: string }) {
         setData(result);
         setError('');
       } catch (requestError) {
-        setError(requestError instanceof Error ? requestError.message : 'Failed to load report.');
+        setError(formatApiErrorMessage(requestError, 'Failed to load report.'));
       } finally {
         setLoading(false);
       }
@@ -316,7 +318,7 @@ export function FinancialReportsNative({ storeName }: { storeName?: string }) {
       await Linking.openURL(`data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`);
       setMessage('Financial report export prepared.');
     } catch (exportError) {
-      setError(exportError instanceof Error ? exportError.message : 'Export failed.');
+      setError(formatApiErrorMessage(exportError, 'Export failed.'));
     } finally {
       setExporting(false);
     }

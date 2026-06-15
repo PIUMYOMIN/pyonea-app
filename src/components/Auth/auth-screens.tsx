@@ -25,6 +25,7 @@ import {
   ApiError,
   authenticateWithGoogleAccessToken,
   completeSocialAuth,
+  formatApiErrorMessage,
   resetUserPassword,
   sendPasswordResetLink,
   type AuthSession,
@@ -47,9 +48,6 @@ type MessageTone = "error" | "success" | "info";
 type RegisterUserType = "buyer" | "seller";
 
 const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
-const getApiMessage = (error: unknown, fallback: string) =>
-  error instanceof ApiError || error instanceof Error ? error.message : fallback;
 
 async function finishGoogleAuth(
   accessToken: string,
@@ -529,7 +527,7 @@ export function LoginScreen() {
       router.replace(getPostAuthDestination(session.user, returnTo));
     } catch (submitError) {
       setError(
-        getApiMessage(
+        formatApiErrorMessage(
           submitError,
           t("login.error", { defaultValue: "An error occurred during login." }),
         ),
@@ -548,7 +546,7 @@ export function LoginScreen() {
       await finishGoogleAuth(accessToken, applySession, router, returnTo);
     } catch (submitError) {
       setError(
-        getApiMessage(
+        formatApiErrorMessage(
           submitError,
           t("login.googleFailed", { defaultValue: "Google sign-in failed." }),
         ),
@@ -751,7 +749,7 @@ export function RegisterScreen() {
       router.replace(getPostRegistrationDestination(session.user));
     } catch (submitError) {
       setError(
-        getApiMessage(
+        formatApiErrorMessage(
           submitError,
           t("register.error", { defaultValue: "Please check the registration form." }),
         ),
@@ -770,7 +768,7 @@ export function RegisterScreen() {
       await finishGoogleAuth(accessToken, applySession, router);
     } catch (submitError) {
       setError(
-        getApiMessage(
+        formatApiErrorMessage(
           submitError,
           t("login.googleFailed", { defaultValue: "Google sign-in failed." }),
         ),
@@ -998,7 +996,7 @@ export function ForgotPasswordScreen() {
       setSuccess(true);
     } catch (submitError) {
       setError(
-        getApiMessage(
+        formatApiErrorMessage(
           submitError,
           t("forgot_password.error", {
             defaultValue: "We could not send the reset link. Please try again.",
@@ -1115,7 +1113,7 @@ export function ResetPasswordScreen() {
       setSuccess(true);
     } catch (submitError) {
       setError(
-        getApiMessage(
+        formatApiErrorMessage(
           submitError,
           t("reset_password.error", {
             defaultValue: "We could not reset your password. Please try again.",
@@ -1289,7 +1287,7 @@ export function SocialRoleSelectScreen() {
       router.replace(getPostRegistrationDestination(session.user));
     } catch (submitError) {
       setError(
-        getApiMessage(
+        formatApiErrorMessage(
           submitError,
           t("register.error", {
             defaultValue: "Failed to complete registration. Please try again.",

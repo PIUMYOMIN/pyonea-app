@@ -10,6 +10,8 @@ import {
   type NativeUploadFile,
   type SellerBulkImportError,
   type SellerBulkImportResult,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 import { getUploadNameFromUri } from '@/utils/native-image-picker';
 
@@ -195,7 +197,7 @@ export function BulkImportNative({ onImported }: { onImported?: () => Promise<vo
       link.click();
       URL.revokeObjectURL(url);
     } catch (downloadError) {
-      setError(downloadError instanceof Error ? downloadError.message : 'Failed to download template.');
+      setError(formatApiErrorMessage(downloadError, 'Failed to download template.'));
     } finally {
       setDownloading(false);
     }
@@ -223,7 +225,7 @@ export function BulkImportNative({ onImported }: { onImported?: () => Promise<vo
           });
         }
       }
-      setError(uploadError instanceof Error ? uploadError.message : 'Upload failed. Please try again.');
+      setError(formatApiErrorMessage(uploadError, 'Upload failed. Please try again.'));
     } finally {
       setUploading(false);
     }

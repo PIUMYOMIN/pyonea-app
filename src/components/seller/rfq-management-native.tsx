@@ -17,6 +17,8 @@ import {
   submitSellerRfqQuote,
   type SellerRfq,
   type SellerRfqQuote,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type RfqStatusFilter = 'all' | 'draft' | 'open' | 'quoted' | 'accepted' | 'closed' | 'cancelled';
@@ -427,7 +429,7 @@ function SubmitQuoteModal({
       });
       onSuccess(next);
     } catch (error) {
-      onError(error instanceof Error ? error.message : t('rfq.errors.submit_quotation_failed'));
+      onError(formatApiErrorMessage(error, t('rfq.errors.submit_quotation_failed')));
     } finally {
       setSubmitting(false);
     }
@@ -613,7 +615,7 @@ export function RfqManagementNative() {
       setRfqs([]);
       setMessage({
         type: 'error',
-        text: error instanceof Error ? error.message : t('rfq.errors.load_received_failed'),
+        text: formatApiErrorMessage(error, t('rfq.errors.load_received_failed')),
       });
     } finally {
       setLoading(false);

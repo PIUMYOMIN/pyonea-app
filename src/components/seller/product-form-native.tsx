@@ -50,6 +50,8 @@ import {
   type SellerProductFormData,
   type SellerProductImage,
   type SellerWholesaleTier,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 const productTypes = [
@@ -129,15 +131,6 @@ function toStringValue(value: string | number | null | undefined) {
   return String(value);
 }
 
-function isRecordOfErrorLists(value: unknown): value is Record<string, string[]> {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    !Array.isArray(value) &&
-    Object.values(value).every((entry) => Array.isArray(entry))
-  );
-}
-
 function categoryLabel(
   item: Pick<SellerProductCategory, 'name' | 'nameEn' | 'nameMm'>,
   language: string,
@@ -170,19 +163,6 @@ function buildCategoryOptions(
       })),
     ];
   });
-}
-
-function formatUploadError(error: unknown, fallback: string) {
-  if (!(error instanceof ApiError)) {
-    return error instanceof Error ? error.message : fallback;
-  }
-
-  if (isRecordOfErrorLists(error.errors)) {
-    const messages = Object.values(error.errors).flat().filter(Boolean);
-    if (messages.length) return messages.join(' ');
-  }
-
-  return error.message || fallback;
 }
 
 function Field({
@@ -654,7 +634,7 @@ function WholesaleTiersEditorNative({
       setSavedSnapshot(JSON.stringify(fresh));
       setSuccess(true);
     } catch (nextError) {
-      setError(nextError instanceof Error ? nextError.message : 'Failed to save tiers. Please try again.');
+      setError(formatApiErrorMessage(nextError, 'Failed to save tiers. Please try again.'));
     } finally {
       setSaving(false);
     }
@@ -902,7 +882,7 @@ export function ProductFormNative({
         }
       } catch (nextError) {
         if (!controller.signal.aborted) {
-          setError(nextError instanceof Error ? nextError.message : 'Failed to load product form.');
+          setError(formatApiErrorMessage(nextError, 'Failed to load product form.'));
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -1027,7 +1007,7 @@ export function ProductFormNative({
       }
       if (uploaded.length) setImages((current) => [...current, ...uploaded]);
     } catch (nextError) {
-      setError(formatUploadError(nextError, t('product_form.errors.upload_images', 'Failed to upload images.')));
+      setError(formatApiErrorMessage(nextError, t('product_form.errors.upload_images', 'Failed to upload images.')));
     } finally {
       setIsUploadingImages(false);
     }
@@ -1151,18 +1131,13 @@ export function ProductFormNative({
       setCurrentStep(5);
       setSuccess(editing ? 'Product updated! Now review options and variants.' : 'Product created! Now define your options and variants.');
     } catch (nextError) {
-      if (nextError instanceof ApiError) {
-        if (nextError.code === 'product_limit_reached' || nextError.code === 'plan_product_limit_reached') {
-          setLimitError(true);
-          setError(nextError.message);
-        } else if (isRecordOfErrorLists(nextError.errors)) {
-          setError(Object.values(nextError.errors).flat().join(', '));
-        } else {
-          setError(nextError.message);
-        }
-      } else {
-        setError(nextError instanceof Error ? nextError.message : 'Something went wrong while saving the product.');
+      if (
+        nextError instanceof ApiError &&
+        (nextError.code === 'product_limit_reached' || nextError.code === 'plan_product_limit_reached')
+      ) {
+        setLimitError(true);
       }
+      setError(formatApiErrorMessage(nextError, 'Something went wrong while saving the product.'));
     } finally {
       setSaving(false);
     }

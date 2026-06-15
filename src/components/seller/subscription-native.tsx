@@ -13,6 +13,8 @@ import {
   type SellerSubscription,
   type SellerSubscriptionPaymentSession,
   type SubscriptionPlan,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 const planIcon = (slug?: string) => {
@@ -176,7 +178,7 @@ function PaymentModal({
       const nextSession = await createSellerSubscriptionPaymentSession(plan.slug, method);
       setSession(nextSession);
     } catch (sessionError) {
-      setError(sessionError instanceof Error ? sessionError.message : 'Could not generate payment. Please try again.');
+      setError(formatApiErrorMessage(sessionError, 'Could not generate payment. Please try again.'));
     } finally {
       setGenerating(false);
     }
@@ -519,7 +521,7 @@ export function SubscriptionNative() {
       })
       .catch((loadError: unknown) => {
         if (controller.signal.aborted) return;
-        setError(loadError instanceof Error ? loadError.message : 'Failed to load subscription details.');
+        setError(formatApiErrorMessage(loadError, 'Failed to load subscription details.'));
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);
@@ -547,7 +549,7 @@ export function SubscriptionNative() {
       setModalPlan(null);
       reload();
     } catch (upgradeError) {
-      setError(upgradeError instanceof Error ? upgradeError.message : 'Subscription update failed. Please try again.');
+      setError(formatApiErrorMessage(upgradeError, 'Subscription update failed. Please try again.'));
     } finally {
       setUpgrading(false);
     }

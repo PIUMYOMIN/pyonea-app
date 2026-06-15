@@ -18,6 +18,8 @@ import {
   toggleSellerProductVariant,
   updateSellerProductVariant,
   type SellerManagedVariant,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type VariantEditRow = {
@@ -224,7 +226,7 @@ export function VariantTableNative({
       setVariants([]);
       setEdits({});
       setGlobalError(
-        err instanceof Error ? err.message : t('product_form.variants.load_failed', 'Failed to load variants.'),
+        formatApiErrorMessage(err, t('product_form.variants.load_failed', 'Failed to load variants.')),
       );
     } finally {
       setLoading(false);
@@ -304,7 +306,7 @@ export function VariantTableNative({
     } catch (err) {
       setErrors((current) => ({
         ...current,
-        [key]: err instanceof Error ? err.message : t('product_form.variants.save_failed', 'Save failed.'),
+        [key]: formatApiErrorMessage(err, t('product_form.variants.save_failed', 'Save failed.')),
       }));
     } finally {
       setSaving((current) => ({ ...current, [key]: false }));
@@ -409,7 +411,7 @@ export function VariantTableNative({
       onUpdated?.();
     } catch (err) {
       setGlobalError(
-        err instanceof Error ? err.message : t('product_form.variants.generation_failed', 'Generation failed.'),
+        formatApiErrorMessage(err, t('product_form.variants.generation_failed', 'Generation failed.')),
       );
     } finally {
       setGenerating(false);

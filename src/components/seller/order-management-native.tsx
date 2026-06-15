@@ -19,6 +19,8 @@ import {
   setSellerOrderDeliveryMethod,
   updateSellerOrderStatus,
   type SellerManagedOrder,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type OrderStatus = 'all' | 'pending' | 'confirmed' | 'processing' | 'shipped' | 'delivered' | 'cancelled';
@@ -506,7 +508,7 @@ export function OrderManagementNative() {
     try {
       setOrders(await fetchSellerOrders());
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('seller.order.errors.load_failed'));
+      setError(formatApiErrorMessage(err, t('seller.order.errors.load_failed')));
     } finally {
       if (showLoader) setLoading(false);
     }
@@ -538,7 +540,7 @@ export function OrderManagementNative() {
       const next = await updateSellerOrderStatus(order.id, status);
       replaceOrder(next, { ...order, status });
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('seller.order.errors.status_update_failed'));
+      setError(formatApiErrorMessage(err, t('seller.order.errors.status_update_failed')));
     } finally {
       setActionLoading('');
     }
@@ -558,7 +560,7 @@ export function OrderManagementNative() {
       replaceOrder(next, deliveryOrder);
       setDeliveryOrder(null);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('seller.order.errors.delivery_method_failed'));
+      setError(formatApiErrorMessage(err, t('seller.order.errors.delivery_method_failed')));
     } finally {
       setActionLoading('');
     }

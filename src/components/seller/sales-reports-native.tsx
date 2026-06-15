@@ -16,6 +16,8 @@ import {
   type SellerSalesReportsData,
   type SellerSalesTrendPoint,
   type SellerTopProductSale,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type TimeRange = 'week' | 'month';
@@ -261,7 +263,7 @@ export function SalesReportsNative() {
       setError('');
     } catch (requestError) {
       setSalesData(emptySalesData);
-      setError(requestError instanceof Error ? requestError.message : 'Failed to load sales data.');
+      setError(formatApiErrorMessage(requestError, 'Failed to load sales data.'));
     } finally {
       setLoading(false);
     }
@@ -318,7 +320,7 @@ export function SalesReportsNative() {
       await openCsv(exportRows[kind], filename);
       setMessage(`${filename} prepared.`);
     } catch (exportError) {
-      setError(exportError instanceof Error ? exportError.message : 'Export failed.');
+      setError(formatApiErrorMessage(exportError, 'Export failed.'));
     } finally {
       setExporting(false);
     }

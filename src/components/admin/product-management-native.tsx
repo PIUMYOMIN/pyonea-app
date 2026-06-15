@@ -25,6 +25,8 @@ import {
   type AdminManagedProduct,
   type AdminProductDetail,
   type AdminProductFilters,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 const placeholderProduct = require('@/assets/images/placeholder-product.png');
@@ -791,7 +793,7 @@ export function ProductManagementNative() {
       await loadProducts(false);
     } catch (err) {
       patchProduct(product);
-      setError(err instanceof Error ? err.message : t('admin.productManagement.errors.unknownError', 'Unknown error'));
+      setError(formatApiErrorMessage(err, t('admin.productManagement.errors.unknownError', 'Unknown error')));
     } finally {
       setBusyId(null);
     }
@@ -810,7 +812,7 @@ export function ProductManagementNative() {
       );
     } catch (err) {
       patchProduct(product);
-      setError(err instanceof Error ? err.message : t('admin.productManagement.errors.unknownError', 'Unknown error'));
+      setError(formatApiErrorMessage(err, t('admin.productManagement.errors.unknownError', 'Unknown error')));
     } finally {
       setBusyId(null);
     }
@@ -827,7 +829,7 @@ export function ProductManagementNative() {
       setMessage(t('admin.productManagement.notifications.approved', 'Product approved'));
       await loadProducts(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('admin.productManagement.errors.unknownError', 'Unknown error'));
+      setError(formatApiErrorMessage(err, t('admin.productManagement.errors.unknownError', 'Unknown error')));
     } finally {
       setBusyId(null);
     }
@@ -846,7 +848,7 @@ export function ProductManagementNative() {
       setMessage(t('admin.productManagement.notifications.rejected', 'Product rejected'));
       await loadProducts(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('admin.productManagement.errors.unknownError', 'Unknown error'));
+      setError(formatApiErrorMessage(err, t('admin.productManagement.errors.unknownError', 'Unknown error')));
     } finally {
       setBusyId(null);
     }
@@ -863,7 +865,7 @@ export function ProductManagementNative() {
       setMessage(t('admin.productManagement.notifications.deleted', 'Product deleted'));
       await loadProducts(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('admin.productManagement.errors.unknownError', 'Unknown error'));
+      setError(formatApiErrorMessage(err, t('admin.productManagement.errors.unknownError', 'Unknown error')));
       await loadProducts(false);
     } finally {
       setBusyId(null);
@@ -896,7 +898,7 @@ export function ProductManagementNative() {
       setBulkAction('');
       await loadProducts(false);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('admin.productManagement.errors.failedBulkAction', 'Bulk action failed'));
+      setError(formatApiErrorMessage(err, t('admin.productManagement.errors.failedBulkAction', 'Bulk action failed')));
       await loadProducts(false);
     } finally {
       setBusyId(null);

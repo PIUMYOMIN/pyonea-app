@@ -16,6 +16,8 @@ import {
   fetchAdminFinancialReport,
   type AdminFinancialOrder,
   type AdminFinancialReportData,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type PeriodKey =
@@ -468,7 +470,7 @@ export function AdminFinancialReportsNative() {
         });
         setData(result);
       } catch (requestError) {
-        setError(requestError instanceof Error ? requestError.message : 'Failed to load report.');
+        setError(formatApiErrorMessage(requestError, 'Failed to load report.'));
       } finally {
         setLoading(false);
       }
@@ -588,7 +590,7 @@ export function AdminFinancialReportsNative() {
       const csv = rows.map((row) => row.map(csvCell).join(',')).join('\n');
       await Linking.openURL(`data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`);
     } catch (exportError) {
-      setError(exportError instanceof Error ? exportError.message : 'Export failed.');
+      setError(formatApiErrorMessage(exportError, 'Export failed.'));
     } finally {
       setExporting(false);
     }

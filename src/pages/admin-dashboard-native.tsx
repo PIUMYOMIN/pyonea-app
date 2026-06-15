@@ -28,6 +28,8 @@ import {
   ApiError,
   fetchAdminStats,
   type AdminStats,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 const AdminOverviewNative = lazy(() =>
@@ -216,7 +218,7 @@ export function AdminDashboardNative() {
           await handleUnauthorized();
           return;
         }
-        setStatsError(error instanceof Error ? error.message : 'Error loading admin dashboard.');
+        setStatsError(formatApiErrorMessage(error, 'Error loading admin dashboard.'));
       } finally {
         if (!silent) setStatsLoading(false);
       }

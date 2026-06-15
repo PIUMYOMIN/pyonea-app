@@ -25,6 +25,8 @@ import {
   fetchAdminVerifiedSellersExportCsv,
   type AdminVerifiedSeller,
   type AdminVerifiedSellerSummary,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 function ChipBadge({
@@ -160,7 +162,7 @@ export function VerifiedSellerListNative() {
       setTotal(result.pagination.total);
       setLastPage(result.pagination.lastPage);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('admin.verifiedSellers.errors.load', 'Failed to load verified sellers.'));
+      setError(formatApiErrorMessage(err, t('admin.verifiedSellers.errors.load', 'Failed to load verified sellers.')));
     } finally {
       setLoading(false);
     }
@@ -204,7 +206,7 @@ export function VerifiedSellerListNative() {
       });
       await Linking.openURL(`data:text/csv;charset=utf-8,${encodeURIComponent(csv)}`);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('admin.verifiedSellers.errors.export', 'Export failed.'));
+      setError(formatApiErrorMessage(err, t('admin.verifiedSellers.errors.export', 'Export failed.')));
     } finally {
       setExporting(false);
     }

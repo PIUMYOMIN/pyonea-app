@@ -23,6 +23,8 @@ import {
   type CartSummary,
   type HomeCategory,
   type HomeProduct,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 import { getThumbUrl } from '@/utils/image-thumbs';
 import { emitCartCountChanged } from '@/utils/native-cart-events';
@@ -533,7 +535,7 @@ export function CartNative() {
       setCart(emptyCart);
       emitCartCountChanged({ cart: emptyCart });
       if (!(err instanceof ApiError && err.status === 401)) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch cart');
+        setError(formatApiErrorMessage(err, 'Failed to fetch cart'));
       }
     } finally {
       if (!signal?.aborted) setLoading(false);
@@ -599,7 +601,7 @@ export function CartNative() {
       const result = await updateCartItemQuantity(item.id, nextQuantity);
       replaceCart(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to update quantity');
+      setError(formatApiErrorMessage(err, 'Failed to update quantity'));
     } finally {
       setUpdatingItemId(null);
     }
@@ -616,7 +618,7 @@ export function CartNative() {
       const result = await fetchCart();
       replaceCart(result);
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to remove item');
+      setError(formatApiErrorMessage(err, 'Failed to remove item'));
     } finally {
       setRemovingItemId(null);
     }
@@ -632,7 +634,7 @@ export function CartNative() {
       setCart(emptyCart);
       emitCartCountChanged({ cart: emptyCart });
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to clear cart');
+      setError(formatApiErrorMessage(err, 'Failed to clear cart'));
     } finally {
       setClearingCart(false);
     }

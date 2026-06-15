@@ -21,6 +21,8 @@ import {
   rejectRfqQuote,
   type SellerRfq,
   type SellerRfqQuote,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type RfqStatusFilter = 'all' | 'open' | 'quoted' | 'accepted' | 'closed' | 'cancelled';
@@ -85,7 +87,7 @@ function QuoteCard({
           : await rejectRfqQuote(rfqId, quote.id);
       onUpdated(next);
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('rfq.errors.submit_failed'));
+      setError(formatApiErrorMessage(err, t('rfq.errors.submit_failed')));
     } finally {
       setLoading(false);
     }
@@ -288,7 +290,7 @@ function DetailModal({
                       await refresh();
                       onClose();
                     } catch (err) {
-                      setError(err instanceof Error ? err.message : t('rfq.errors.cancel_failed'));
+                      setError(formatApiErrorMessage(err, t('rfq.errors.cancel_failed')));
                     } finally {
                       setClosing(false);
                     }
@@ -310,7 +312,7 @@ function DetailModal({
                       await refresh();
                       onClose();
                     } catch (err) {
-                      setError(err instanceof Error ? err.message : t('rfq.errors.close_failed'));
+                      setError(formatApiErrorMessage(err, t('rfq.errors.close_failed')));
                     } finally {
                       setClosing(false);
                     }
@@ -350,7 +352,7 @@ export function BuyerRfqNative() {
       setRfqs([]);
       setMessage({
         type: 'error',
-        text: error instanceof Error ? error.message : t('rfq.errors.load_failed', { defaultValue: 'Failed to load RFQs.' }),
+        text: formatApiErrorMessage(error, t('rfq.errors.load_failed', { defaultValue: 'Failed to load RFQs.' })),
       });
     } finally {
       setLoading(false);

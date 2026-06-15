@@ -14,6 +14,8 @@ import {
   markAllNotificationsRead,
   markNotificationRead,
   type NativeNotification,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type NotificationFilter = 'all' | 'unread';
@@ -173,7 +175,7 @@ export function SellerNotificationsNative() {
         setHasMore(result.currentPage < result.lastPage);
       } catch (loadError) {
         if (!signal?.aborted) {
-          setError(loadError instanceof Error ? loadError.message : 'Failed to load notifications.');
+          setError(formatApiErrorMessage(loadError, 'Failed to load notifications.'));
           if (reset) setItems([]);
         }
       } finally {

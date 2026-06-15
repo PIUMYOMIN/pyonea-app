@@ -13,7 +13,7 @@ import {
 } from 'react-native';
 
 import { useAppTranslation } from '@/i18n';
-import { ApiError, apiGet, apiPost } from '@/utils/native-api';
+import { formatApiErrorMessage, apiGet, apiPost } from '@/utils/native-api';
 
 type OptionType = 'color' | 'size' | 'text' | 'image' | 'input';
 
@@ -106,24 +106,6 @@ const normalizeHex = (value: string) => {
   return withHash.length === 7 ? withHash : withHash.slice(0, 7);
 };
 
-const isRecordOfErrorLists = (value: unknown): value is Record<string, string[]> =>
-  typeof value === 'object' &&
-  value !== null &&
-  !Array.isArray(value) &&
-  Object.values(value).every((entry) => Array.isArray(entry));
-
-const formatApiError = (error: unknown, fallback: string) => {
-  if (!(error instanceof ApiError)) {
-    return error instanceof Error ? error.message : fallback;
-  }
-
-  if (isRecordOfErrorLists(error.errors)) {
-    const messages = Object.values(error.errors).flat().filter(Boolean);
-    if (messages.length) return messages.join(', ');
-  }
-
-  return error.message || fallback;
-};
 
 const cleanValueMeta = (optType: OptionType, meta: OptionValueDraft['meta']) => {
   const cleaned: OptionValueDraft['meta'] = {};
@@ -727,7 +709,7 @@ export function ProductOptionsEditorNative({
       setSuccess(t('product_form.options.saved', 'Options saved! Now generate your variants below.'));
       onSaved?.();
     } catch (nextError) {
-      setError(formatApiError(nextError, t('product_form.options.save_failed', 'Failed to save options.')));
+      setError(formatApiErrorMessage(nextError, t('product_form.options.save_failed', 'Failed to save options.')));
     } finally {
       setSaving(false);
     }

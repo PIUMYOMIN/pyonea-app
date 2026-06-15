@@ -51,7 +51,9 @@ import {
   type CheckoutSellerShippingFee,
   type CheckoutProfile,
   type CheckoutSellerPolicy,
-} from "@/utils/native-api";
+
+  formatApiErrorMessage,
+} from '@/utils/native-api';
 import { getThumbUrl } from "@/utils/image-thumbs";
 import { emitCartCountChanged } from "@/utils/native-cart-events";
 
@@ -927,7 +929,7 @@ export function CheckoutNative() {
     } catch (err) {
       setCoupon(null);
       setCouponError(
-        err instanceof Error ? err.message : t("checkout.coupon_invalid"),
+        formatApiErrorMessage(err, t("checkout.coupon_invalid")),
       );
     }
   };
@@ -949,7 +951,7 @@ export function CheckoutNative() {
     } catch (err) {
       checkoutBusyRef.current = false;
       showMessage(
-        err instanceof Error ? err.message : t("checkout.otp_send_failed"),
+        formatApiErrorMessage(err, t("checkout.otp_send_failed")),
       );
     } finally {
       setSubmitting(false);
@@ -1007,7 +1009,7 @@ export function CheckoutNative() {
       return {
         success: false,
         message:
-          err instanceof Error ? err.message : t("checkout.order_create_failed"),
+          formatApiErrorMessage(err, t("checkout.order_create_failed")),
       };
     } finally {
       setSubmitting(false);
@@ -1092,7 +1094,7 @@ export function CheckoutNative() {
       otpSessionVerifiedRef.current = false;
       setOtpVerified(false);
       setOtpError(
-        err instanceof Error ? err.message : t("checkout.otp_incorrect"),
+        formatApiErrorMessage(err, t("checkout.otp_incorrect")),
       );
     } finally {
       setOtpLoading(false);

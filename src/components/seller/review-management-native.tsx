@@ -7,6 +7,8 @@ import {
   fetchSellerProductReviews,
   type SellerProductReview,
   type SellerProductReviewsResult,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type RatingFilter = 'all' | '5' | '4' | '3' | '2' | '1';
@@ -161,7 +163,7 @@ export function ReviewManagementNative() {
       })
       .catch((reviewError: unknown) => {
         if (controller.signal.aborted) return;
-        setError(reviewError instanceof Error ? reviewError.message : t('seller.reviews.fetch_error', 'Failed to fetch reviews'));
+        setError(formatApiErrorMessage(reviewError, t('seller.reviews.fetch_error', 'Failed to fetch reviews')));
       })
       .finally(() => {
         if (!controller.signal.aborted) setLoading(false);

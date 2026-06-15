@@ -2,7 +2,9 @@ import { useState } from 'react';
 import { Pressable, Text, TextInput, View } from 'react-native';
 
 import { useAppTranslation } from '@/i18n';
-import { subscribeNewsletter } from '@/utils/native-api';
+import { subscribeNewsletter ,
+  formatApiErrorMessage,
+} from '@/utils/native-api';
 
 type NewsletterWidgetProps = {
   variant?: 'default' | 'footer';
@@ -41,7 +43,7 @@ export function NewsletterWidget({ variant = 'default', source = 'website' }: Ne
       }
     } catch (error) {
       setStatus('error');
-      setMessage(error instanceof Error ? error.message : t('footer.newsletter_error_message'));
+      setMessage(formatApiErrorMessage(error, t('footer.newsletter_error_message')));
       setTimeout(() => setStatus('idle'), 4000);
     }
   };

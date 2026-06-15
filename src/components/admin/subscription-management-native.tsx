@@ -13,6 +13,8 @@ import {
   type AdminSubscriptionsMeta,
   type SellerSubscription,
   type SubscriptionPlan,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 const statusOptions = [
@@ -507,7 +509,7 @@ export function AdminSubscriptionManagementNative() {
     try {
       setPlans(await fetchAdminSubscriptionPlans(signal));
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to load plan settings.', 'error');
+      showToast(formatApiErrorMessage(error, 'Failed to load plan settings.'), 'error');
     } finally {
       setPlansLoading(false);
     }
@@ -520,7 +522,7 @@ export function AdminSubscriptionManagementNative() {
       setSubscriptions(response.subscriptions);
       setMeta(response.meta);
     } catch (error) {
-      const message = error instanceof ApiError ? error.message : 'Failed to load subscriptions.';
+      const message = formatApiErrorMessage(error, 'Failed to load subscriptions.');
       showToast(message, 'error');
     } finally {
       setLoading(false);
@@ -564,7 +566,7 @@ export function AdminSubscriptionManagementNative() {
       showToast(response.message);
       await loadSubscriptions();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to approve subscription request.', 'error');
+      showToast(formatApiErrorMessage(error, 'Failed to approve subscription request.'), 'error');
     } finally {
       setSaving(false);
     }
@@ -579,7 +581,7 @@ export function AdminSubscriptionManagementNative() {
       showToast(response.message);
       await loadSubscriptions();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to reject subscription request.', 'error');
+      showToast(formatApiErrorMessage(error, 'Failed to reject subscription request.'), 'error');
     } finally {
       setSaving(false);
     }
@@ -594,7 +596,7 @@ export function AdminSubscriptionManagementNative() {
       showToast(response.message);
       await loadSubscriptions();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to update plan.', 'error');
+      showToast(formatApiErrorMessage(error, 'Failed to update plan.'), 'error');
     } finally {
       setSaving(false);
     }
@@ -618,7 +620,7 @@ export function AdminSubscriptionManagementNative() {
       showToast(response.message);
       await loadPlans();
     } catch (error) {
-      showToast(error instanceof Error ? error.message : 'Failed to save plan.', 'error');
+      showToast(formatApiErrorMessage(error, 'Failed to save plan.'), 'error');
     } finally {
       setSaving(false);
     }

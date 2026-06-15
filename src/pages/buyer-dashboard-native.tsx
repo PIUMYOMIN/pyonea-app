@@ -52,6 +52,8 @@ import {
   type CheckoutOrderResult,
   type HomeProduct,
   type TrackedOrder,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 import { getThumbUrl } from '@/utils/image-thumbs';
 
@@ -710,7 +712,7 @@ function CartPanel() {
         const result = await fetchCart(controller.signal);
         if (!controller.signal.aborted) setCart(result);
       } catch (error) {
-        if (!controller.signal.aborted) setMessage(error instanceof Error ? error.message : t('cart.fetch_error'));
+        if (!controller.signal.aborted) setMessage(formatApiErrorMessage(error, t('cart.fetch_error')));
       } finally {
         if (!controller.signal.aborted) setLoading(false);
       }
@@ -728,7 +730,7 @@ function CartPanel() {
       const result = await updateCartItemQuantity(item.id, quantity);
       setCart(result);
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t('cart.update_failed'));
+      setMessage(formatApiErrorMessage(error, t('cart.update_failed')));
     } finally {
       setBusyId(null);
     }
@@ -741,7 +743,7 @@ function CartPanel() {
       await removeCartItem(item.id);
       await reload();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t('cart.remove_failed'));
+      setMessage(formatApiErrorMessage(error, t('cart.remove_failed')));
     } finally {
       setBusyId(null);
     }
@@ -754,7 +756,7 @@ function CartPanel() {
       await clearCartItems();
       await reload();
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t('cart.clear_failed'));
+      setMessage(formatApiErrorMessage(error, t('cart.clear_failed')));
     } finally {
       setBusyId(null);
     }
@@ -984,7 +986,7 @@ function SettingsPanel({ user, onUpdateUser }: { user: BuyerProfile | null; onUp
       onUpdateUser(updated);
       setMessage(t('buyer_dashboard.profile_updated'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t('buyer_dashboard.update_failed'));
+      setMessage(formatApiErrorMessage(error, t('buyer_dashboard.update_failed')));
     } finally {
       setSaving(false);
     }
@@ -1002,7 +1004,7 @@ function SettingsPanel({ user, onUpdateUser }: { user: BuyerProfile | null; onUp
       setPasswordDraft({ current: '', next: '', confirm: '' });
       setMessage(t('buyer_dashboard.password_changed'));
     } catch (error) {
-      setMessage(error instanceof Error ? error.message : t('buyer_dashboard.failed_change_password'));
+      setMessage(formatApiErrorMessage(error, t('buyer_dashboard.failed_change_password')));
     } finally {
       setSaving(false);
     }
@@ -1356,7 +1358,7 @@ export function BuyerDashboardNative() {
             await handleUnauthorized();
             return;
           }
-          setError(err instanceof Error ? err.message : t('buyer_dashboard.loading_dashboard'));
+          setError(formatApiErrorMessage(err, t('buyer_dashboard.loading_dashboard')));
         }
       } finally {
         if (!controller.signal.aborted) setLoading(false);
@@ -1384,7 +1386,7 @@ export function BuyerDashboardNative() {
       setCancelOrder(null);
       await loadOrders();
     } catch (err) {
-      setCancelError(err instanceof Error ? err.message : t('buyer_dashboard.cancel_order'));
+      setCancelError(formatApiErrorMessage(err, t('buyer_dashboard.cancel_order')));
     } finally {
       setCancelling(false);
     }
@@ -1424,7 +1426,7 @@ export function BuyerDashboardNative() {
       await resendBuyerVerificationEmail();
       setVerificationMessage(t('buyer_dashboard.email_verification_sent'));
     } catch (err) {
-      setVerificationMessage(err instanceof Error ? err.message : t('buyer_dashboard.email_verification_failed'));
+      setVerificationMessage(formatApiErrorMessage(err, t('buyer_dashboard.email_verification_failed')));
     } finally {
       setResendingEmail(false);
     }

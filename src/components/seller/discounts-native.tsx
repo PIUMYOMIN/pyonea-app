@@ -24,6 +24,8 @@ import {
   type SellerDiscountType,
   type SellerManagedProduct,
   type SellerProductCategory,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type DiscountForm = {
@@ -275,7 +277,7 @@ export function DiscountsNative() {
       setCategories(categoryList);
       setError('');
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Failed to fetch discounts');
+      setError(formatApiErrorMessage(requestError, 'Failed to fetch discounts'));
     } finally {
       setLoading(false);
     }
@@ -384,7 +386,7 @@ export function DiscountsNative() {
       setShowForm(false);
       setMessage(editingDiscount ? 'Discount updated.' : 'Discount created.');
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Failed to save discount');
+      setError(formatApiErrorMessage(requestError, 'Failed to save discount'));
     } finally {
       setSubmitting(false);
     }
@@ -397,7 +399,7 @@ export function DiscountsNative() {
       await loadData();
       setMessage('Discount deleted.');
     } catch (requestError) {
-      setError(requestError instanceof Error ? requestError.message : 'Failed to delete discount');
+      setError(formatApiErrorMessage(requestError, 'Failed to delete discount'));
     } finally {
       setDeleteTarget(null);
     }
@@ -409,7 +411,7 @@ export function DiscountsNative() {
       await toggleSellerDiscountStatus(discount.id);
     } catch (requestError) {
       setDiscounts((current) => current.map((item) => item.id === discount.id ? discount : item));
-      setError(requestError instanceof Error ? requestError.message : 'Failed to update discount status');
+      setError(formatApiErrorMessage(requestError, 'Failed to update discount status'));
     }
   };
 

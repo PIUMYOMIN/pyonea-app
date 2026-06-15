@@ -15,6 +15,8 @@ import {
   fetchAdminSellerReviews,
   updateAdminReviewStatus,
   type AdminReview,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 type ReviewTab = 'seller' | 'product';
@@ -204,7 +206,7 @@ export function ReviewManagementNative() {
       }
     } catch (err) {
       setError(
-        err instanceof Error ? err.message : t('admin.reviewManagement.errors.load', 'Failed to load reviews.')
+        formatApiErrorMessage(err, t('admin.reviewManagement.errors.load', 'Failed to load reviews.'))
       );
     } finally {
       setLoading(false);
@@ -229,7 +231,7 @@ export function ReviewManagementNative() {
       flash(t(`admin.reviewManagement.messages.${status}`, 'Review updated successfully.'));
     } catch (err) {
       flash(
-        err instanceof Error ? err.message : t('admin.reviewManagement.errors.update', 'Failed to update review.'),
+        formatApiErrorMessage(err, t('admin.reviewManagement.errors.update', 'Failed to update review.')),
         'error'
       );
     } finally {

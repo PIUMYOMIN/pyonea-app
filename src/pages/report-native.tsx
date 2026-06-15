@@ -16,7 +16,7 @@ import {
 import { AppLayout } from '@/components/layout/app-layout';
 import { useNativeAuth } from '@/context/native-auth';
 import { useAppTranslation } from '@/i18n';
-import { ApiError, submitReportWithAttachments, type NativeUploadFile } from '@/utils/native-api';
+import { ApiError, formatApiErrorMessage, submitReportWithAttachments, type NativeUploadFile } from '@/utils/native-api';
 import { executeRecaptcha } from '@/utils/recaptcha';
 
 const CATEGORIES = [
@@ -320,11 +320,11 @@ export function ReportNative() {
       if (error instanceof ApiError && error.errors) {
         setErrors({
           ...mapApiErrors(error.errors),
-          general: error.message || tr('form.submit_error'),
+          general: formatApiErrorMessage(error, tr('form.submit_error')),
         });
       } else {
         setErrors({
-          general: error instanceof Error ? error.message : tr('form.submit_error'),
+          general: formatApiErrorMessage(error, tr('form.submit_error')),
         });
       }
     } finally {

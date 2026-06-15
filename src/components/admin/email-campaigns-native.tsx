@@ -23,6 +23,8 @@ import {
   type AdminEmailCampaign,
   type AdminEmailCampaignFormPayload,
   type AdminNewsletterSubscriber,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 const AUDIENCE_LABELS: Record<string, string> = {
@@ -189,7 +191,7 @@ function CampaignForm({
       else await createAdminEmailCampaign(payload);
       onSaved();
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to save.');
+      setError(formatApiErrorMessage(err, 'Failed to save.'));
     } finally {
       setSaving(false);
     }
@@ -382,7 +384,7 @@ export function EmailCampaignsNative() {
           setMessage(result.message || 'Campaign sent!');
           await load();
         } catch (err) {
-          setError(err instanceof Error ? err.message : 'Send failed.');
+          setError(formatApiErrorMessage(err, 'Send failed.'));
         } finally {
           setSendingId(null);
         }

@@ -20,6 +20,8 @@ import {
   updateAdminBlogPost,
   type AdminBlogFormPayload,
   type AdminManagedBlogPost,
+
+  formatApiErrorMessage,
 } from '@/utils/native-api';
 
 const BLANK_FORM: AdminBlogFormPayload = {
@@ -297,7 +299,7 @@ export function BlogManagementNative() {
     } catch (requestError) {
       setMessage({
         type: 'error',
-        text: requestError instanceof Error ? requestError.message : 'Could not save blog post.',
+        text: formatApiErrorMessage(requestError, 'Could not save blog post.'),
       });
     } finally {
       setSaving(false);
