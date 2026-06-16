@@ -1,7 +1,7 @@
-import { Feather } from '@expo/vector-icons';
-import { OptimizedImage as Image } from '@/components/ui/optimized-image';
-import { router, type Href } from 'expo-router';
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { Feather } from "@expo/vector-icons";
+import { OptimizedImage as Image } from "@/components/ui/optimized-image";
+import { router, type Href } from "expo-router";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -12,18 +12,18 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useTheme } from '@/context/theme';
-import { useAppTranslation } from '@/i18n';
-import { ProductOptionsEditorNative } from '@/components/seller/product-options-editor-native';
-import { VariantTableNative } from '@/components/seller/variant-table-native';
+import { useTheme } from "@/context/theme";
+import { useAppTranslation } from "@/i18n";
+import { ProductOptionsEditorNative } from "@/components/seller/product-options-editor-native";
+import { VariantTableNative } from "@/components/seller/variant-table-native";
 import {
   appendUploadFile,
   pickImageFromCamera,
   pickImagesFromLibrary,
-} from '@/utils/native-image-picker';
+} from "@/utils/native-image-picker";
 import {
   clearProductDraft,
   loadProductDraft,
@@ -31,7 +31,7 @@ import {
   saveProductDraft,
   saveProductDraftImages,
   shouldAutoSaveProductDraft,
-} from '@/utils/product-draft-storage';
+} from "@/utils/product-draft-storage";
 import {
   ApiError,
   createSellerProduct,
@@ -50,72 +50,107 @@ import {
   type SellerProductFormData,
   type SellerProductImage,
   type SellerWholesaleTier,
-
   formatApiErrorMessage,
-} from '@/utils/native-api';
+} from "@/utils/native-api";
 
 const productTypes = [
-  { value: 'physical', label: 'Physical', hint: 'Has stock, requires shipping.' },
-  { value: 'digital', label: 'Digital', hint: 'Download/link delivered. No shipping.' },
-  { value: 'service', label: 'Service', hint: 'No stock, no shipping.' },
+  {
+    value: "physical",
+    label: "Physical",
+    hint: "Has stock, requires shipping.",
+  },
+  {
+    value: "digital",
+    label: "Digital",
+    hint: "Download/link delivered. No shipping.",
+  },
+  { value: "service", label: "Service", hint: "No stock, no shipping." },
 ];
 
-const quantityUnits = ['piece', 'kg', 'gram', 'meter', 'liter', 'set', 'pack', 'box', 'pallet', 'roll'];
-const warrantyTypes = ['manufacturer', 'seller', 'international', 'no_warranty'];
-const imageAngles = ['front', 'back', 'side', 'top', 'default'];
+const quantityUnits = [
+  "piece",
+  "kg",
+  "gram",
+  "meter",
+  "liter",
+  "set",
+  "pack",
+  "box",
+  "pallet",
+  "roll",
+];
+const warrantyTypes = [
+  "manufacturer",
+  "seller",
+  "international",
+  "no_warranty",
+];
+const imageAngles = ["front", "back", "side", "top", "default"];
 const conditions = [
-  { value: 'new', label: 'New', description: 'Brand new, never used' },
-  { value: 'used_like_new', label: 'Used - Like New', description: 'Used but looks and functions like new' },
-  { value: 'used_good', label: 'Used - Good', description: 'Used with minor signs of wear' },
-  { value: 'used_fair', label: 'Used - Fair', description: 'Used with visible signs of wear' },
+  { value: "new", label: "New", description: "Brand new, never used" },
+  {
+    value: "used_like_new",
+    label: "Used - Like New",
+    description: "Used but looks and functions like new",
+  },
+  {
+    value: "used_good",
+    label: "Used - Good",
+    description: "Used with minor signs of wear",
+  },
+  {
+    value: "used_fair",
+    label: "Used - Fair",
+    description: "Used with visible signs of wear",
+  },
 ];
 
 const steps = [
-  { id: 1, title: 'Basic Info', description: 'Product details' },
-  { id: 2, title: 'Pricing', description: 'Price & B2B' },
-  { id: 3, title: 'Media', description: 'Images & specs' },
-  { id: 4, title: 'Shipping', description: 'Delivery & more' },
-  { id: 5, title: 'Variants', description: 'Options & stock' },
+  { id: 1, title: "Basic Info", description: "Product details" },
+  { id: 2, title: "Pricing", description: "Price & B2B" },
+  { id: 3, title: "Media", description: "Images & specs" },
+  { id: 4, title: "Shipping", description: "Delivery & more" },
+  { id: 5, title: "Variants", description: "Options & stock" },
 ];
 
 const adminSteps = steps.slice(0, 4);
 
 const emptyForm: SellerProductFormData = {
-  name_en: '',
-  name_mm: '',
-  description_en: '',
-  description_mm: '',
-  product_type: 'physical',
-  price: '',
-  category_id: '',
-  quantity_unit: 'piece',
+  name_en: "",
+  name_mm: "",
+  description_en: "",
+  description_mm: "",
+  product_type: "physical",
+  price: "",
+  category_id: "",
+  quantity_unit: "piece",
   moq: 1,
-  min_order_unit: 'piece',
-  lead_time: '',
-  condition: 'new',
+  min_order_unit: "piece",
+  lead_time: "",
+  condition: "new",
   is_active: true,
-  brand: '',
-  model: '',
-  material: '',
-  origin: '',
-  weight_kg: '',
-  warranty: '',
-  warranty_type: '',
-  warranty_period: '',
-  return_policy: '',
-  shipping_cost: '',
-  shipping_time: '',
-  packaging_details: '',
-  additional_info: '',
+  brand: "",
+  model: "",
+  material: "",
+  origin: "",
+  weight_kg: "",
+  warranty: "",
+  warranty_type: "",
+  warranty_period: "",
+  return_policy: "",
+  shipping_cost: "",
+  shipping_time: "",
+  packaging_details: "",
+  additional_info: "",
   is_featured: false,
   is_new: true,
   free_shipping: false,
-  discount_price: '',
-  discount_start: '',
-  discount_end: '',
+  discount_price: "",
+  discount_start: "",
+  discount_end: "",
   specifications: {},
-  file_url: '',
-  file_type: '',
+  file_url: "",
+  file_type: "",
   images: [],
 };
 
@@ -127,15 +162,17 @@ type Option = {
 };
 
 function toStringValue(value: string | number | null | undefined) {
-  if (value === null || value === undefined) return '';
+  if (value === null || value === undefined) return "";
   return String(value);
 }
 
 function categoryLabel(
-  item: Pick<SellerProductCategory, 'name' | 'nameEn' | 'nameMm'>,
+  item: Pick<SellerProductCategory, "name" | "nameEn" | "nameMm">,
   language: string,
 ) {
-  return language === 'my' ? item.nameMm || item.nameEn || item.name : item.nameEn || item.name;
+  return language === "my"
+    ? item.nameMm || item.nameEn || item.name
+    : item.nameEn || item.name;
 }
 
 function buildCategoryOptions(
@@ -172,7 +209,7 @@ function Field({
   placeholder,
   onChange,
   multiline,
-  keyboardType = 'default',
+  keyboardType = "default",
 }: {
   label: string;
   required?: boolean;
@@ -180,13 +217,13 @@ function Field({
   placeholder?: string;
   onChange: (value: string) => void;
   multiline?: boolean;
-  keyboardType?: 'default' | 'numeric' | 'url';
+  keyboardType?: "default" | "numeric" | "url";
 }) {
   return (
     <View className="gap-2">
       <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">
         {label}
-        {required ? ' *' : ''}
+        {required ? " *" : ""}
         {!required && <Text className="text-xs text-gray-400">(Optional)</Text>}
       </Text>
       <TextInput
@@ -196,9 +233,9 @@ function Field({
         placeholderTextColor="#9ca3af"
         multiline={multiline}
         keyboardType={keyboardType}
-        textAlignVertical={multiline ? 'top' : 'center'}
+        textAlignVertical={multiline ? "top" : "center"}
         className={`rounded-lg border border-gray-300 bg-white px-4 py-3 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 ${
-          multiline ? 'min-h-28' : ''
+          multiline ? "min-h-28" : ""
         }`}
       />
     </View>
@@ -209,25 +246,34 @@ function ToggleRow({
   label,
   value,
   onChange,
-  tone = 'green',
+  tone = "green",
 }: {
   label: string;
   value: boolean;
   onChange: (value: boolean) => void;
-  tone?: 'green' | 'amber' | 'blue';
+  tone?: "green" | "amber" | "blue";
 }) {
   const tones = {
-    green: 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20',
-    amber: 'border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20',
-    blue: 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20',
+    green:
+      "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20",
+    amber:
+      "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20",
+    blue: "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20",
   };
 
   return (
-    <Pressable onPress={() => onChange(!value)} className={`flex-row items-center gap-3 rounded-lg border p-4 ${tones[tone]}`}>
-      <View className={`h-5 w-5 items-center justify-center rounded border ${value ? 'border-green-600 bg-green-600' : 'border-gray-300 bg-white'}`}>
+    <Pressable
+      onPress={() => onChange(!value)}
+      className={`flex-row items-center gap-3 rounded-lg border p-4 ${tones[tone]}`}
+    >
+      <View
+        className={`h-5 w-5 items-center justify-center rounded border ${value ? "border-green-600 bg-green-600" : "border-gray-300 bg-white"}`}
+      >
         {value && <Feather name="check" size={13} color="#ffffff" />}
       </View>
-      <Text className="min-w-0 flex-1 font-sans text-sm font-semibold text-gray-900 dark:text-slate-100">{label}</Text>
+      <Text className="min-w-0 flex-1 font-sans text-sm font-semibold text-gray-900 dark:text-slate-100">
+        {label}
+      </Text>
     </Pressable>
   );
 }
@@ -247,8 +293,12 @@ function PillSelect({
 }) {
   return (
     <View className="gap-2">
-      <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">{label}</Text>
-      <View className={`${columns ? 'gap-3 md:grid md:grid-cols-3' : 'flex-row flex-wrap gap-2'}`}>
+      <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">
+        {label}
+      </Text>
+      <View
+        className={`${columns ? "gap-3 md:grid md:grid-cols-3" : "flex-row flex-wrap gap-2"}`}
+      >
         {options.map((option) => {
           const selected = value === option.value;
           return (
@@ -257,12 +307,17 @@ function PillSelect({
               onPress={() => onChange(option.value)}
               className={`rounded-xl border-2 p-3 ${
                 selected
-                  ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
-                  : 'border-gray-200 bg-white dark:border-slate-600 dark:bg-slate-800'
-              } ${columns ? 'md:flex-1' : ''}`}>
-              <Text className="font-sans text-sm font-semibold text-gray-900 dark:text-slate-100">{option.label}</Text>
+                  ? "border-green-500 bg-green-50 dark:bg-green-900/20"
+                  : "border-gray-200 bg-white dark:border-slate-600 dark:bg-slate-800"
+              } ${columns ? "md:flex-1" : ""}`}
+            >
+              <Text className="font-sans text-sm font-semibold text-gray-900 dark:text-slate-100">
+                {option.label}
+              </Text>
               {option.description && (
-                <Text className="mt-1 font-sans text-xs text-gray-500 dark:text-slate-400">{option.description}</Text>
+                <Text className="mt-1 font-sans text-xs text-gray-500 dark:text-slate-400">
+                  {option.description}
+                </Text>
               )}
             </Pressable>
           );
@@ -291,28 +346,53 @@ function SelectModal({
 
   return (
     <View className="gap-2">
-      <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">{label}</Text>
+      <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">
+        {label}
+      </Text>
       <Pressable
         onPress={() => setOpen(true)}
-        className="flex-row items-center justify-between rounded-lg border border-gray-300 bg-white px-4 py-3 dark:border-slate-600 dark:bg-slate-800">
+        className="flex-row items-center justify-between rounded-lg border border-gray-300 bg-white px-4 py-3 dark:border-slate-600 dark:bg-slate-800"
+      >
         <View className="min-w-0 flex-1">
-          <Text className={`font-sans text-sm ${selected ? 'text-gray-900 dark:text-slate-100' : 'text-gray-400'}`}>
+          <Text
+            className={`font-sans text-sm ${selected ? "text-gray-900 dark:text-slate-100" : "text-gray-400"}`}
+          >
             {selected?.label || placeholder}
           </Text>
           {selected?.description && (
-            <Text className="mt-0.5 font-sans text-xs text-gray-500 dark:text-slate-400">{selected.description}</Text>
+            <Text className="mt-0.5 font-sans text-xs text-gray-500 dark:text-slate-400">
+              {selected.description}
+            </Text>
           )}
         </View>
-        <Feather name="chevron-down" size={18} color={isDark ? '#cbd5e1' : '#6b7280'} />
+        <Feather
+          name="chevron-down"
+          size={18}
+          color={isDark ? "#cbd5e1" : "#6b7280"}
+        />
       </Pressable>
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={() => setOpen(false)}>
+      <Modal
+        visible={open}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setOpen(false)}
+      >
         <View className="flex-1 justify-end bg-black/40 md:items-center md:justify-center">
           <View className="max-h-[70%] rounded-t-3xl bg-white p-5 dark:bg-slate-900 md:w-[520px] md:rounded-2xl">
             <View className="mb-4 flex-row items-center justify-between">
-              <Text className="font-sans text-lg font-bold text-gray-900 dark:text-slate-100">{label}</Text>
-              <Pressable onPress={() => setOpen(false)} className="h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-slate-800">
-                <Feather name="x" size={18} color={isDark ? '#cbd5e1' : '#64748b'} />
+              <Text className="font-sans text-lg font-bold text-gray-900 dark:text-slate-100">
+                {label}
+              </Text>
+              <Pressable
+                onPress={() => setOpen(false)}
+                className="h-10 w-10 items-center justify-center rounded-full bg-gray-100 dark:bg-slate-800"
+              >
+                <Feather
+                  name="x"
+                  size={18}
+                  color={isDark ? "#cbd5e1" : "#64748b"}
+                />
               </Pressable>
             </View>
             <ScrollView showsVerticalScrollIndicator={false}>
@@ -321,7 +401,8 @@ function SelectModal({
                   return (
                     <View
                       key={option.value}
-                      className="mb-2 mt-1 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/50">
+                      className="mb-2 mt-1 rounded-xl border border-dashed border-gray-200 bg-gray-50 px-4 py-3 dark:border-slate-700 dark:bg-slate-900/50"
+                    >
                       <Text className="font-sans text-sm font-bold text-gray-700 dark:text-slate-200">
                         {option.label}
                       </Text>
@@ -344,9 +425,10 @@ function SelectModal({
                     }}
                     className={`mb-2 rounded-xl border p-4 ${
                       selectedOption
-                        ? 'border-green-500 bg-green-50 dark:bg-green-900/20'
-                        : 'border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-800'
-                    }`}>
+                        ? "border-green-500 bg-green-50 dark:bg-green-900/20"
+                        : "border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-800"
+                    }`}
+                  >
                     <Text className="font-sans text-sm font-semibold text-gray-900 dark:text-slate-100">
                       {option.label}
                     </Text>
@@ -366,11 +448,21 @@ function SelectModal({
   );
 }
 
-function SectionTitle({ title, subtitle }: { title: string; subtitle: string }) {
+function SectionTitle({
+  title,
+  subtitle,
+}: {
+  title: string;
+  subtitle: string;
+}) {
   return (
     <View>
-      <Text className="font-sans text-lg font-bold text-gray-900 dark:text-slate-100">{title}</Text>
-      <Text className="mt-1 font-sans text-sm text-gray-500 dark:text-slate-400">{subtitle}</Text>
+      <Text className="font-sans text-lg font-bold text-gray-900 dark:text-slate-100">
+        {title}
+      </Text>
+      <Text className="mt-1 font-sans text-sm text-gray-500 dark:text-slate-400">
+        {subtitle}
+      </Text>
     </View>
   );
 }
@@ -380,13 +472,15 @@ function imageAngleLabel(
   t: (key: string, options?: Record<string, unknown>) => string,
 ) {
   const defaults: Record<string, string> = {
-    front: 'Front View',
-    back: 'Back View',
-    side: 'Side View',
-    top: 'Top View',
-    default: 'Other View',
+    front: "Front View",
+    back: "Back View",
+    side: "Side View",
+    top: "Top View",
+    default: "Other View",
   };
-  return t(`product_form.image_angles.${angle}`, { defaultValue: defaults[angle] || angle });
+  return t(`product_form.image_angles.${angle}`, {
+    defaultValue: defaults[angle] || angle,
+  });
 }
 
 function ProductImagePreviewGrid({
@@ -422,11 +516,15 @@ function ProductImagePreviewGrid({
             key={`${image.url}-${index}`}
             className={`w-[47%] overflow-hidden rounded-lg border-2 sm:w-[31%] md:w-[23%] lg:w-[15%] ${
               image.isPrimary
-                ? 'border-green-500 ring-2 ring-green-200 dark:ring-green-900/40'
-                : 'border-gray-200 dark:border-slate-600'
-            }`}>
+                ? "border-green-500 ring-2 ring-green-200 dark:ring-green-900/40"
+                : "border-gray-200 dark:border-slate-600"
+            }`}
+          >
             <View className="relative aspect-square bg-gray-100 dark:bg-slate-800">
-              <Pressable className="h-full w-full" onPress={() => onPreview(image.url)}>
+              <Pressable
+                className="h-full w-full"
+                onPress={() => onPreview(image.url)}
+              >
                 <Image
                   source={{ uri: getNativeImageUrl(image.url) || image.url }}
                   className="h-full w-full"
@@ -437,14 +535,20 @@ function ProductImagePreviewGrid({
                 <View className="absolute left-1.5 top-1.5 flex-row items-center rounded-full bg-green-600 px-1.5 py-0.5">
                   <Feather name="check-circle" size={10} color="#ffffff" />
                   <Text className="ml-0.5 font-sans text-[10px] font-semibold text-white">
-                    {t('product_form.labels.primary', { defaultValue: 'Primary' })}
+                    {t("product_form.labels.primary", {
+                      defaultValue: "Primary",
+                    })}
                   </Text>
                 </View>
               ) : null}
               <Pressable
                 onPress={() => setAnglePickerIndex(index)}
-                className="absolute right-1 top-1 max-w-[72px] rounded bg-black/60 px-1.5 py-0.5">
-                <Text className="font-sans text-[10px] text-white" numberOfLines={1}>
+                className="absolute right-1 top-1 max-w-[72px] rounded bg-black/60 px-1.5 py-0.5"
+              >
+                <Text
+                  className="font-sans text-[10px] text-white"
+                  numberOfLines={1}
+                >
                   {imageAngleLabel(image.angle, t)}
                 </Text>
               </Pressable>
@@ -453,33 +557,52 @@ function ProductImagePreviewGrid({
               <Pressable
                 disabled={index === 0}
                 onPress={() => onMove(index, -1)}
-                className="h-7 flex-1 items-center justify-center rounded-md disabled:opacity-30">
-                <Feather name="chevron-left" size={14} color={isDark ? '#94a3b8' : '#64748b'} />
+                className="h-7 flex-1 items-center justify-center rounded-md disabled:opacity-30"
+              >
+                <Feather
+                  name="chevron-left"
+                  size={14}
+                  color={isDark ? "#94a3b8" : "#64748b"}
+                />
               </Pressable>
               <Pressable
                 onPress={() => onSetPrimary(index)}
-                className="h-7 flex-1 items-center justify-center rounded-md">
+                className="h-7 flex-1 items-center justify-center rounded-md"
+              >
                 <Feather
                   name="star"
                   size={14}
-                  color={image.isPrimary ? '#16a34a' : isDark ? '#94a3b8' : '#64748b'}
+                  color={
+                    image.isPrimary ? "#16a34a" : isDark ? "#94a3b8" : "#64748b"
+                  }
                 />
               </Pressable>
               <Pressable
                 onPress={() => onPreview(image.url)}
-                className="h-7 flex-1 items-center justify-center rounded-md">
-                <Feather name="eye" size={14} color={isDark ? '#94a3b8' : '#64748b'} />
+                className="h-7 flex-1 items-center justify-center rounded-md"
+              >
+                <Feather
+                  name="eye"
+                  size={14}
+                  color={isDark ? "#94a3b8" : "#64748b"}
+                />
               </Pressable>
               <Pressable
                 onPress={() => onRemove(index)}
-                className="h-7 flex-1 items-center justify-center rounded-md">
+                className="h-7 flex-1 items-center justify-center rounded-md"
+              >
                 <Feather name="trash-2" size={14} color="#dc2626" />
               </Pressable>
               <Pressable
                 disabled={index === images.length - 1}
                 onPress={() => onMove(index, 1)}
-                className="h-7 flex-1 items-center justify-center rounded-md disabled:opacity-30">
-                <Feather name="chevron-right" size={14} color={isDark ? '#94a3b8' : '#64748b'} />
+                className="h-7 flex-1 items-center justify-center rounded-md disabled:opacity-30"
+              >
+                <Feather
+                  name="chevron-right"
+                  size={14}
+                  color={isDark ? "#94a3b8" : "#64748b"}
+                />
               </Pressable>
             </View>
           </View>
@@ -490,19 +613,25 @@ function ProductImagePreviewGrid({
         visible={anglePickerIndex !== null}
         transparent
         animationType="fade"
-        onRequestClose={() => setAnglePickerIndex(null)}>
+        onRequestClose={() => setAnglePickerIndex(null)}
+      >
         <Pressable
           className="flex-1 justify-end bg-black/40 md:items-center md:justify-center"
-          onPress={() => setAnglePickerIndex(null)}>
+          onPress={() => setAnglePickerIndex(null)}
+        >
           <Pressable
             className="rounded-t-3xl bg-white p-4 dark:bg-slate-900 md:w-[360px] md:rounded-2xl"
-            onPress={() => undefined}>
+            onPress={() => undefined}
+          >
             <Text className="mb-3 font-sans text-base font-bold text-gray-900 dark:text-slate-100">
-              {t('product_form.labels.image_angle', { defaultValue: 'Image angle' })}
+              {t("product_form.labels.image_angle", {
+                defaultValue: "Image angle",
+              })}
             </Text>
             {angleOptions.map((option) => {
               const active =
-                anglePickerIndex !== null && images[anglePickerIndex]?.angle === option.value;
+                anglePickerIndex !== null &&
+                images[anglePickerIndex]?.angle === option.value;
               return (
                 <Pressable
                   key={option.value}
@@ -513,13 +642,17 @@ function ProductImagePreviewGrid({
                   }}
                   className={`mb-2 rounded-lg border px-3 py-2.5 ${
                     active
-                      ? 'border-green-500 bg-green-50 dark:border-green-600 dark:bg-green-900/20'
-                      : 'border-gray-200 dark:border-slate-700'
-                  }`}>
+                      ? "border-green-500 bg-green-50 dark:border-green-600 dark:bg-green-900/20"
+                      : "border-gray-200 dark:border-slate-700"
+                  }`}
+                >
                   <Text
                     className={`font-sans text-sm ${
-                      active ? 'font-semibold text-green-700 dark:text-green-300' : 'text-gray-700 dark:text-slate-300'
-                    }`}>
+                      active
+                        ? "font-semibold text-green-700 dark:text-green-300"
+                        : "text-gray-700 dark:text-slate-300"
+                    }`}
+                  >
                     {option.label}
                   </Text>
                 </Pressable>
@@ -533,9 +666,9 @@ function ProductImagePreviewGrid({
 }
 
 const emptyTier = (): SellerWholesaleTier => ({
-  minQty: '',
-  pricePerUnit: '',
-  label: '',
+  minQty: "",
+  pricePerUnit: "",
+  label: "",
   isActive: true,
 });
 
@@ -552,22 +685,22 @@ function WholesaleTiersEditorNative({
 }) {
   const { t } = useAppTranslation();
   const [tiers, setTiers] = useState<SellerWholesaleTier[]>([]);
-  const [savedSnapshot, setSavedSnapshot] = useState('[]');
+  const [savedSnapshot, setSavedSnapshot] = useState("[]");
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [success, setSuccess] = useState(false);
 
   const loadTiers = async () => {
     if (!productId) return;
     setLoading(true);
-    setError('');
+    setError("");
     try {
       const nextTiers = await fetchSellerWholesaleTiers(productId);
       setTiers(nextTiers);
       setSavedSnapshot(JSON.stringify(nextTiers));
     } catch {
-      setError('Could not load existing tiers.');
+      setError("Could not load existing tiers.");
     } finally {
       setLoading(false);
     }
@@ -586,16 +719,24 @@ function WholesaleTiersEditorNative({
       <View className="items-center rounded-xl border border-dashed border-gray-200 p-5 dark:border-slate-700">
         <Feather name="tag" size={20} color="#9ca3af" />
         <Text className="mt-2 text-center font-sans text-sm text-gray-400 dark:text-slate-500">
-          {t('product_form.wholesale_tiers.save_first')}
+          {t("product_form.wholesale_tiers.save_first")}
         </Text>
       </View>
     );
   }
 
   const isDirty = JSON.stringify(tiers) !== savedSnapshot;
-  const updateRow = (index: number, key: keyof SellerWholesaleTier, value: string | boolean) => {
+  const updateRow = (
+    index: number,
+    key: keyof SellerWholesaleTier,
+    value: string | boolean,
+  ) => {
     setSuccess(false);
-    setTiers((current) => current.map((tier, idx) => (idx === index ? { ...tier, [key]: value } : tier)));
+    setTiers((current) =>
+      current.map((tier, idx) =>
+        idx === index ? { ...tier, [key]: value } : tier,
+      ),
+    );
   };
   const removeRow = (index: number) => {
     setSuccess(false);
@@ -603,7 +744,7 @@ function WholesaleTiersEditorNative({
   };
   const calcDiscount = (price: string) => {
     const nextPrice = parseFloat(price);
-    if (!basePrice || !nextPrice || nextPrice >= basePrice) return '0%';
+    if (!basePrice || !nextPrice || nextPrice >= basePrice) return "0%";
     return `${Math.round(((basePrice - nextPrice) / basePrice) * 100)}%`;
   };
   const validate = () => {
@@ -612,13 +753,16 @@ function WholesaleTiersEditorNative({
       const tier = tiers[index];
       const qty = parseInt(tier.minQty, 10);
       const price = parseFloat(tier.pricePerUnit);
-      if (!Number.isFinite(qty) || qty < moq) return `Tier ${index + 1}: min qty must be at least MOQ (${moq}).`;
+      if (!Number.isFinite(qty) || qty < moq)
+        return `Tier ${index + 1}: min qty must be at least MOQ (${moq}).`;
       if (seen.has(qty)) return `Tier ${index + 1}: duplicate min qty.`;
-      if (!Number.isFinite(price) || price <= 0) return `Tier ${index + 1}: enter a valid price.`;
-      if (basePrice > 0 && price >= basePrice) return `Tier ${index + 1}: tier price should be below base price.`;
+      if (!Number.isFinite(price) || price <= 0)
+        return `Tier ${index + 1}: enter a valid price.`;
+      if (basePrice > 0 && price >= basePrice)
+        return `Tier ${index + 1}: tier price should be below base price.`;
       seen.add(qty);
     }
-    return '';
+    return "";
   };
   const saveTiers = async () => {
     const validationError = validate();
@@ -627,14 +771,19 @@ function WholesaleTiersEditorNative({
       return;
     }
     setSaving(true);
-    setError('');
+    setError("");
     try {
       const fresh = await syncSellerWholesaleTiers(productId, tiers);
       setTiers(fresh);
       setSavedSnapshot(JSON.stringify(fresh));
       setSuccess(true);
     } catch (nextError) {
-      setError(formatApiErrorMessage(nextError, 'Failed to save tiers. Please try again.'));
+      setError(
+        formatApiErrorMessage(
+          nextError,
+          "Failed to save tiers. Please try again.",
+        ),
+      );
     } finally {
       setSaving(false);
     }
@@ -645,26 +794,35 @@ function WholesaleTiersEditorNative({
       <View className="gap-3 md:flex-row md:items-start md:justify-between">
         <View className="min-w-0 flex-1">
           <Text className="font-sans text-sm font-semibold text-gray-900 dark:text-slate-100">
-            {t('product_form.wholesale_tiers.title')}
+            {t("product_form.wholesale_tiers.title")}
           </Text>
           <Text className="mt-1 font-sans text-xs leading-5 text-gray-500 dark:text-slate-400">
-            {t('product_form.wholesale_tiers.subtitle', { price: formatMMK(basePrice) })}
+            {t("product_form.wholesale_tiers.subtitle", {
+              price: formatMMK(basePrice),
+            })}
           </Text>
         </View>
         <View className="flex-row gap-2">
           <Pressable
             onPress={loadTiers}
             disabled={loading || saving}
-            className="h-10 w-10 items-center justify-center rounded-lg border border-gray-200 dark:border-slate-600">
+            className="h-10 w-10 items-center justify-center rounded-lg border border-gray-200 dark:border-slate-600"
+          >
             <Feather name="refresh-cw" size={16} color="#94a3b8" />
           </Pressable>
           <Pressable
-            onPress={() => setTiers((current) => [...current, { ...emptyTier(), minQty: String(Math.max(moq, 1)) }])}
+            onPress={() =>
+              setTiers((current) => [
+                ...current,
+                { ...emptyTier(), minQty: String(Math.max(moq, 1)) },
+              ])
+            }
             disabled={saving}
-            className="flex-row items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-2 dark:border-green-800 dark:bg-green-900/30">
+            className="flex-row items-center gap-1.5 rounded-lg border border-green-200 bg-green-50 px-3 py-2 dark:border-green-800 dark:bg-green-900/30"
+          >
             <Feather name="plus" size={15} color="#16a34a" />
             <Text className="font-sans text-xs font-semibold text-green-700 dark:text-green-300">
-              {t('product_form.wholesale_tiers.add_tier')}
+              {t("product_form.wholesale_tiers.add_tier")}
             </Text>
           </Pressable>
         </View>
@@ -672,7 +830,9 @@ function WholesaleTiersEditorNative({
 
       {error ? (
         <View className="rounded-lg border border-red-200 bg-red-50 p-3 dark:border-red-800 dark:bg-red-900/20">
-          <Text className="font-sans text-sm text-red-700 dark:text-red-300">{error}</Text>
+          <Text className="font-sans text-sm text-red-700 dark:text-red-300">
+            {error}
+          </Text>
         </View>
       ) : null}
 
@@ -684,39 +844,56 @@ function WholesaleTiersEditorNative({
       ) : tiers.length === 0 ? (
         <View className="items-center rounded-xl border border-dashed border-gray-200 py-8 dark:border-slate-700">
           <Text className="text-center font-sans text-sm text-gray-400 dark:text-slate-500">
-            {t('product_form.wholesale_tiers.empty').replace(/<[^>]*>/g, '')}
+            {t("product_form.wholesale_tiers.empty").replace(/<[^>]*>/g, "")}
           </Text>
         </View>
       ) : (
         <View className="overflow-hidden rounded-xl border border-gray-100 dark:border-slate-700">
           {tiers.map((tier, index) => (
-            <View key={`${tier.id || 'new'}-${index}`} className="gap-3 border-b border-gray-100 bg-white p-3 last:border-b-0 dark:border-slate-700 dark:bg-slate-800">
+            <View
+              key={`${tier.id || "new"}-${index}`}
+              className="gap-3 border-b border-gray-100 bg-white p-3 last:border-b-0 dark:border-slate-700 dark:bg-slate-800"
+            >
               <View className="gap-3 md:flex-row">
                 <Field
-                  label={t('product_form.wholesale_tiers.col_min_qty', { unit: quantityUnit })}
+                  label={t("product_form.wholesale_tiers.col_min_qty", {
+                    unit: quantityUnit,
+                  })}
                   value={tier.minQty}
-                  onChange={(value) => updateRow(index, 'minQty', value.replace(/\D/g, ''))}
+                  onChange={(value) =>
+                    updateRow(index, "minQty", value.replace(/\D/g, ""))
+                  }
                   keyboardType="numeric"
                 />
                 <Field
-                  label={t('product_form.wholesale_tiers.col_price_per_unit', { unit: quantityUnit })}
+                  label={t("product_form.wholesale_tiers.col_price_per_unit", {
+                    unit: quantityUnit,
+                  })}
                   value={tier.pricePerUnit}
-                  onChange={(value) => updateRow(index, 'pricePerUnit', value.replace(/[^\d.]/g, ''))}
+                  onChange={(value) =>
+                    updateRow(
+                      index,
+                      "pricePerUnit",
+                      value.replace(/[^\d.]/g, ""),
+                    )
+                  }
                   keyboardType="numeric"
                 />
               </View>
               <View className="gap-3 md:flex-row md:items-end">
                 <View className="flex-1">
                   <Field
-                    label={t('product_form.wholesale_tiers.col_label')}
+                    label={t("product_form.wholesale_tiers.col_label")}
                     value={tier.label}
-                    placeholder={t('product_form.wholesale_tiers.label_placeholder')}
-                    onChange={(value) => updateRow(index, 'label', value)}
+                    placeholder={t(
+                      "product_form.wholesale_tiers.label_placeholder",
+                    )}
+                    onChange={(value) => updateRow(index, "label", value)}
                   />
                 </View>
                 <View className="gap-2 md:w-36">
                   <Text className="font-sans text-xs font-semibold text-gray-500 dark:text-slate-400">
-                    {t('product_form.wholesale_tiers.col_discount')}
+                    {t("product_form.wholesale_tiers.col_discount")}
                   </Text>
                   <View className="rounded-lg bg-green-50 px-3 py-2 dark:bg-green-900/20">
                     <Text className="font-sans text-sm font-bold text-green-700 dark:text-green-300">
@@ -725,16 +902,24 @@ function WholesaleTiersEditorNative({
                   </View>
                 </View>
                 <Pressable
-                  onPress={() => updateRow(index, 'isActive', !tier.isActive)}
-                  className="flex-row items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 dark:border-slate-600">
-                  <View className={`h-4 w-4 rounded ${tier.isActive ? 'bg-green-600' : 'bg-gray-300'}`}>
-                    {tier.isActive ? <Feather name="check" size={12} color="#ffffff" /> : null}
+                  onPress={() => updateRow(index, "isActive", !tier.isActive)}
+                  className="flex-row items-center gap-2 rounded-lg border border-gray-200 px-3 py-2 dark:border-slate-600"
+                >
+                  <View
+                    className={`h-4 w-4 rounded ${tier.isActive ? "bg-green-600" : "bg-gray-300"}`}
+                  >
+                    {tier.isActive ? (
+                      <Feather name="check" size={12} color="#ffffff" />
+                    ) : null}
                   </View>
                   <Text className="font-sans text-xs text-gray-600 dark:text-slate-300">
-                    {t('product_form.wholesale_tiers.col_active')}
+                    {t("product_form.wholesale_tiers.col_active")}
                   </Text>
                 </Pressable>
-                <Pressable onPress={() => removeRow(index)} className="h-10 w-10 items-center justify-center rounded-lg">
+                <Pressable
+                  onPress={() => removeRow(index)}
+                  className="h-10 w-10 items-center justify-center rounded-lg"
+                >
                   <Feather name="trash-2" size={16} color="#ef4444" />
                 </Pressable>
               </View>
@@ -743,22 +928,34 @@ function WholesaleTiersEditorNative({
         </View>
       )}
 
-      {(tiers.length > 0 || isDirty) ? (
+      {tiers.length > 0 || isDirty ? (
         <View className="gap-3 md:flex-row md:items-center md:justify-between">
-          <Text className={`font-sans text-xs ${success ? 'text-green-600 dark:text-green-400' : 'text-gray-400 dark:text-slate-500'}`}>
+          <Text
+            className={`font-sans text-xs ${success ? "text-green-600 dark:text-green-400" : "text-gray-400 dark:text-slate-500"}`}
+          >
             {success
-              ? t('product_form.wholesale_tiers.tiers_saved')
+              ? t("product_form.wholesale_tiers.tiers_saved")
               : isDirty
-                ? t('product_form.wholesale_tiers.unsaved_changes')
-                : t('product_form.wholesale_tiers.tiers_saved_count', { n: tiers.length, s: tiers.length !== 1 ? 's' : '' })}
+                ? t("product_form.wholesale_tiers.unsaved_changes")
+                : t("product_form.wholesale_tiers.tiers_saved_count", {
+                    n: tiers.length,
+                    s: tiers.length !== 1 ? "s" : "",
+                  })}
           </Text>
           <Pressable
             onPress={saveTiers}
             disabled={saving || loading}
-            className="flex-row items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3 disabled:opacity-50">
-            {saving ? <ActivityIndicator color="#ffffff" /> : <Feather name="check" size={16} color="#ffffff" />}
+            className="flex-row items-center justify-center gap-2 rounded-xl bg-green-600 px-5 py-3 disabled:opacity-50"
+          >
+            {saving ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Feather name="check" size={16} color="#ffffff" />
+            )}
             <Text className="font-sans text-sm font-semibold text-white">
-              {saving ? t('product_form.wholesale_tiers.saving') : t('product_form.wholesale_tiers.save_tiers')}
+              {saving
+                ? t("product_form.wholesale_tiers.saving")
+                : t("product_form.wholesale_tiers.save_tiers")}
             </Text>
           </Pressable>
         </View>
@@ -766,7 +963,10 @@ function WholesaleTiersEditorNative({
 
       {tiers.length === 0 && !loading ? (
         <Text className="text-center font-sans text-xs text-gray-400 dark:text-slate-500">
-          {t('product_form.wholesale_tiers.example', { unit: quantityUnit, base: formatMMK(basePrice) })}
+          {t("product_form.wholesale_tiers.example", {
+            unit: quantityUnit,
+            base: formatMMK(basePrice),
+          })}
         </Text>
       ) : null}
     </View>
@@ -775,19 +975,21 @@ function WholesaleTiersEditorNative({
 
 export function ProductFormNative({
   productId,
-  mode = 'seller',
+  mode = "seller",
   returnHref,
 }: {
   productId?: string;
-  mode?: 'seller' | 'admin';
+  mode?: "seller" | "admin";
   returnHref?: Href;
 }) {
   const { t, language } = useAppTranslation();
   const { isDark } = useTheme();
-  const isAdminMode = mode === 'admin';
+  const isAdminMode = mode === "admin";
   const formSteps = isAdminMode ? adminSteps : steps;
   const dashboardHref = (returnHref ||
-    (isAdminMode ? '/admin/dashboard?tab=products' : '/seller/dashboard?tab=products')) as Href;
+    (isAdminMode
+      ? "/admin/dashboard?tab=products"
+      : "/seller/dashboard?tab=products")) as Href;
   const [form, setForm] = useState<SellerProductFormData>(emptyForm);
   const [categories, setCategories] = useState<SellerProductCategory[]>([]);
   const [images, setImages] = useState<SellerProductImage[]>([]);
@@ -797,13 +999,13 @@ export function ProductFormNative({
   const [saving, setSaving] = useState(false);
   const [isUploadingImages, setIsUploadingImages] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
-  const [error, setError] = useState('');
+  const [error, setError] = useState("");
   const [limitError, setLimitError] = useState(false);
   const [categoriesError, setCategoriesError] = useState(false);
-  const [success, setSuccess] = useState('');
-  const [imageUrl, setImageUrl] = useState('');
-  const [specKey, setSpecKey] = useState('');
-  const [specValue, setSpecValue] = useState('');
+  const [success, setSuccess] = useState("");
+  const [imageUrl, setImageUrl] = useState("");
+  const [specKey, setSpecKey] = useState("");
+  const [specValue, setSpecValue] = useState("");
   const [leaveModal, setLeaveModal] = useState(false);
   const [clearImagesModal, setClearImagesModal] = useState(false);
   const [previewImageUrl, setPreviewImageUrl] = useState<string | null>(null);
@@ -816,7 +1018,9 @@ export function ProductFormNative({
       buildCategoryOptions(
         categories,
         language,
-        t('product_form.category_parent_hint', { defaultValue: 'Select a subcategory below' }),
+        t("product_form.category_parent_hint", {
+          defaultValue: "Select a subcategory below",
+        }),
       ),
     [categories, language, t],
   );
@@ -830,7 +1034,10 @@ export function ProductFormNative({
     hasCreatedProductId,
   });
 
-  const update = <K extends keyof SellerProductFormData>(key: K, value: SellerProductFormData[K]) => {
+  const update = <K extends keyof SellerProductFormData>(
+    key: K,
+    value: SellerProductFormData[K],
+  ) => {
     setForm((prev) => ({ ...prev, [key]: value }));
   };
 
@@ -855,13 +1062,12 @@ export function ProductFormNative({
 
     const load = async () => {
       try {
-        setError('');
+        setError("");
         const [productResult] = await Promise.all([
           productId
-            ? (isAdminMode ? fetchAdminProductForEdit : fetchSellerProductForEdit)(
-                productId,
-                controller.signal,
-              )
+            ? (isAdminMode
+                ? fetchAdminProductForEdit
+                : fetchSellerProductForEdit)(productId, controller.signal)
             : Promise.resolve(null),
           loadCategories(controller.signal),
         ]);
@@ -882,7 +1088,9 @@ export function ProductFormNative({
         }
       } catch (nextError) {
         if (!controller.signal.aborted) {
-          setError(formatApiErrorMessage(nextError, 'Failed to load product form.'));
+          setError(
+            formatApiErrorMessage(nextError, "Failed to load product form."),
+          );
         }
       } finally {
         if (!controller.signal.aborted) {
@@ -939,18 +1147,25 @@ export function ProductFormNative({
   }, [currentStep]);
 
   const validateStep = (step: number) => {
-    if (step === 1) return Boolean(form.name_en && form.description_en && form.category_id && form.product_type);
-    if (step === 2) return Boolean(form.price && Number(form.moq) >= 1 && form.condition);
+    if (step === 1)
+      return Boolean(
+        form.name_en &&
+        form.description_en &&
+        form.category_id &&
+        form.product_type,
+      );
+    if (step === 2)
+      return Boolean(form.price && Number(form.moq) >= 1 && form.condition);
     if (step === 3) return images.length > 0;
     return true;
   };
 
   const nextStep = () => {
     if (!validateStep(currentStep)) {
-      setError('Please complete the required fields before continuing.');
+      setError("Please complete the required fields before continuing.");
       return;
     }
-    setError('');
+    setError("");
     setCompletedSteps((prev) => new Set(prev).add(currentStep));
     setCurrentStep((prev) => Math.min(prev + 1, formSteps.length));
   };
@@ -963,21 +1178,21 @@ export function ProductFormNative({
       {
         url,
         path: url,
-        angle: 'default',
+        angle: "default",
         isPrimary: prev.length === 0,
-        name: 'External Image',
-        size: 'External',
+        name: "External Image",
+        size: "External",
       },
     ]);
-    setImageUrl('');
+    setImageUrl("");
   };
 
   const uploadPickedImages = async (
     files: { uri: string; name: string; type: string; fileSize?: number }[],
-    rejected = 0
+    rejected = 0,
   ) => {
     if (rejected > 0) {
-      setError('Some images were rejected. Use JPEG, PNG, or WebP under 5 MB.');
+      setError("Some images were rejected. Use JPEG, PNG, or WebP under 5 MB.");
     }
     if (!files.length) return;
 
@@ -988,33 +1203,50 @@ export function ProductFormNative({
       for (let index = 0; index < files.length; index += 1) {
         const file = files[index];
         const formData = new FormData();
-        await appendUploadFile(formData, 'image', file);
-        formData.append('angle', imageAngles[images.length + uploaded.length] || 'default');
+        await appendUploadFile(formData, "image", file);
+        formData.append(
+          "angle",
+          imageAngles[images.length + uploaded.length] || "default",
+        );
         const uploadTargetId = form.id || productId;
         const result =
           isAdminMode && uploadTargetId
             ? await uploadAdminProductImage(formData, uploadTargetId)
-            : await uploadSellerProductImage(formData, uploadTargetId || undefined);
+            : await uploadSellerProductImage(
+                formData,
+                uploadTargetId || undefined,
+              );
         if (result) {
           uploaded.push({
             ...result,
             isPrimary: images.length === 0 && uploaded.length === 0,
             name: result.name || file.name,
-            size: result.size || (file.fileSize ? `${(file.fileSize / (1024 * 1024)).toFixed(2)} MB` : 'Uploaded'),
+            size:
+              result.size ||
+              (file.fileSize
+                ? `${(file.fileSize / (1024 * 1024)).toFixed(2)} MB`
+                : "Uploaded"),
           });
         }
         setUploadProgress(Math.round(((index + 1) / files.length) * 100));
       }
       if (uploaded.length) setImages((current) => [...current, ...uploaded]);
     } catch (nextError) {
-      setError(formatApiErrorMessage(nextError, t('product_form.errors.upload_images', 'Failed to upload images.')));
+      setError(
+        formatApiErrorMessage(
+          nextError,
+          t("product_form.errors.upload_images", "Failed to upload images."),
+        ),
+      );
     } finally {
       setIsUploadingImages(false);
     }
   };
 
   const pickAndUploadImages = async () => {
-    const result = await pickImagesFromLibrary({ allowsMultipleSelection: true });
+    const result = await pickImagesFromLibrary({
+      allowsMultipleSelection: true,
+    });
     await uploadPickedImages(result.accepted, result.rejected);
   };
 
@@ -1024,13 +1256,19 @@ export function ProductFormNative({
   };
 
   const setPrimaryImage = (index: number) => {
-    setImages((prev) => prev.map((image, imageIndex) => ({ ...image, isPrimary: imageIndex === index })));
+    setImages((prev) =>
+      prev.map((image, imageIndex) => ({
+        ...image,
+        isPrimary: imageIndex === index,
+      })),
+    );
   };
 
   const removeImage = (index: number) => {
     setImages((prev) => {
       const next = prev.filter((_, imageIndex) => imageIndex !== index);
-      if (!next.some((image) => image.isPrimary) && next[0]) next[0] = { ...next[0], isPrimary: true };
+      if (!next.some((image) => image.isPrimary) && next[0])
+        next[0] = { ...next[0], isPrimary: true };
       return next;
     });
   };
@@ -1049,10 +1287,13 @@ export function ProductFormNative({
     if (!specKey.trim() || !specValue.trim()) return;
     setForm((prev) => ({
       ...prev,
-      specifications: { ...prev.specifications, [specKey.trim()]: specValue.trim() },
+      specifications: {
+        ...prev.specifications,
+        [specKey.trim()]: specValue.trim(),
+      },
     }));
-    setSpecKey('');
-    setSpecValue('');
+    setSpecKey("");
+    setSpecValue("");
   };
 
   const removeSpecification = (key: string) => {
@@ -1071,9 +1312,13 @@ export function ProductFormNative({
     category_id: Number(form.category_id),
     discount_price: form.discount_price ? Number(form.discount_price) : null,
     weight_kg: form.weight_kg ? Number(form.weight_kg) : null,
-    shipping_cost: form.free_shipping ? 0 : form.shipping_cost ? Number(form.shipping_cost) : null,
-    file_url: form.product_type === 'digital' ? form.file_url || null : null,
-    file_type: form.product_type === 'digital' ? form.file_type || null : null,
+    shipping_cost: form.free_shipping
+      ? 0
+      : form.shipping_cost
+        ? Number(form.shipping_cost)
+        : null,
+    file_url: form.product_type === "digital" ? form.file_url || null : null,
+    file_type: form.product_type === "digital" ? form.file_type || null : null,
     images: images.map((image) => ({
       url: image.path || image.url,
       angle: image.angle,
@@ -1084,28 +1329,39 @@ export function ProductFormNative({
   const saveCore = async () => {
     if (saving || isUploadingImages) return;
     if (!validateStep(1) || !validateStep(3)) {
-      setError('Please complete required product details, pricing, and at least one product image.');
+      setError(
+        "Please complete required product details, pricing, and at least one product image.",
+      );
       return;
     }
 
     const priceNumber = parseFloat(String(form.price));
-    if (!Number.isFinite(priceNumber) || String(form.price) === '') {
-      setError(t('product_form.errors.valid_price', 'Please enter a valid price.'));
+    if (!Number.isFinite(priceNumber) || String(form.price) === "") {
+      setError(
+        t("product_form.errors.valid_price", "Please enter a valid price."),
+      );
       return;
     }
     const moqNumber = parseInt(String(form.moq), 10);
     if (!Number.isFinite(moqNumber) || moqNumber < 1) {
-      setError(t('product_form.errors.valid_moq', 'Please enter a valid minimum order quantity (MOQ).'));
+      setError(
+        t(
+          "product_form.errors.valid_moq",
+          "Please enter a valid minimum order quantity (MOQ).",
+        ),
+      );
       return;
     }
     if (!Number.isFinite(parseInt(String(form.category_id), 10))) {
-      setError(t('product_form.errors.select_category', 'Please select a category.'));
+      setError(
+        t("product_form.errors.select_category", "Please select a category."),
+      );
       return;
     }
 
     try {
       setSaving(true);
-      setError('');
+      setError("");
       setLimitError(false);
       const result =
         editing && productId
@@ -1118,26 +1374,45 @@ export function ProductFormNative({
         draftPersistRef.current = false;
         await clearProductDraft();
       }
-      setForm((prev) => ({ ...prev, ...result.product, id: savedId || prev.id }));
+      setForm((prev) => ({
+        ...prev,
+        ...result.product,
+        id: savedId || prev.id,
+      }));
       if (result.images.length) setImages(result.images);
       setCompletedSteps(new Set([1, 2, 3, 4]));
 
       if (isAdminMode) {
-        setSuccess(t('admin.productManagement.notifications.updated', 'Product updated successfully.'));
+        setSuccess(
+          t(
+            "admin.productManagement.notifications.updated",
+            "Product updated successfully.",
+          ),
+        );
         setTimeout(() => router.replace(dashboardHref), 900);
         return;
       }
 
       setCurrentStep(5);
-      setSuccess(editing ? 'Product updated! Now review options and variants.' : 'Product created! Now define your options and variants.');
+      setSuccess(
+        editing
+          ? "Product updated! Now review options and variants."
+          : "Product created! Now define your options and variants.",
+      );
     } catch (nextError) {
       if (
         nextError instanceof ApiError &&
-        (nextError.code === 'product_limit_reached' || nextError.code === 'plan_product_limit_reached')
+        (nextError.code === "product_limit_reached" ||
+          nextError.code === "plan_product_limit_reached")
       ) {
         setLimitError(true);
       }
-      setError(formatApiErrorMessage(nextError, 'Something went wrong while saving the product.'));
+      setError(
+        formatApiErrorMessage(
+          nextError,
+          "Something went wrong while saving the product.",
+        ),
+      );
     } finally {
       setSaving(false);
     }
@@ -1146,7 +1421,7 @@ export function ProductFormNative({
   const finish = async () => {
     draftPersistRef.current = false;
     await clearProductDraft();
-    setSuccess('All done. Your product listing is ready.');
+    setSuccess("All done. Your product listing is ready.");
     setTimeout(() => router.replace(dashboardHref), 900);
   };
 
@@ -1154,21 +1429,48 @@ export function ProductFormNative({
     if (currentStep === 1) {
       return (
         <View className="gap-6">
-          <SectionTitle title="Basic Information" subtitle="English fields are required" />
+          <SectionTitle
+            title="Basic Information"
+            subtitle="English fields are required"
+          />
           <PillSelect
             label="Product Type *"
             value={form.product_type}
             columns
-            options={productTypes.map((type) => ({ value: type.value, label: type.label, description: type.hint }))}
-            onChange={(value) => update('product_type', value)}
+            options={productTypes.map((type) => ({
+              value: type.value,
+              label: type.label,
+              description: type.hint,
+            }))}
+            onChange={(value) => update("product_type", value)}
           />
           <View className="gap-6 md:grid md:grid-cols-2">
-            <Field label="Product Name (English)" required value={form.name_en} onChange={(value) => update('name_en', value)} />
-            <Field label="Product Name (Myanmar)" value={form.name_mm} onChange={(value) => update('name_mm', value)} />
+            <Field
+              label="Product Name (English)"
+              required
+              value={form.name_en}
+              onChange={(value) => update("name_en", value)}
+            />
+            <Field
+              label="Product Name (Myanmar)"
+              value={form.name_mm}
+              onChange={(value) => update("name_mm", value)}
+            />
           </View>
           <View className="gap-6 md:grid md:grid-cols-2">
-            <Field label="Description (English)" required multiline value={form.description_en} onChange={(value) => update('description_en', value)} />
-            <Field label="Description (Myanmar)" multiline value={form.description_mm} onChange={(value) => update('description_mm', value)} />
+            <Field
+              label="Description (English)"
+              required
+              multiline
+              value={form.description_en}
+              onChange={(value) => update("description_en", value)}
+            />
+            <Field
+              label="Description (Myanmar)"
+              multiline
+              value={form.description_mm}
+              onChange={(value) => update("description_mm", value)}
+            />
           </View>
           <View className="gap-6 md:grid md:grid-cols-2">
             <View className="gap-2">
@@ -1177,16 +1479,19 @@ export function ProductFormNative({
                 value={toStringValue(form.category_id)}
                 options={categoryOptions}
                 placeholder="Select a category"
-                onChange={(value) => update('category_id', value)}
+                onChange={(value) => update("category_id", value)}
               />
               {categoriesError && categoryOptions.length === 0 ? (
                 <View className="flex-row items-center gap-2">
                   <Text className="font-sans text-xs text-red-600 dark:text-red-400">
-                    {t('product_form.errors.load_categories', 'Failed to load categories.')}
+                    {t(
+                      "product_form.errors.load_categories",
+                      "Failed to load categories.",
+                    )}
                   </Text>
                   <Pressable onPress={() => void loadCategories()}>
                     <Text className="font-sans text-xs font-semibold text-green-700 underline dark:text-green-400">
-                      {t('product_form.actions.try_again', 'Try again')}
+                      {t("product_form.actions.try_again", "Try again")}
                     </Text>
                   </Pressable>
                 </View>
@@ -1201,19 +1506,46 @@ export function ProductFormNative({
                 description: condition.description,
               }))}
               placeholder="Select condition"
-              onChange={(value) => update('condition', value)}
+              onChange={(value) => update("condition", value)}
             />
           </View>
           <View className="gap-6 md:grid md:grid-cols-2">
-            <Field label="Brand" value={form.brand} onChange={(value) => update('brand', value)} />
-            <Field label="Model" value={form.model} onChange={(value) => update('model', value)} />
-            <Field label="Material" value={form.material} onChange={(value) => update('material', value)} />
-            <Field label="Country of Origin" value={form.origin} onChange={(value) => update('origin', value)} />
+            <Field
+              label="Brand"
+              value={form.brand}
+              onChange={(value) => update("brand", value)}
+            />
+            <Field
+              label="Model"
+              value={form.model}
+              onChange={(value) => update("model", value)}
+            />
+            <Field
+              label="Material"
+              value={form.material}
+              onChange={(value) => update("material", value)}
+            />
+            <Field
+              label="Country of Origin"
+              value={form.origin}
+              onChange={(value) => update("origin", value)}
+            />
           </View>
-          {form.product_type === 'digital' && (
+          {form.product_type === "digital" && (
             <View className="gap-4 rounded-xl border border-blue-200 bg-blue-50 p-4 dark:border-blue-700 dark:bg-blue-900/20 md:grid md:grid-cols-2">
-              <Field label="File URL" required keyboardType="url" value={form.file_url} onChange={(value) => update('file_url', value)} />
-              <Field label="File Type" value={form.file_type} placeholder="e.g. PDF, ZIP, MP4" onChange={(value) => update('file_type', value)} />
+              <Field
+                label="File URL"
+                required
+                keyboardType="url"
+                value={form.file_url}
+                onChange={(value) => update("file_url", value)}
+              />
+              <Field
+                label="File Type"
+                value={form.file_type}
+                placeholder="e.g. PDF, ZIP, MP4"
+                onChange={(value) => update("file_type", value)}
+              />
             </View>
           )}
         </View>
@@ -1223,19 +1555,43 @@ export function ProductFormNative({
     if (currentStep === 2) {
       return (
         <View className="gap-6">
-          <SectionTitle title="Pricing & B2B" subtitle="Set the base price and B2B rules. Per-variant pricing comes next." />
+          <SectionTitle
+            title="Pricing & B2B"
+            subtitle="Set the base price and B2B rules. Per-variant pricing comes next."
+          />
           <View className="gap-6 md:grid md:grid-cols-2">
-            <Field label="Base Price (MMK)" required keyboardType="numeric" value={toStringValue(form.price)} onChange={(value) => update('price', value)} />
-            <Field label="Discount Price (MMK)" keyboardType="numeric" value={toStringValue(form.discount_price)} onChange={(value) => update('discount_price', value)} />
+            <Field
+              label="Base Price (MMK)"
+              required
+              keyboardType="numeric"
+              value={toStringValue(form.price)}
+              onChange={(value) => update("price", value)}
+            />
+            <Field
+              label="Discount Price (MMK)"
+              keyboardType="numeric"
+              value={toStringValue(form.discount_price)}
+              onChange={(value) => update("discount_price", value)}
+            />
             <View className="gap-1">
-              <Field label="MOQ (Minimum Order Qty)" required keyboardType="numeric" value={toStringValue(form.moq)} onChange={(value) => update('moq', value)} />
+              <Field
+                label="MOQ (Minimum Order Qty)"
+                required
+                keyboardType="numeric"
+                value={toStringValue(form.moq)}
+                onChange={(value) => update("moq", value)}
+              />
               <Text className="font-sans text-xs text-gray-500 dark:text-slate-500">
-                {t('product_form.hints.moq', 'Buyers must order at least this quantity.')}
+                {t(
+                  "product_form.hints.moq",
+                  "Buyers must order at least this quantity.",
+                )}
               </Text>
               {Number(form.moq) > 1 ? (
                 <Text className="font-sans text-xs text-amber-600 dark:text-amber-400">
-                  {t('product_form.hints.valid_quantities', {
-                    defaultValue: 'Valid quantities: {{a}}, {{b}}, {{c}}... (step = MOQ)',
+                  {t("product_form.hints.valid_quantities", {
+                    defaultValue:
+                      "Valid quantities: {{a}}, {{b}}, {{c}}... (step = MOQ)",
                     a: Number(form.moq),
                     b: Number(form.moq) * 2,
                     c: Number(form.moq) * 3,
@@ -1246,19 +1602,36 @@ export function ProductFormNative({
             <SelectModal
               label="Quantity Unit *"
               value={form.quantity_unit}
-              options={quantityUnits.map((unit) => ({ value: unit, label: unit.replace('_', ' ') }))}
+              options={quantityUnits.map((unit) => ({
+                value: unit,
+                label: unit.replace("_", " "),
+              }))}
               placeholder="Select unit"
-              onChange={(value) => update('quantity_unit', value)}
+              onChange={(value) => update("quantity_unit", value)}
             />
-            <Field label="Lead Time" value={form.lead_time} placeholder="e.g. 3-5 days" onChange={(value) => update('lead_time', value)} />
-            <Field label="Weight (kg)" keyboardType="numeric" value={toStringValue(form.weight_kg)} onChange={(value) => update('weight_kg', value)} />
-            <Field label="Packaging Details" value={form.packaging_details} onChange={(value) => update('packaging_details', value)} />
+            <Field
+              label="Lead Time"
+              value={form.lead_time}
+              placeholder="e.g. 3-5 days"
+              onChange={(value) => update("lead_time", value)}
+            />
+            <Field
+              label="Weight (kg)"
+              keyboardType="numeric"
+              value={toStringValue(form.weight_kg)}
+              onChange={(value) => update("weight_kg", value)}
+            />
+            <Field
+              label="Packaging Details"
+              value={form.packaging_details}
+              onChange={(value) => update("packaging_details", value)}
+            />
           </View>
           <View className="rounded-xl border border-gray-200 bg-gray-50 p-5 dark:border-slate-700 dark:bg-slate-900/60">
             <View className="flex-row items-center gap-3">
               <View className="h-px flex-1 bg-gray-200 dark:bg-slate-700" />
               <Text className="font-sans text-xs font-bold uppercase text-gray-400 dark:text-slate-500">
-                {t('product_form.sections.wholesale_pricing')}
+                {t("product_form.sections.wholesale_pricing")}
               </Text>
               <View className="h-px flex-1 bg-gray-200 dark:bg-slate-700" />
             </View>
@@ -1267,7 +1640,7 @@ export function ProductFormNative({
                 productId={form.id || productId || null}
                 basePrice={parseFloat(String(form.price)) || 0}
                 moq={parseInt(String(form.moq), 10) || 1}
-                quantityUnit={form.quantity_unit || 'piece'}
+                quantityUnit={form.quantity_unit || "piece"}
               />
             </View>
           </View>
@@ -1278,12 +1651,15 @@ export function ProductFormNative({
     if (currentStep === 3) {
       return (
         <View className="gap-7">
-          <SectionTitle title={t('product_form.sections.media_title')} subtitle={t('product_form.sections.media_subtitle')} />
+          <SectionTitle
+            title={t("product_form.sections.media_title")}
+            subtitle={t("product_form.sections.media_subtitle")}
+          />
           <View className="gap-3">
             <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">
-              {t('product_form.labels.product_images')} *{' '}
+              {t("product_form.labels.product_images")} *{" "}
               <Text className="text-xs font-normal text-gray-500">
-                {t('product_form.labels.image_count', { count: images.length })}
+                {t("product_form.labels.image_count", { count: images.length })}
               </Text>
             </Text>
             <View className="gap-2 md:flex-row">
@@ -1295,15 +1671,21 @@ export function ProductFormNative({
                 keyboardType="url"
                 className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
               />
-              <Pressable onPress={addImageFromUrl} className="items-center justify-center rounded-lg border border-gray-300 px-4 py-3 dark:border-slate-600">
+              <Pressable
+                onPress={addImageFromUrl}
+                className="items-center justify-center rounded-lg border border-gray-300 px-4 py-3 dark:border-slate-600"
+              >
                 <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">
-                  {t('product_form.actions.add_url')}
+                  {t("product_form.actions.add_url")}
                 </Text>
               </Pressable>
               {images.length > 0 && (
-                <Pressable onPress={() => setClearImagesModal(true)} className="items-center justify-center rounded-lg border border-red-300 px-4 py-3 dark:border-red-700">
+                <Pressable
+                  onPress={() => setClearImagesModal(true)}
+                  className="items-center justify-center rounded-lg border border-red-300 px-4 py-3 dark:border-red-700"
+                >
                   <Text className="font-sans text-sm font-semibold text-red-600 dark:text-red-400">
-                    {t('product_form.actions.clear_all')}
+                    {t("product_form.actions.clear_all")}
                   </Text>
                 </Pressable>
               )}
@@ -1312,40 +1694,61 @@ export function ProductFormNative({
               <View className="rounded-lg border border-blue-200 bg-blue-50 p-4 dark:border-blue-800 dark:bg-blue-900/20">
                 <View className="mb-2 flex-row items-center justify-between">
                   <Text className="font-sans text-sm font-medium text-blue-700 dark:text-blue-400">
-                    {t('product_form.messages.uploading_images')}
+                    {t("product_form.messages.uploading_images")}
                   </Text>
-                  <Text className="font-sans text-sm text-blue-600 dark:text-blue-400">{uploadProgress}%</Text>
+                  <Text className="font-sans text-sm text-blue-600 dark:text-blue-400">
+                    {uploadProgress}%
+                  </Text>
                 </View>
                 <View className="h-2 overflow-hidden rounded-full bg-blue-200 dark:bg-blue-900/30">
-                  <View className="h-full rounded-full bg-blue-600" style={{ width: `${uploadProgress}%` }} />
+                  <View
+                    className="h-full rounded-full bg-blue-600"
+                    style={{ width: `${uploadProgress}%` }}
+                  />
                 </View>
               </View>
             ) : null}
             <View className="min-h-[10rem] justify-center gap-3 rounded-xl border-2 border-dashed border-gray-300 bg-gray-50 px-4 py-5 dark:border-slate-600 dark:bg-slate-800">
               <View className="items-center">
-                <Feather name="image" size={32} color={isDark ? '#64748b' : '#9ca3af'} />
+                <Feather
+                  name="image"
+                  size={32}
+                  color={isDark ? "#64748b" : "#9ca3af"}
+                />
                 <Text className="mt-2 text-center font-sans text-sm font-medium text-gray-600 dark:text-slate-400">
-                  {images.length > 0 ? t('product_form.actions.add_more_images') : t('product_form.actions.click_upload_images')}
+                  {images.length > 0
+                    ? t("product_form.actions.add_more_images")
+                    : t("product_form.actions.click_upload_images")}
                 </Text>
                 <Text className="mt-1 text-center font-sans text-xs text-gray-500 dark:text-slate-500">
-                  {t('product_form.hints.image_formats')}
+                  {t("product_form.hints.image_formats")}
                 </Text>
               </View>
               <View className="gap-2 sm:flex-row">
                 <Pressable
                   onPress={pickAndUploadImages}
                   disabled={isUploadingImages}
-                  className="flex-1 flex-row items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-3 disabled:opacity-60">
+                  className="flex-1 flex-row items-center justify-center gap-2 rounded-lg bg-green-600 px-4 py-3 disabled:opacity-60"
+                >
                   <Feather name="folder" size={17} color="#ffffff" />
-                  <Text className="font-sans text-sm font-bold text-white">Gallery</Text>
+                  <Text className="font-sans text-sm font-bold text-white">
+                    Gallery
+                  </Text>
                 </Pressable>
-                {Platform.OS !== 'web' ? (
+                {Platform.OS !== "web" ? (
                   <Pressable
                     onPress={takeAndUploadImage}
                     disabled={isUploadingImages}
-                    className="flex-1 flex-row items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-3 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-900">
-                    <Feather name="camera" size={17} color={isDark ? '#cbd5e1' : '#374151'} />
-                    <Text className="font-sans text-sm font-bold text-gray-700 dark:text-slate-200">Camera</Text>
+                    className="flex-1 flex-row items-center justify-center gap-2 rounded-lg border border-gray-300 bg-white px-4 py-3 disabled:opacity-60 dark:border-slate-600 dark:bg-slate-900"
+                  >
+                    <Feather
+                      name="camera"
+                      size={17}
+                      color={isDark ? "#cbd5e1" : "#374151"}
+                    />
+                    <Text className="font-sans text-sm font-bold text-gray-700 dark:text-slate-200">
+                      Camera
+                    </Text>
                   </Pressable>
                 ) : null}
               </View>
@@ -1361,7 +1764,11 @@ export function ProductFormNative({
               onRemove={removeImage}
               onMove={moveImage}
               onChangeAngle={(index, angle) =>
-                setImages((prev) => prev.map((item, itemIndex) => (itemIndex === index ? { ...item, angle } : item)))
+                setImages((prev) =>
+                  prev.map((item, itemIndex) =>
+                    itemIndex === index ? { ...item, angle } : item,
+                  ),
+                )
               }
               onPreview={(url) => setPreviewImageUrl(url)}
             />
@@ -1369,21 +1776,48 @@ export function ProductFormNative({
 
           <View className="gap-4">
             <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">
-              {t('product_form.labels.specifications')}{' '}
+              {t("product_form.labels.specifications")}{" "}
               <Text className="text-xs text-gray-400">(Optional)</Text>
             </Text>
             <View className="flex-row items-center gap-2">
-              <TextInput value={specKey} onChangeText={setSpecKey} placeholder={t('product_form.placeholders.spec_name')} placeholderTextColor="#9ca3af" className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100" />
-              <TextInput value={specValue} onChangeText={setSpecValue} placeholder={t('product_form.placeholders.spec_value')} placeholderTextColor="#9ca3af" className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100" />
-              <Pressable onPress={addSpecification} className="items-center justify-center rounded-lg bg-green-600 px-4 py-3">
-                <Text className="font-sans text-sm font-bold text-white">{t('product_form.actions.add_spec')}</Text>
+              <TextInput
+                value={specKey}
+                onChangeText={setSpecKey}
+                placeholder={t("product_form.placeholders.spec_name")}
+                placeholderTextColor="#9ca3af"
+                className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              />
+              <TextInput
+                value={specValue}
+                onChangeText={setSpecValue}
+                placeholder={t("product_form.placeholders.spec_value")}
+                placeholderTextColor="#9ca3af"
+                className="min-w-0 flex-1 rounded-lg border border-gray-300 bg-white px-4 py-3 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
+              />
+              <Pressable
+                onPress={addSpecification}
+                className="items-center justify-center rounded-lg bg-green-600 px-4 py-3"
+              >
+                <Text className="font-sans text-sm font-bold text-white">
+                  {t("product_form.actions.add_spec")}
+                </Text>
               </Pressable>
             </View>
             {Object.entries(form.specifications).map(([key, value]) => (
-              <View key={key} className="flex-row items-center justify-between rounded-lg border border-gray-200 bg-white p-3 dark:border-slate-600 dark:bg-slate-800">
-                <Text className="min-w-[120px] font-sans text-sm font-medium text-gray-900 dark:text-slate-100">{key}:</Text>
-                <Text className="ml-2 min-w-0 flex-1 font-sans text-sm text-gray-600 dark:text-slate-400">{value}</Text>
-                <Pressable onPress={() => removeSpecification(key)} className="ml-2 p-1">
+              <View
+                key={key}
+                className="flex-row items-center justify-between rounded-lg border border-gray-200 bg-white p-3 dark:border-slate-600 dark:bg-slate-800"
+              >
+                <Text className="min-w-[120px] font-sans text-sm font-medium text-gray-900 dark:text-slate-100">
+                  {key}:
+                </Text>
+                <Text className="ml-2 min-w-0 flex-1 font-sans text-sm text-gray-600 dark:text-slate-400">
+                  {value}
+                </Text>
+                <Pressable
+                  onPress={() => removeSpecification(key)}
+                  className="ml-2 p-1"
+                >
                   <Feather name="x" size={18} color="#ef4444" />
                 </Pressable>
               </View>
@@ -1396,36 +1830,88 @@ export function ProductFormNative({
     if (currentStep === 4) {
       return (
         <View className="gap-6">
-          <SectionTitle title="Shipping & More" subtitle="Delivery, warranty, and visibility settings" />
+          <SectionTitle
+            title="Shipping & More"
+            subtitle="Delivery, warranty, and visibility settings"
+          />
           <View className="gap-6 md:grid md:grid-cols-2">
-            <Field label="Shipping Time" value={form.shipping_time} placeholder="e.g. 2-4 business days" onChange={(value) => update('shipping_time', value)} />
+            <Field
+              label="Shipping Time"
+              value={form.shipping_time}
+              placeholder="e.g. 2-4 business days"
+              onChange={(value) => update("shipping_time", value)}
+            />
             <SelectModal
               label="Warranty Type"
               value={form.warranty_type}
-              options={warrantyTypes.map((type) => ({ value: type, label: type.replace('_', ' ') }))}
+              options={warrantyTypes.map((type) => ({
+                value: type,
+                label: type.replace("_", " "),
+              }))}
               placeholder="Select warranty type"
-              onChange={(value) => update('warranty_type', value)}
+              onChange={(value) => update("warranty_type", value)}
             />
-            <Field label="Warranty Period" value={form.warranty_period} placeholder="e.g. 6 months" onChange={(value) => update('warranty_period', value)} />
-            <Field label="Warranty Details" value={form.warranty} onChange={(value) => update('warranty', value)} />
+            <Field
+              label="Warranty Period"
+              value={form.warranty_period}
+              placeholder="e.g. 6 months"
+              onChange={(value) => update("warranty_period", value)}
+            />
+            <Field
+              label="Warranty Details"
+              value={form.warranty}
+              onChange={(value) => update("warranty", value)}
+            />
           </View>
-          <Field label="Return Policy" multiline value={form.return_policy} onChange={(value) => update('return_policy', value)} />
-          <Field label="Additional Information" multiline value={form.additional_info} onChange={(value) => update('additional_info', value)} />
+          <Field
+            label="Return Policy"
+            multiline
+            value={form.return_policy}
+            onChange={(value) => update("return_policy", value)}
+          />
+          <Field
+            label="Additional Information"
+            multiline
+            value={form.additional_info}
+            onChange={(value) => update("additional_info", value)}
+          />
           <View className="gap-3">
-            <ToggleRow label="Free Shipping" value={Boolean(form.free_shipping)} onChange={(value) => update('free_shipping', value)} tone="blue" />
+            <ToggleRow
+              label="Free Shipping"
+              value={Boolean(form.free_shipping)}
+              onChange={(value) => update("free_shipping", value)}
+              tone="blue"
+            />
             {!form.free_shipping && (
-              <Field label="Shipping Cost" keyboardType="numeric" value={toStringValue(form.shipping_cost)} onChange={(value) => update('shipping_cost', value)} />
+              <Field
+                label="Shipping Cost"
+                keyboardType="numeric"
+                value={toStringValue(form.shipping_cost)}
+                onChange={(value) => update("shipping_cost", value)}
+              />
             )}
-            <ToggleRow label="Make this product active and visible" value={form.is_active} onChange={(value) => update('is_active', value)} />
+            <ToggleRow
+              label="Make this product active and visible"
+              value={form.is_active}
+              onChange={(value) => update("is_active", value)}
+            />
             {isAdminMode ? (
               <ToggleRow
-                label={t('product_form.labels.is_featured', 'Feature on homepage')}
+                label={t(
+                  "product_form.labels.is_featured",
+                  "Feature on homepage",
+                )}
                 value={Boolean(form.is_featured)}
-                onChange={(value) => update('is_featured', value)}
+                onChange={(value) => update("is_featured", value)}
                 tone="amber"
               />
             ) : null}
-            <ToggleRow label="Mark as new product" value={form.is_new} onChange={(value) => update('is_new', value)} tone="amber" />
+            <ToggleRow
+              label="Mark as new product"
+              value={form.is_new}
+              onChange={(value) => update("is_new", value)}
+              tone="amber"
+            />
           </View>
         </View>
       );
@@ -1436,12 +1922,12 @@ export function ProductFormNative({
         <View className="gap-8">
           <View>
             <Text className="font-sans text-lg font-semibold text-gray-900 dark:text-slate-100">
-              {t('product_form.sections.variants_title', 'Options & Variants')}
+              {t("product_form.sections.variants_title", "Options & Variants")}
             </Text>
             <Text className="mt-1 font-sans text-sm text-gray-500 dark:text-slate-400">
               {t(
-                'product_form.sections.variants_subtitle',
-                'Define the choices buyers can select (Color, Size, etc.), then generate and price your variants.',
+                "product_form.sections.variants_subtitle",
+                "Define the choices buyers can select (Color, Size, etc.), then generate and price your variants.",
               )}
             </Text>
             {!savedProductId ? (
@@ -1449,8 +1935,8 @@ export function ProductFormNative({
                 <Feather name="alert-circle" color="#d97706" size={16} />
                 <Text className="min-w-0 flex-1 font-sans text-sm text-amber-700 dark:text-amber-300">
                   {t(
-                    'product_form.messages.complete_steps_first',
-                    'Complete Steps 1-4 first to save the product, then configure variants here.',
+                    "product_form.messages.complete_steps_first",
+                    "Complete Steps 1-4 first to save the product, then configure variants here.",
                   )}
                 </Text>
               </View>
@@ -1461,14 +1947,20 @@ export function ProductFormNative({
             <>
               <View className="rounded-xl border border-gray-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
                 <Text className="font-sans text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500">
-                  {t('product_form.sections.step_a_options', 'Step A - Define Options')}
+                  {t(
+                    "product_form.sections.step_a_options",
+                    "Step A - Define Options",
+                  )}
                 </Text>
                 <View className="mt-4">
                   <ProductOptionsEditorNative
                     productId={savedProductId}
                     onSaved={() =>
                       setSuccess(
-                        t('product_form.options.saved', 'Options saved! Now generate your variants below.'),
+                        t(
+                          "product_form.options.saved",
+                          "Options saved! Now generate your variants below.",
+                        ),
                       )
                     }
                   />
@@ -1477,24 +1969,39 @@ export function ProductFormNative({
 
               <View className="rounded-xl border border-gray-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
                 <Text className="font-sans text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500">
-                  {t('product_form.sections.step_b_variants', 'Step B - Generate & Price Variants')}
+                  {t(
+                    "product_form.sections.step_b_variants",
+                    "Step B - Generate & Price Variants",
+                  )}
                 </Text>
                 <View className="mt-4">
-                  <VariantTableNative productId={savedProductId} onUpdated={() => undefined} />
+                  <VariantTableNative
+                    productId={savedProductId}
+                    onUpdated={() => undefined}
+                  />
                 </View>
               </View>
 
-              <Pressable onPress={() => void finish()} className="self-end flex-row items-center gap-2 rounded-lg bg-green-600 px-8 py-3">
+              <Pressable
+                onPress={() => void finish()}
+                className="self-end flex-row items-center gap-2 rounded-lg bg-green-600 px-8 py-3"
+              >
                 <Feather name="check-circle" size={18} color="#ffffff" />
                 <Text className="font-sans text-sm font-bold text-white">
-                  {t('product_form.actions.finish_listing', 'Done - Finish Listing')}
+                  {t(
+                    "product_form.actions.finish_listing",
+                    "Done - Finish Listing",
+                  )}
                 </Text>
               </Pressable>
             </>
           ) : (
             <View className="items-center rounded-xl border-2 border-dashed border-gray-200 py-12 dark:border-slate-700">
               <Text className="font-sans text-sm text-gray-400 dark:text-slate-500">
-                {t('product_form.messages.save_steps_first', 'Save the product in Steps 1-4 first.')}
+                {t(
+                  "product_form.messages.save_steps_first",
+                  "Save the product in Steps 1-4 first.",
+                )}
               </Text>
             </View>
           )}
@@ -1519,163 +2026,304 @@ export function ProductFormNative({
     <SafeAreaView className="flex-1 bg-gray-50 dark:bg-slate-900">
       <KeyboardAvoidingView
         className="flex-1"
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 72 : 0}>
-      <ScrollView ref={scrollRef} className="flex-1" contentContainerClassName="px-4 py-8 md:px-8">
-        <View className="mx-auto w-full max-w-4xl">
-          <View className="mb-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            <View className="flex-row items-start justify-between gap-4 border-b border-gray-200 px-6 py-5 dark:border-slate-700">
-              <View className="min-w-0 flex-1">
-                <Text className="font-sans text-2xl font-bold text-gray-900 dark:text-slate-100">
-                  {editing ? t('product_form.titles.edit', { defaultValue: 'Edit Product' }) : t('product_form.titles.new', { defaultValue: 'New Listing' })}
-                </Text>
-                <Text className="mt-1 font-sans text-sm text-gray-500 dark:text-slate-400">
-                  {editing ? 'Update your product details' : 'Create a new product listing'}
-                  {!editing && <Text className="text-blue-600 dark:text-blue-400"> - Draft auto-saved</Text>}
-                </Text>
-              </View>
-              <Pressable onPress={() => setLeaveModal(true)} className="h-10 w-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-slate-700">
-                <Feather name="x" size={20} color={isDark ? '#cbd5e1' : '#6b7280'} />
-              </Pressable>
-            </View>
-
-            <View className="px-6 py-5">
-              <View className="mb-3 flex-row items-center justify-between md:hidden">
-                <Text className="font-sans text-sm font-bold text-gray-800 dark:text-slate-200">{current.title}</Text>
-                <Text className="font-sans text-xs font-bold text-green-700 dark:text-green-400">Step {currentStep} of {formSteps.length}</Text>
-              </View>
-              <View className="flex-row items-start">
-                {formSteps.map((step, index) => {
-                  const done = completedSteps.has(step.id);
-                  const active = currentStep === step.id;
-                  return (
-                    <View key={step.id} className="flex-1 flex-row items-start">
-                      <Pressable onPress={() => (step.id === 1 || completedSteps.has(step.id - 1) ? setCurrentStep(step.id) : undefined)} className="items-center">
-                        <View className={`h-9 w-9 items-center justify-center rounded-full border-2 ${active ? 'border-green-500 bg-green-500' : done ? 'border-green-400 bg-green-400' : 'border-gray-300 dark:border-slate-600'}`}>
-                          {done ? <Feather name="check" size={18} color="#ffffff" /> : <Text className={`font-sans text-sm font-bold ${active ? 'text-white' : 'text-gray-400 dark:text-slate-500'}`}>{step.id}</Text>}
-                        </View>
-                        <Text className={`mt-2 hidden w-20 text-center font-sans text-[11px] font-semibold md:flex ${active ? 'text-green-700 dark:text-green-400' : 'text-gray-400 dark:text-slate-500'}`}>{step.title}</Text>
-                      </Pressable>
-                      {index < formSteps.length - 1 && <View className={`mx-2 mt-4 h-0.5 flex-1 rounded-full ${done ? 'bg-green-400' : 'bg-gray-200 dark:bg-slate-700'}`} />}
-                    </View>
-                  );
-                })}
-              </View>
-            </View>
-          </View>
-
-          <View className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
-            {error && (
-              <View className="mx-6 mt-6 gap-3 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
-                <View className="flex-row gap-3">
-                  <Feather name="alert-circle" size={18} color="#dc2626" />
-                  <Text className="min-w-0 flex-1 font-sans text-sm leading-6 text-red-700 dark:text-red-400">{error}</Text>
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 72 : 0}
+      >
+        <ScrollView
+          ref={scrollRef}
+          className="flex-1"
+          contentContainerClassName="px-4 py-8 md:px-8"
+        >
+          <View className="mx-auto w-full max-w-4xl">
+            <View className="mb-8 overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              <View className="flex-row items-start justify-between gap-4 border-b border-gray-200 px-6 py-5 dark:border-slate-700">
+                <View className="min-w-0 flex-1">
+                  <Text className="font-sans text-2xl font-bold text-gray-900 dark:text-slate-100">
+                    {editing
+                      ? t("product_form.titles.edit", {
+                          defaultValue: "Edit Product",
+                        })
+                      : t("product_form.titles.new", {
+                          defaultValue: "New Listing",
+                        })}
+                  </Text>
+                  <Text className="mt-1 font-sans text-sm text-gray-500 dark:text-slate-400">
+                    {editing
+                      ? "Update your product details"
+                      : "Create a new product listing"}
+                    {!editing && (
+                      <Text className="text-blue-600 dark:text-blue-400">
+                        {" "}
+                        - Draft auto-saved
+                      </Text>
+                    )}
+                  </Text>
                 </View>
-                {limitError && !isAdminMode ? (
-                  <Pressable
-                    onPress={() => router.push('/seller/dashboard?tab=subscription' as Href)}
-                    className="self-start rounded-lg bg-red-600 px-4 py-2">
-                    <Text className="font-sans text-sm font-semibold text-white">
-                      {t('product_form.actions.upgrade_plan', 'Upgrade plan')}
+                <Pressable
+                  onPress={() => setLeaveModal(true)}
+                  className="h-10 w-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-slate-700"
+                >
+                  <Feather
+                    name="x"
+                    size={20}
+                    color={isDark ? "#cbd5e1" : "#6b7280"}
+                  />
+                </Pressable>
+              </View>
+
+              <View className="px-6 py-5">
+                <View className="mb-3 flex-row items-center justify-between md:hidden">
+                  <Text className="font-sans text-sm font-bold text-gray-800 dark:text-slate-200">
+                    {current.title}
+                  </Text>
+                  <Text className="font-sans text-xs font-bold text-green-700 dark:text-green-400">
+                    Step {currentStep} of {formSteps.length}
+                  </Text>
+                </View>
+                <View className="flex-row items-start">
+                  {formSteps.map((step, index) => {
+                    const done = completedSteps.has(step.id);
+                    const active = currentStep === step.id;
+                    return (
+                      <View
+                        key={step.id}
+                        className="flex-1 flex-row items-start"
+                      >
+                        <Pressable
+                          onPress={() =>
+                            step.id === 1 || completedSteps.has(step.id - 1)
+                              ? setCurrentStep(step.id)
+                              : undefined
+                          }
+                          className="items-center"
+                        >
+                          <View
+                            className={`h-9 w-9 items-center justify-center rounded-full border-2 ${active ? "border-green-500 bg-green-500" : done ? "border-green-400 bg-green-400" : "border-gray-300 dark:border-slate-600"}`}
+                          >
+                            {done ? (
+                              <Feather name="check" size={18} color="#ffffff" />
+                            ) : (
+                              <Text
+                                className={`font-sans text-sm font-bold ${active ? "text-white" : "text-gray-400 dark:text-slate-500"}`}
+                              >
+                                {step.id}
+                              </Text>
+                            )}
+                          </View>
+                          <Text
+                            className={`mt-2 hidden w-20 text-center font-sans text-[11px] font-semibold md:flex ${active ? "text-green-700 dark:text-green-400" : "text-gray-400 dark:text-slate-500"}`}
+                          >
+                            {step.title}
+                          </Text>
+                        </Pressable>
+                        {index < formSteps.length - 1 && (
+                          <View
+                            className={`mx-2 mt-4 h-0.5 flex-1 rounded-full ${done ? "bg-green-400" : "bg-gray-200 dark:bg-slate-700"}`}
+                          />
+                        )}
+                      </View>
+                    );
+                  })}
+                </View>
+              </View>
+            </View>
+
+            <View className="overflow-hidden rounded-2xl border border-gray-200 bg-white shadow-sm dark:border-slate-700 dark:bg-slate-800">
+              {error ? (
+                <View className="mx-6 mt-6 gap-3 rounded-xl border border-red-200 bg-red-50 p-4 dark:border-red-800 dark:bg-red-900/20">
+                  <View className="flex-row gap-3">
+                    <Feather name="alert-circle" size={18} color="#dc2626" />
+                    <Text className="min-w-0 flex-1 font-sans text-sm leading-6 text-red-700 dark:text-red-400">
+                      {error}
                     </Text>
-                  </Pressable>
-                ) : null}
-              </View>
-            )}
-            {success && (
-              <View className="mx-6 mt-6 flex-row gap-3 rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20">
-                <Feather name="check-circle" size={18} color="#16a34a" />
-                <Text className="min-w-0 flex-1 font-sans text-sm leading-6 text-green-700 dark:text-green-400">{success}</Text>
-              </View>
-            )}
-            <View className="p-6 md:p-8">{renderStepContent()}</View>
-            {currentStep <= formSteps.length && (
-              <View className="flex-row items-center justify-between gap-3 border-t border-gray-200 px-4 py-5 dark:border-slate-700 md:px-8">
-                <View>
-                  {currentStep > 1 && (
-                    <Pressable onPress={() => setCurrentStep((prev) => Math.max(prev - 1, 1))} className="flex-row items-center gap-2 rounded-lg border border-gray-300 px-4 py-3 dark:border-slate-600">
-                      <Feather name="chevron-left" size={17} color={isDark ? '#cbd5e1' : '#374151'} />
-                      <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">Previous</Text>
+                  </View>
+                  {limitError && !isAdminMode ? (
+                    <Pressable
+                      onPress={() =>
+                        router.push(
+                          "/seller/dashboard?tab=subscription" as Href,
+                        )
+                      }
+                      className="self-start rounded-lg bg-red-600 px-4 py-2"
+                    >
+                      <Text className="font-sans text-sm font-semibold text-white">
+                        {t("product_form.actions.upgrade_plan", "Upgrade plan")}
+                      </Text>
+                    </Pressable>
+                  ) : null}
+                </View>
+              ) : null}
+              {success ? (
+                <View className="mx-6 mt-6 flex-row gap-3 rounded-xl border border-green-200 bg-green-50 p-4 dark:border-green-800 dark:bg-green-900/20">
+                  <Feather name="check-circle" size={18} color="#16a34a" />
+                  <Text className="min-w-0 flex-1 font-sans text-sm leading-6 text-green-700 dark:text-green-400">
+                    {success}
+                  </Text>
+                </View>
+              ) : null}
+              <View className="p-6 md:p-8">{renderStepContent()}</View>
+              {currentStep <= formSteps.length && (
+                <View className="flex-row items-center justify-between gap-3 border-t border-gray-200 px-4 py-5 dark:border-slate-700 md:px-8">
+                  <View>
+                    {currentStep > 1 && (
+                      <Pressable
+                        onPress={() =>
+                          setCurrentStep((prev) => Math.max(prev - 1, 1))
+                        }
+                        className="flex-row items-center gap-2 rounded-lg border border-gray-300 px-4 py-3 dark:border-slate-600"
+                      >
+                        <Feather
+                          name="chevron-left"
+                          size={17}
+                          color={isDark ? "#cbd5e1" : "#374151"}
+                        />
+                        <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">
+                          Previous
+                        </Text>
+                      </Pressable>
+                    )}
+                  </View>
+                  {currentStep === formSteps.length ? (
+                    <Pressable
+                      disabled={saving || isUploadingImages}
+                      onPress={saveCore}
+                      className="flex-row items-center gap-2 rounded-lg bg-green-600 px-5 py-3 disabled:opacity-60"
+                    >
+                      {saving ? (
+                        <ActivityIndicator color="#ffffff" />
+                      ) : (
+                        <Feather
+                          name="check-circle"
+                          size={17}
+                          color="#ffffff"
+                        />
+                      )}
+                      <Text className="font-sans text-sm font-bold text-white">
+                        {saving
+                          ? "Saving..."
+                          : isAdminMode
+                            ? t(
+                                "admin.productManagement.buttons.update",
+                                "Update",
+                              )
+                            : editing
+                              ? "Update & Continue"
+                              : "Save & Continue"}
+                      </Text>
+                    </Pressable>
+                  ) : (
+                    <Pressable
+                      onPress={nextStep}
+                      className="flex-row items-center gap-2 rounded-lg bg-green-600 px-5 py-3"
+                    >
+                      <Text className="font-sans text-sm font-bold text-white">
+                        Next
+                      </Text>
+                      <Feather name="chevron-right" size={17} color="#ffffff" />
                     </Pressable>
                   )}
                 </View>
-                {currentStep === formSteps.length ? (
-                  <Pressable disabled={saving || isUploadingImages} onPress={saveCore} className="flex-row items-center gap-2 rounded-lg bg-green-600 px-5 py-3 disabled:opacity-60">
-                    {saving ? <ActivityIndicator color="#ffffff" /> : <Feather name="check-circle" size={17} color="#ffffff" />}
-                    <Text className="font-sans text-sm font-bold text-white">
-                      {saving
-                        ? 'Saving...'
-                        : isAdminMode
-                          ? t('admin.productManagement.buttons.update', 'Update')
-                          : editing
-                            ? 'Update & Continue'
-                            : 'Save & Continue'}
-                    </Text>
-                  </Pressable>
-                ) : (
-                  <Pressable onPress={nextStep} className="flex-row items-center gap-2 rounded-lg bg-green-600 px-5 py-3">
-                    <Text className="font-sans text-sm font-bold text-white">Next</Text>
-                    <Feather name="chevron-right" size={17} color="#ffffff" />
-                  </Pressable>
-                )}
-              </View>
-            )}
+              )}
+            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
       </KeyboardAvoidingView>
 
-      <Modal visible={leaveModal} transparent animationType="fade" onRequestClose={() => setLeaveModal(false)}>
+      <Modal
+        visible={leaveModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setLeaveModal(false)}
+      >
         <View className="flex-1 items-center justify-center bg-black/40 px-4">
           <View className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-800">
-            <Text className="font-sans text-lg font-bold text-gray-900 dark:text-slate-100">Leave without saving?</Text>
+            <Text className="font-sans text-lg font-bold text-gray-900 dark:text-slate-100">
+              Leave without saving?
+            </Text>
             <Text className="mt-2 font-sans text-sm leading-6 text-gray-600 dark:text-slate-400">
-              {editing ? 'Your current changes may not be saved.' : 'Your draft has been auto-saved.'}
+              {editing
+                ? "Your current changes may not be saved."
+                : "Your draft has been auto-saved."}
             </Text>
             <View className="mt-5 flex-row justify-end gap-3">
-              <Pressable onPress={() => setLeaveModal(false)} className="rounded-lg border border-gray-300 px-4 py-2 dark:border-slate-600">
-                <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">Keep Editing</Text>
+              <Pressable
+                onPress={() => setLeaveModal(false)}
+                className="rounded-lg border border-gray-300 px-4 py-2 dark:border-slate-600"
+              >
+                <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">
+                  Keep Editing
+                </Text>
               </Pressable>
-              <Pressable onPress={() => router.replace(dashboardHref)} className="rounded-lg bg-gray-800 px-4 py-2 dark:bg-slate-700">
-                <Text className="font-sans text-sm font-semibold text-white">Leave</Text>
+              <Pressable
+                onPress={() => router.replace(dashboardHref)}
+                className="rounded-lg bg-gray-800 px-4 py-2 dark:bg-slate-700"
+              >
+                <Text className="font-sans text-sm font-semibold text-white">
+                  Leave
+                </Text>
               </Pressable>
             </View>
           </View>
         </View>
       </Modal>
 
-      <Modal visible={clearImagesModal} transparent animationType="fade" onRequestClose={() => setClearImagesModal(false)}>
+      <Modal
+        visible={clearImagesModal}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setClearImagesModal(false)}
+      >
         <View className="flex-1 items-center justify-center bg-black/40 px-4">
           <View className="w-full max-w-sm rounded-2xl bg-white p-6 shadow-xl dark:bg-slate-800">
-            <Text className="font-sans text-lg font-bold text-gray-900 dark:text-slate-100">Remove all images?</Text>
-            <Text className="mt-2 font-sans text-sm leading-6 text-gray-600 dark:text-slate-400">This cannot be undone.</Text>
+            <Text className="font-sans text-lg font-bold text-gray-900 dark:text-slate-100">
+              Remove all images?
+            </Text>
+            <Text className="mt-2 font-sans text-sm leading-6 text-gray-600 dark:text-slate-400">
+              This cannot be undone.
+            </Text>
             <View className="mt-5 flex-row justify-end gap-3">
-              <Pressable onPress={() => setClearImagesModal(false)} className="rounded-lg border border-gray-300 px-4 py-2 dark:border-slate-600">
-                <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">Cancel</Text>
+              <Pressable
+                onPress={() => setClearImagesModal(false)}
+                className="rounded-lg border border-gray-300 px-4 py-2 dark:border-slate-600"
+              >
+                <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-300">
+                  Cancel
+                </Text>
               </Pressable>
               <Pressable
                 onPress={() => {
                   setImages([]);
                   setClearImagesModal(false);
                 }}
-                className="rounded-lg bg-red-600 px-4 py-2">
-                <Text className="font-sans text-sm font-semibold text-white">Remove All</Text>
+                className="rounded-lg bg-red-600 px-4 py-2"
+              >
+                <Text className="font-sans text-sm font-semibold text-white">
+                  Remove All
+                </Text>
               </Pressable>
             </View>
           </View>
         </View>
       </Modal>
 
-      <Modal visible={Boolean(previewImageUrl)} transparent animationType="fade" onRequestClose={() => setPreviewImageUrl(null)}>
+      <Modal
+        visible={Boolean(previewImageUrl)}
+        transparent
+        animationType="fade"
+        onRequestClose={() => setPreviewImageUrl(null)}
+      >
         <View className="flex-1 items-center justify-center bg-black/90 px-4">
           <Pressable
             onPress={() => setPreviewImageUrl(null)}
-            className="absolute right-4 top-12 z-10 h-10 w-10 items-center justify-center rounded-full bg-white/10">
+            className="absolute right-4 top-12 z-10 h-10 w-10 items-center justify-center rounded-full bg-white/10"
+          >
             <Feather name="x" size={22} color="#ffffff" />
           </Pressable>
           {previewImageUrl ? (
             <Image
-              source={{ uri: getNativeImageUrl(previewImageUrl) || previewImageUrl }}
+              source={{
+                uri: getNativeImageUrl(previewImageUrl) || previewImageUrl,
+              }}
               className="h-[70vh] w-full max-w-3xl"
               contentFit="contain"
             />

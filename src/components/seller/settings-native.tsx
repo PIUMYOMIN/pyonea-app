@@ -1,5 +1,5 @@
-import Feather from '@expo/vector-icons/Feather';
-import { useEffect, useMemo, useState } from 'react';
+import Feather from "@expo/vector-icons/Feather";
+import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   KeyboardAvoidingView,
@@ -11,19 +11,19 @@ import {
   Text,
   TextInput,
   View,
-} from 'react-native';
+} from "react-native";
 
-import { OptimizedImage as Image } from '@/components/ui/optimized-image';
-import { MyanmarRegionPicker } from '@/components/ui/myanmar-region-picker-native';
-import { NativeDateField } from '@/components/ui/native-date-field';
-import { SelectPickerNative } from '@/components/ui/select-picker-native';
 import {
   isNrcInputComplete,
   NrcInputNative,
   nrcValueFromSeller,
   type NrcInputValue,
-} from '@/components/seller/nrc-input-native';
-import { useAppTranslation } from '@/i18n';
+} from "@/components/seller/nrc-input-native";
+import { MyanmarRegionPicker } from "@/components/ui/myanmar-region-picker-native";
+import { NativeDateField } from "@/components/ui/native-date-field";
+import { OptimizedImage as Image } from "@/components/ui/optimized-image";
+import { SelectPickerNative } from "@/components/ui/select-picker-native";
+import { useAppTranslation } from "@/i18n";
 import {
   DEFAULT_SELLER_BUSINESS_HOURS,
   deleteSellerAccount,
@@ -40,49 +40,57 @@ import {
   uploadSellerStoreLogo,
   uploadSellerVerificationDocument,
   type AdminBusinessType,
-  type NativeUser,
   type NativeUploadFile,
+  type NativeUser,
   type SellerBusinessHours,
   type SellerDashboardOverview,
   type SellerDocumentType,
   type SellerSettingsPayload,
   type SellerStoreIdentityPayload,
   type SellerStoreSummary,
-} from '@/utils/native-api';
+} from "@/utils/native-api";
 import {
   getUploadNameFromUri,
   pickImageFromCamera,
   pickImagesFromLibrary,
-} from '@/utils/native-image-picker';
+} from "@/utils/native-image-picker";
 
-type SettingsTab = 'personal' | 'store' | 'brand' | 'general' | 'payment' | 'notifications' | 'security' | 'account';
-type Message = { type: 'success' | 'error'; text: string } | null;
-type DocumentPickerAsset = import('expo-document-picker').DocumentPickerAsset;
+type SettingsTab =
+  | "personal"
+  | "store"
+  | "brand"
+  | "general"
+  | "payment"
+  | "notifications"
+  | "security"
+  | "account";
+type Message = { type: "success" | "error"; text: string } | null;
+type DocumentPickerAsset = import("expo-document-picker").DocumentPickerAsset;
 
 type SettingsForm = Required<
   Pick<
     SellerSettingsPayload,
-    | 'email_notifications'
-    | 'order_notifications'
-    | 'inventory_alerts'
-    | 'review_notifications'
-    | 'auto_withdrawal'
-    | 'withdrawal_threshold'
-    | 'preferred_payment_method'
-    | 'is_active'
-    | 'vacation_mode'
-    | 'vacation_message'
-    | 'vacation_start_date'
-    | 'vacation_end_date'
-    | 'two_factor_auth'
-    | 'login_notifications'
-    | 'show_sold_out'
-    | 'show_reviews'
-    | 'show_inventory_count'
-    | 'currency'
-    | 'business_hours_enabled'
+    | "email_notifications"
+    | "order_notifications"
+    | "inventory_alerts"
+    | "review_notifications"
+    | "auto_withdrawal"
+    | "withdrawal_threshold"
+    | "preferred_payment_method"
+    | "is_active"
+    | "vacation_mode"
+    | "vacation_message"
+    | "vacation_start_date"
+    | "vacation_end_date"
+    | "two_factor_auth"
+    | "login_notifications"
+    | "show_sold_out"
+    | "show_reviews"
+    | "show_inventory_count"
+    | "currency"
+    | "business_hours_enabled"
   >
-  > & {
+> & {
   return_policy: string;
   shipping_policy: string;
   warranty_policy: string;
@@ -112,7 +120,8 @@ type IdentityForm = Required<SellerStoreIdentityPayload>;
 
 const ENGLISH_STORE_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9\s&.,'()/-]*$/;
 
-const isEnglishStoreName = (value: string) => ENGLISH_STORE_NAME_PATTERN.test(value.trim());
+const isEnglishStoreName = (value: string) =>
+  ENGLISH_STORE_NAME_PATTERN.test(value.trim());
 
 const SETTINGS_TABS: {
   key: SettingsTab;
@@ -121,110 +130,118 @@ const SETTINGS_TABS: {
   icon: keyof typeof Feather.glyphMap;
 }[] = [
   {
-    key: 'personal',
-    labelKey: 'sellerSettings.tabs.personal.label',
-    descriptionKey: 'sellerSettings.tabs.personal.description',
-    icon: 'user',
+    key: "personal",
+    labelKey: "sellerSettings.tabs.personal.label",
+    descriptionKey: "sellerSettings.tabs.personal.description",
+    icon: "user",
   },
   {
-    key: 'store',
-    labelKey: 'sellerSettings.tabs.store.label',
-    descriptionKey: 'sellerSettings.tabs.store.description',
-    icon: 'shopping-bag',
+    key: "store",
+    labelKey: "sellerSettings.tabs.store.label",
+    descriptionKey: "sellerSettings.tabs.store.description",
+    icon: "shopping-bag",
   },
   {
-    key: 'brand',
-    labelKey: 'sellerSettings.tabs.brand.label',
-    descriptionKey: 'sellerSettings.tabs.brand.description',
-    icon: 'image',
+    key: "brand",
+    labelKey: "sellerSettings.tabs.brand.label",
+    descriptionKey: "sellerSettings.tabs.brand.description",
+    icon: "image",
   },
   {
-    key: 'general',
-    labelKey: 'sellerSettings.tabs.general.label',
-    descriptionKey: 'sellerSettings.tabs.general.description',
-    icon: 'settings',
+    key: "general",
+    labelKey: "sellerSettings.tabs.general.label",
+    descriptionKey: "sellerSettings.tabs.general.description",
+    icon: "settings",
   },
   {
-    key: 'payment',
-    labelKey: 'sellerSettings.tabs.payment.label',
-    descriptionKey: 'sellerSettings.tabs.payment.description',
-    icon: 'credit-card',
+    key: "payment",
+    labelKey: "sellerSettings.tabs.payment.label",
+    descriptionKey: "sellerSettings.tabs.payment.description",
+    icon: "credit-card",
   },
   {
-    key: 'notifications',
-    labelKey: 'sellerSettings.tabs.notifications.label',
-    descriptionKey: 'sellerSettings.tabs.notifications.description',
-    icon: 'bell',
+    key: "notifications",
+    labelKey: "sellerSettings.tabs.notifications.label",
+    descriptionKey: "sellerSettings.tabs.notifications.description",
+    icon: "bell",
   },
   {
-    key: 'security',
-    labelKey: 'sellerSettings.tabs.security.label',
-    descriptionKey: 'sellerSettings.tabs.security.description',
-    icon: 'key',
+    key: "security",
+    labelKey: "sellerSettings.tabs.security.label",
+    descriptionKey: "sellerSettings.tabs.security.description",
+    icon: "key",
   },
   {
-    key: 'account',
-    labelKey: 'sellerSettings.tabs.account.label',
-    descriptionKey: 'sellerSettings.tabs.account.description',
-    icon: 'shield',
+    key: "account",
+    labelKey: "sellerSettings.tabs.account.label",
+    descriptionKey: "sellerSettings.tabs.account.description",
+    icon: "shield",
   },
 ];
 
 const BUSINESS_DAYS = [
-  ['monday', 'Mon'],
-  ['tuesday', 'Tue'],
-  ['wednesday', 'Wed'],
-  ['thursday', 'Thu'],
-  ['friday', 'Fri'],
-  ['saturday', 'Sat'],
-  ['sunday', 'Sun'],
+  ["monday", "Mon"],
+  ["tuesday", "Tue"],
+  ["wednesday", "Wed"],
+  ["thursday", "Thu"],
+  ["friday", "Fri"],
+  ["saturday", "Sat"],
+  ["sunday", "Sun"],
 ] as const;
 
-const SETTINGS_TAB_FIELDS: Partial<Record<SettingsTab, Array<keyof SettingsForm>>> = {
+const SETTINGS_TAB_FIELDS: Partial<
+  Record<SettingsTab, Array<keyof SettingsForm>>
+> = {
   general: [
-    'return_policy',
-    'shipping_policy',
-    'warranty_policy',
-    'privacy_policy',
-    'terms_of_service',
-    'show_sold_out',
-    'show_reviews',
-    'show_inventory_count',
-    'business_hours_enabled',
-    'business_hours',
+    "return_policy",
+    "shipping_policy",
+    "warranty_policy",
+    "privacy_policy",
+    "terms_of_service",
+    "show_sold_out",
+    "show_reviews",
+    "show_inventory_count",
+    "business_hours_enabled",
+    "business_hours",
   ],
-  payment: ['withdrawal_threshold', 'currency', 'preferred_payment_method', 'auto_withdrawal'],
+  payment: [
+    "withdrawal_threshold",
+    "currency",
+    "preferred_payment_method",
+    "auto_withdrawal",
+  ],
   notifications: [
-    'email_notifications',
-    'order_notifications',
-    'inventory_alerts',
-    'review_notifications',
+    "email_notifications",
+    "order_notifications",
+    "inventory_alerts",
+    "review_notifications",
   ],
-  security: ['two_factor_auth', 'login_notifications'],
+  security: ["two_factor_auth", "login_notifications"],
   account: [
-    'is_active',
-    'vacation_mode',
-    'vacation_message',
-    'vacation_start_date',
-    'vacation_end_date',
+    "is_active",
+    "vacation_mode",
+    "vacation_message",
+    "vacation_start_date",
+    "vacation_end_date",
   ],
 };
 
 const normalizeBusinessHours = (value: unknown): SellerBusinessHours => {
   const merged: SellerBusinessHours = { ...DEFAULT_SELLER_BUSINESS_HOURS };
-  if (!value || typeof value !== 'object') {
+  if (!value || typeof value !== "object") {
     return merged;
   }
 
   const record = value as Record<string, unknown>;
   for (const day of Object.keys(DEFAULT_SELLER_BUSINESS_HOURS)) {
     const entry = record[day];
-    if (!entry || typeof entry !== 'object') continue;
+    if (!entry || typeof entry !== "object") continue;
     const hour = entry as Record<string, unknown>;
     merged[day] = {
-      open: typeof hour.open === 'string' ? hour.open : merged[day].open,
-      close: typeof hour.close === 'string' ? hour.close : merged[day].close,
-      closed: typeof hour.closed === 'boolean' ? hour.closed : merged[day].closed,
+      open: typeof hour.open === "string" ? hour.open : merged[day].open,
+      close: typeof hour.close === "string" ? hour.close : merged[day].close,
+      closed:
+        typeof hour.closed === "boolean" ? hour.closed : merged[day].closed,
     };
   }
 
@@ -233,46 +250,57 @@ const normalizeBusinessHours = (value: unknown): SellerBusinessHours => {
 
 const mergeSettingsForm = (
   store: SellerStoreSummary | null,
-  remote?: SellerSettingsPayload | null
+  remote?: SellerSettingsPayload | null,
 ): SettingsForm => ({
   ...initialSettingsForm(store),
   ...(remote
     ? {
-        return_policy: remote.return_policy ?? store?.returnPolicy ?? '',
-        shipping_policy: remote.shipping_policy ?? store?.shippingPolicy ?? '',
-        warranty_policy: remote.warranty_policy ?? store?.warrantyPolicy ?? '',
-        privacy_policy: remote.privacy_policy ?? store?.privacyPolicy ?? '',
-        terms_of_service: remote.terms_of_service ?? store?.termsOfService ?? '',
+        return_policy: remote.return_policy ?? store?.returnPolicy ?? "",
+        shipping_policy: remote.shipping_policy ?? store?.shippingPolicy ?? "",
+        warranty_policy: remote.warranty_policy ?? store?.warrantyPolicy ?? "",
+        privacy_policy: remote.privacy_policy ?? store?.privacyPolicy ?? "",
+        terms_of_service:
+          remote.terms_of_service ?? store?.termsOfService ?? "",
         email_notifications: remote.email_notifications !== false,
         order_notifications: remote.order_notifications !== false,
         inventory_alerts: remote.inventory_alerts !== false,
         review_notifications: remote.review_notifications !== false,
         auto_withdrawal: Boolean(remote.auto_withdrawal),
-        withdrawal_threshold: remote.withdrawal_threshold ?? store?.withdrawalThreshold ?? 100000,
+        withdrawal_threshold:
+          remote.withdrawal_threshold ?? store?.withdrawalThreshold ?? 100000,
         preferred_payment_method:
-          remote.preferred_payment_method || store?.preferredPaymentMethod || 'bank_transfer',
+          remote.preferred_payment_method ||
+          store?.preferredPaymentMethod ||
+          "bank_transfer",
         is_active: remote.is_active !== false,
         vacation_mode: Boolean(remote.vacation_mode),
-        vacation_message: remote.vacation_message ?? store?.vacationMessage ?? '',
-        vacation_start_date: remote.vacation_start_date ?? store?.vacationStartDate ?? '',
-        vacation_end_date: remote.vacation_end_date ?? store?.vacationEndDate ?? '',
+        vacation_message:
+          remote.vacation_message ?? store?.vacationMessage ?? "",
+        vacation_start_date:
+          remote.vacation_start_date ?? store?.vacationStartDate ?? "",
+        vacation_end_date:
+          remote.vacation_end_date ?? store?.vacationEndDate ?? "",
         two_factor_auth: Boolean(remote.two_factor_auth),
         login_notifications: remote.login_notifications !== false,
         show_sold_out: remote.show_sold_out !== false,
         show_reviews: remote.show_reviews !== false,
         show_inventory_count: Boolean(remote.show_inventory_count),
-        currency: remote.currency || store?.currency || 'MMK',
-        business_hours_enabled: Boolean(remote.business_hours_enabled ?? store?.businessHoursEnabled),
-        business_hours: normalizeBusinessHours(remote.business_hours || store?.businessHours),
+        currency: remote.currency || store?.currency || "MMK",
+        business_hours_enabled: Boolean(
+          remote.business_hours_enabled ?? store?.businessHoursEnabled,
+        ),
+        business_hours: normalizeBusinessHours(
+          remote.business_hours || store?.businessHours,
+        ),
       }
     : {}),
 });
 
 const buildTabSettingsPayload = (
   tab: SettingsTab,
-  settings: SettingsForm
+  settings: SettingsForm,
 ): SellerSettingsPayload => {
-  if (tab === 'personal' || tab === 'brand' || tab === 'store') {
+  if (tab === "personal" || tab === "brand" || tab === "store") {
     return {};
   }
 
@@ -284,11 +312,11 @@ const buildTabSettingsPayload = (
 
   for (const field of fields) {
     const value = settings[field];
-    if (field === 'withdrawal_threshold') {
+    if (field === "withdrawal_threshold") {
       payload.withdrawal_threshold = Number(value) || 0;
       continue;
     }
-    if (field === 'business_hours') {
+    if (field === "business_hours") {
       payload.business_hours = value as SellerBusinessHours;
       continue;
     }
@@ -298,96 +326,112 @@ const buildTabSettingsPayload = (
   return payload;
 };
 
-const initialSettingsForm = (store: SellerStoreSummary | null): SettingsForm => ({
-  return_policy: store?.returnPolicy || '',
-  shipping_policy: store?.shippingPolicy || '',
-  warranty_policy: store?.warrantyPolicy || '',
-  privacy_policy: store?.privacyPolicy || '',
-  terms_of_service: store?.termsOfService || '',
+const initialSettingsForm = (
+  store: SellerStoreSummary | null,
+): SettingsForm => ({
+  return_policy: store?.returnPolicy || "",
+  shipping_policy: store?.shippingPolicy || "",
+  warranty_policy: store?.warrantyPolicy || "",
+  privacy_policy: store?.privacyPolicy || "",
+  terms_of_service: store?.termsOfService || "",
   email_notifications: store?.emailNotifications !== false,
   order_notifications: store?.orderNotifications !== false,
   inventory_alerts: store?.inventoryAlerts !== false,
   review_notifications: store?.reviewNotifications !== false,
   auto_withdrawal: Boolean(store?.autoWithdrawal),
   withdrawal_threshold: store?.withdrawalThreshold || 100000,
-  preferred_payment_method: store?.preferredPaymentMethod || 'bank_transfer',
+  preferred_payment_method: store?.preferredPaymentMethod || "bank_transfer",
   is_active: store?.isActive !== false,
   vacation_mode: Boolean(store?.vacationMode),
-  vacation_message: store?.vacationMessage || '',
-  vacation_start_date: store?.vacationStartDate || '',
-  vacation_end_date: store?.vacationEndDate || '',
+  vacation_message: store?.vacationMessage || "",
+  vacation_start_date: store?.vacationStartDate || "",
+  vacation_end_date: store?.vacationEndDate || "",
   two_factor_auth: Boolean(store?.twoFactorAuth),
   login_notifications: store?.loginNotifications !== false,
   show_sold_out: store?.showSoldOut !== false,
   show_reviews: store?.showReviews !== false,
   show_inventory_count: Boolean(store?.showInventoryCount),
-  currency: store?.currency || 'MMK',
+  currency: store?.currency || "MMK",
   business_hours_enabled: Boolean(store?.businessHoursEnabled),
   business_hours: normalizeBusinessHours(store?.businessHours),
 });
 
 const initialProfileForm = (user: NativeUser | null) => ({
-  name: user?.name || '',
-  email: user?.email || '',
-  phone: user?.phone || '',
-  address: user?.address || '',
-  city: user?.city || '',
-  state: user?.state || '',
-  country: user?.country || 'Myanmar',
-  postal_code: user?.postalCode || '',
-  date_of_birth: user?.dateOfBirth ? user.dateOfBirth.split('T')[0] : '',
+  name: user?.name || "",
+  email: user?.email || "",
+  phone: user?.phone || "",
+  address: user?.address || "",
+  city: user?.city || "",
+  state: user?.state || "",
+  country: user?.country || "Myanmar",
+  postal_code: user?.postalCode || "",
+  date_of_birth: user?.dateOfBirth ? user.dateOfBirth.split("T")[0] : "",
 });
 
 const initialStoreForm = (store: SellerStoreSummary | null): StoreForm => ({
-  store_name: store?.name || '',
-  store_description: store?.description || '',
-  business_type: store?.businessType || '',
-  contact_email: store?.email || '',
-  contact_phone: store?.phone || '',
-  website: store?.website || '',
-  address: store?.address || '',
-  city: store?.city || '',
-  state: store?.state || '',
-  country: store?.country || 'Myanmar',
-  postal_code: '',
-  business_registration_number: store?.registrationNumber || '',
-  tax_id: store?.taxId || '',
-  account_number: store?.accountNumber || '',
+  store_name: store?.name || "",
+  store_description: store?.description || "",
+  business_type: store?.businessType || "",
+  contact_email: store?.email || "",
+  contact_phone: store?.phone || "",
+  website: store?.website || "",
+  address: store?.address || "",
+  city: store?.city || "",
+  state: store?.state || "",
+  country: store?.country || "Myanmar",
+  postal_code: "",
+  business_registration_number: store?.registrationNumber || "",
+  tax_id: store?.taxId || "",
+  account_number: store?.accountNumber || "",
 });
 
-const initialIdentityForm = (store: SellerStoreSummary | null): IdentityForm => ({
-  business_registration_number: store?.registrationNumber || '',
-  tax_id: store?.taxId || '',
-  website: store?.website || '',
-  account_number: store?.accountNumber || '',
-  nrc_division: store?.nrcDivision || '',
-  nrc_township_code: store?.nrcTownshipCode || '',
-  nrc_township_mm: store?.nrcTownshipMm || '',
-  nrc_type: store?.nrcType || '',
-  nrc_number: store?.nrcNumber || '',
+const initialIdentityForm = (
+  store: SellerStoreSummary | null,
+): IdentityForm => ({
+  business_registration_number: store?.registrationNumber || "",
+  tax_id: store?.taxId || "",
+  website: store?.website || "",
+  account_number: store?.accountNumber || "",
+  nrc_division: store?.nrcDivision || "",
+  nrc_township_code: store?.nrcTownshipCode || "",
+  nrc_township_mm: store?.nrcTownshipMm || "",
+  nrc_type: store?.nrcType || "",
+  nrc_number: store?.nrcNumber || "",
 });
 
-function StatusToast({ message, onClose }: { message: Message; onClose: () => void }) {
+function StatusToast({
+  message,
+  onClose,
+}: {
+  message: Message;
+  onClose: () => void;
+}) {
   if (!message) return null;
-  const success = message.type === 'success';
+  const success = message.type === "success";
   return (
     <Pressable
       onPress={onClose}
       className={`mb-4 flex-row items-start gap-3 rounded-xl border p-4 ${
         success
-          ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
-          : 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
+          ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20"
+          : "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20"
       }`}
     >
-      <Feather name={success ? 'check-circle' : 'alert-triangle'} color={success ? '#16a34a' : '#dc2626'} size={18} />
+      <Feather
+        name={success ? "check-circle" : "alert-triangle"}
+        color={success ? "#16a34a" : "#dc2626"}
+        size={18}
+      />
       <Text
         className={`min-w-0 flex-1 font-sans text-sm ${
-          success ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300'
+          success
+            ? "text-green-700 dark:text-green-300"
+            : "text-red-700 dark:text-red-300"
         }`}
       >
         {message.text}
       </Text>
-      <Feather name="x" color={success ? '#16a34a' : '#dc2626'} size={16} />
+      <Feather name="x" color={success ? "#16a34a" : "#dc2626"} size={16} />
     </Pressable>
   );
 }
@@ -408,7 +452,7 @@ function Field({
   placeholder?: string;
   secure?: boolean;
   multiline?: boolean;
-  keyboardType?: 'default' | 'email-address' | 'phone-pad' | 'numeric';
+  keyboardType?: "default" | "email-address" | "phone-pad" | "numeric";
   required?: boolean;
 }) {
   return (
@@ -424,10 +468,10 @@ function Field({
         placeholderTextColor="#9ca3af"
         secureTextEntry={secure}
         multiline={multiline}
-        textAlignVertical={multiline ? 'top' : 'center'}
+        textAlignVertical={multiline ? "top" : "center"}
         keyboardType={keyboardType}
         className={`rounded-xl border border-gray-300 bg-white px-4 py-3 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 ${
-          multiline ? 'min-h-28' : 'h-12'
+          multiline ? "min-h-28" : "h-12"
         }`}
       />
     </View>
@@ -448,12 +492,16 @@ function ToggleRow({
   return (
     <View className="flex-row items-center justify-between gap-4 rounded-xl border border-gray-100 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
       <View className="min-w-0 flex-1">
-        <Text className="font-sans text-sm font-medium text-gray-700 dark:text-slate-300">{title}</Text>
-        <Text className="mt-1 font-sans text-xs leading-5 text-gray-500 dark:text-slate-400">{description}</Text>
+        <Text className="font-sans text-sm font-medium text-gray-700 dark:text-slate-300">
+          {title}
+        </Text>
+        <Text className="mt-1 font-sans text-xs leading-5 text-gray-500 dark:text-slate-400">
+          {description}
+        </Text>
       </View>
       <Pressable
         onPress={() => onValueChange(!value)}
-        className={`h-7 w-12 justify-center rounded-full px-1 ${value ? 'items-end bg-green-600' : 'items-start bg-gray-300 dark:bg-slate-600'}`}
+        className={`h-7 w-12 justify-center rounded-full px-1 ${value ? "items-end bg-green-600" : "items-start bg-gray-300 dark:bg-slate-600"}`}
       >
         <View className="h-5 w-5 rounded-full bg-white" />
       </Pressable>
@@ -466,7 +514,11 @@ function BusinessHoursEditor({
   onChange,
 }: {
   hours: SellerBusinessHours;
-  onChange: (day: string, field: 'open' | 'close' | 'closed', value: string | boolean) => void;
+  onChange: (
+    day: string,
+    field: "open" | "close" | "closed",
+    value: string | boolean,
+  ) => void;
 }) {
   return (
     <View className="overflow-hidden rounded-xl border border-gray-200 dark:border-slate-700">
@@ -475,8 +527,10 @@ function BusinessHoursEditor({
         return (
           <View
             key={day}
-            className={`gap-3 p-4 ${index % 2 === 0 ? 'bg-white dark:bg-slate-800' : 'bg-gray-50 dark:bg-slate-900/40'} ${
-              index < BUSINESS_DAYS.length - 1 ? 'border-b border-gray-100 dark:border-slate-700' : ''
+            className={`gap-3 p-4 ${index % 2 === 0 ? "bg-white dark:bg-slate-800" : "bg-gray-50 dark:bg-slate-900/40"} ${
+              index < BUSINESS_DAYS.length - 1
+                ? "border-b border-gray-100 dark:border-slate-700"
+                : ""
             }`}
           >
             <View className="flex-row items-center justify-between gap-3">
@@ -484,15 +538,17 @@ function BusinessHoursEditor({
                 {label}
               </Text>
               <Pressable
-                onPress={() => onChange(day, 'closed', !entry.closed)}
+                onPress={() => onChange(day, "closed", !entry.closed)}
                 className={`h-7 w-12 justify-center rounded-full px-1 ${
-                  !entry.closed ? 'items-end bg-green-600' : 'items-start bg-gray-300 dark:bg-slate-600'
+                  !entry.closed
+                    ? "items-end bg-green-600"
+                    : "items-start bg-gray-300 dark:bg-slate-600"
                 }`}
               >
                 <View className="h-5 w-5 rounded-full bg-white" />
               </Pressable>
               <Text className="min-w-0 flex-1 font-sans text-xs text-gray-500 dark:text-slate-400">
-                {entry.closed ? 'Closed' : 'Open'}
+                {entry.closed ? "Closed" : "Open"}
               </Text>
             </View>
             {!entry.closed ? (
@@ -503,7 +559,7 @@ function BusinessHoursEditor({
                   </Text>
                   <TextInput
                     value={entry.open}
-                    onChangeText={(value) => onChange(day, 'open', value)}
+                    onChangeText={(value) => onChange(day, "open", value)}
                     placeholder="09:00"
                     placeholderTextColor="#9ca3af"
                     className="h-11 rounded-xl border border-gray-300 bg-white px-3 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
@@ -515,7 +571,7 @@ function BusinessHoursEditor({
                   </Text>
                   <TextInput
                     value={entry.close}
-                    onChangeText={(value) => onChange(day, 'close', value)}
+                    onChangeText={(value) => onChange(day, "close", value)}
                     placeholder="18:00"
                     placeholderTextColor="#9ca3af"
                     className="h-11 rounded-xl border border-gray-300 bg-white px-3 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-900 dark:text-slate-100"
@@ -543,10 +599,11 @@ function SectionHeading({
         {t(tab.labelKey, tab.key)}
       </Text>
       <Text className="mt-1 font-sans text-xl font-bold text-gray-900 dark:text-white">
-        {t(tab.labelKey, tab.key)} {t('sellerSettings.settingsSuffix', 'Settings')}
+        {t(tab.labelKey, tab.key)}{" "}
+        {t("sellerSettings.settingsSuffix", "Settings")}
       </Text>
       <Text className="mt-1 font-sans text-sm text-gray-500 dark:text-slate-400">
-        {t(tab.descriptionKey, '')}
+        {t(tab.descriptionKey, "")}
       </Text>
     </View>
   );
@@ -573,20 +630,32 @@ function MediaUploadCard({
 }) {
   return (
     <View className="min-w-0 flex-1 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-800">
-      <View className={`${wide ? 'aspect-[3/1]' : 'aspect-square'} items-center justify-center bg-gray-100 dark:bg-slate-900`}>
+      <View
+        className={`${wide ? "aspect-[3/1]" : "aspect-square"} items-center justify-center bg-gray-100 dark:bg-slate-900`}
+      >
         {imageUrl ? (
-          <Image source={{ uri: imageUrl }} className="h-full w-full" resizeMode={wide ? 'cover' : 'contain'} />
+          <Image
+            source={{ uri: imageUrl }}
+            className="h-full w-full"
+            resizeMode={wide ? "cover" : "contain"}
+          />
         ) : (
           <View className="items-center gap-2">
             <Feather name={icon} color="#94a3b8" size={32} />
-            <Text className="font-sans text-xs text-gray-400 dark:text-slate-500">No file uploaded</Text>
+            <Text className="font-sans text-xs text-gray-400 dark:text-slate-500">
+              No file uploaded
+            </Text>
           </View>
         )}
       </View>
       <View className="gap-3 p-4">
         <View>
-          <Text className="font-sans text-sm font-bold text-gray-900 dark:text-slate-100">{title}</Text>
-          <Text className="mt-1 font-sans text-xs leading-5 text-gray-500 dark:text-slate-400">{description}</Text>
+          <Text className="font-sans text-sm font-bold text-gray-900 dark:text-slate-100">
+            {title}
+          </Text>
+          <Text className="mt-1 font-sans text-xs leading-5 text-gray-500 dark:text-slate-400">
+            {description}
+          </Text>
         </View>
         <View className="gap-2 sm:flex-row">
           <Pressable
@@ -594,8 +663,14 @@ function MediaUploadCard({
             disabled={uploading}
             className="flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 disabled:opacity-60"
           >
-            {uploading ? <ActivityIndicator color="#ffffff" /> : <Feather name="folder" color="#ffffff" size={15} />}
-            <Text className="font-sans text-sm font-bold text-white">{uploading ? 'Uploading...' : 'Gallery'}</Text>
+            {uploading ? (
+              <ActivityIndicator color="#ffffff" />
+            ) : (
+              <Feather name="folder" color="#ffffff" size={15} />
+            )}
+            <Text className="font-sans text-sm font-bold text-white">
+              {uploading ? "Uploading..." : "Gallery"}
+            </Text>
           </Pressable>
           <Pressable
             onPress={onCameraUpload}
@@ -603,7 +678,9 @@ function MediaUploadCard({
             className="flex-1 flex-row items-center justify-center gap-2 rounded-xl border border-gray-300 px-4 py-2.5 disabled:opacity-60 dark:border-slate-600"
           >
             <Feather name="camera" color="#64748b" size={15} />
-            <Text className="font-sans text-sm font-bold text-gray-700 dark:text-slate-200">Camera</Text>
+            <Text className="font-sans text-sm font-bold text-gray-700 dark:text-slate-200">
+              Camera
+            </Text>
           </Pressable>
         </View>
       </View>
@@ -611,12 +688,13 @@ function MediaUploadCard({
   );
 }
 
-const isPreviewImageUrl = (url?: string) => Boolean(url && /\.(png|jpe?g|webp|gif)(?:\?|#|$)/i.test(url));
+const isPreviewImageUrl = (url?: string) =>
+  Boolean(url && /\.(png|jpe?g|webp|gif)(?:\?|#|$)/i.test(url));
 
 const getDocumentName = (url?: string) => {
-  if (!url) return '';
-  const path = url.split('?')[0].split('#')[0];
-  const fileName = path.split('/').filter(Boolean).pop() || 'Uploaded document';
+  if (!url) return "";
+  const path = url.split("?")[0].split("#")[0];
+  const fileName = path.split("/").filter(Boolean).pop() || "Uploaded document";
   try {
     return decodeURIComponent(fileName);
   } catch {
@@ -651,52 +729,82 @@ function DocumentUploadRow({
     <View className="gap-4 rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
       <View className="gap-3 md:flex-row md:items-start md:justify-between">
         <View className="min-w-0 flex-1 flex-row items-start gap-3">
-        <View className={`h-10 w-10 items-center justify-center rounded-full ${uploaded ? 'bg-green-100 dark:bg-green-900/30' : 'bg-gray-100 dark:bg-slate-700'}`}>
-          <Feather name={uploaded ? 'check-circle' : 'file-text'} color={uploaded ? '#16a34a' : '#64748b'} size={18} />
-        </View>
-        <View className="min-w-0 flex-1">
-          <Text className="font-sans text-sm font-bold text-gray-900 dark:text-slate-100">{title}</Text>
-          <Text className="mt-1 font-sans text-xs leading-5 text-gray-500 dark:text-slate-400">{description}</Text>
-          <Text
-            className={`mt-2 font-sans text-xs font-semibold ${
-              uploaded
-                ? 'text-green-600 dark:text-green-400'
-                : required
-                  ? 'text-amber-600 dark:text-amber-400'
-                  : 'text-gray-500 dark:text-slate-400'
-            }`}
+          <View
+            className={`h-10 w-10 items-center justify-center rounded-full ${uploaded ? "bg-green-100 dark:bg-green-900/30" : "bg-gray-100 dark:bg-slate-700"}`}
           >
-            {uploaded ? 'Uploaded' : required ? 'Required' : 'Optional'}
-          </Text>
+            <Feather
+              name={uploaded ? "check-circle" : "file-text"}
+              color={uploaded ? "#16a34a" : "#64748b"}
+              size={18}
+            />
+          </View>
+          <View className="min-w-0 flex-1">
+            <Text className="font-sans text-sm font-bold text-gray-900 dark:text-slate-100">
+              {title}
+            </Text>
+            <Text className="mt-1 font-sans text-xs leading-5 text-gray-500 dark:text-slate-400">
+              {description}
+            </Text>
+            <Text
+              className={`mt-2 font-sans text-xs font-semibold ${
+                uploaded
+                  ? "text-green-600 dark:text-green-400"
+                  : required
+                    ? "text-amber-600 dark:text-amber-400"
+                    : "text-gray-500 dark:text-slate-400"
+              }`}
+            >
+              {uploaded ? "Uploaded" : required ? "Required" : "Optional"}
+            </Text>
+          </View>
         </View>
-      </View>
         <Pressable
           onPress={onUpload}
           disabled={uploading}
           className="flex-row items-center justify-center gap-2 rounded-xl border border-gray-300 px-4 py-2.5 dark:border-slate-600 disabled:opacity-60"
         >
-          {uploading ? <ActivityIndicator color="#16a34a" /> : <Feather name="upload-cloud" color="#16a34a" size={15} />}
-          <Text className="font-sans text-sm font-bold text-gray-700 dark:text-slate-200">{uploading ? 'Uploading...' : uploaded ? 'Replace' : 'Upload'}</Text>
+          {uploading ? (
+            <ActivityIndicator color="#16a34a" />
+          ) : (
+            <Feather name="upload-cloud" color="#16a34a" size={15} />
+          )}
+          <Text className="font-sans text-sm font-bold text-gray-700 dark:text-slate-200">
+            {uploading ? "Uploading..." : uploaded ? "Replace" : "Upload"}
+          </Text>
         </Pressable>
       </View>
 
       {fileUrl ? (
         <View className="overflow-hidden rounded-xl border border-gray-100 bg-gray-50 dark:border-slate-700 dark:bg-slate-900">
           {imagePreview ? (
-            <Image source={{ uri: fileUrl }} className="h-40 w-full bg-gray-100 dark:bg-slate-950" resizeMode="cover" />
+            <Image
+              source={{ uri: fileUrl }}
+              className="h-40 w-full bg-gray-100 dark:bg-slate-950"
+              resizeMode="cover"
+            />
           ) : (
             <View className="h-28 items-center justify-center gap-2 bg-gray-100 dark:bg-slate-950">
               <Feather name="file-text" color="#16a34a" size={28} />
-              <Text className="font-sans text-xs font-semibold text-gray-600 dark:text-slate-300">Uploaded file</Text>
+              <Text className="font-sans text-xs font-semibold text-gray-600 dark:text-slate-300">
+                Uploaded file
+              </Text>
             </View>
           )}
           <View className="gap-3 p-3 sm:flex-row sm:items-center sm:justify-between">
-            <Text numberOfLines={1} className="min-w-0 flex-1 font-sans text-xs font-medium text-gray-600 dark:text-slate-300">
+            <Text
+              numberOfLines={1}
+              className="min-w-0 flex-1 font-sans text-xs font-medium text-gray-600 dark:text-slate-300"
+            >
               {documentName}
             </Text>
-            <Pressable onPress={openDocument} className="flex-row items-center justify-center gap-2 rounded-lg bg-green-600 px-3 py-2">
+            <Pressable
+              onPress={openDocument}
+              className="flex-row items-center justify-center gap-2 rounded-lg bg-green-600 px-3 py-2"
+            >
               <Feather name="external-link" color="#ffffff" size={14} />
-              <Text className="font-sans text-xs font-bold text-white">Preview</Text>
+              <Text className="font-sans text-xs font-bold text-white">
+                Preview
+              </Text>
             </Pressable>
           </View>
         </View>
@@ -718,20 +826,32 @@ export function SellerSettingsNative({
 }) {
   const store = overview?.store || null;
   const { t } = useAppTranslation();
-  const [activeTab, setActiveTab] = useState<SettingsTab>('personal');
+  const [activeTab, setActiveTab] = useState<SettingsTab>("personal");
   const [message, setMessage] = useState<Message>(null);
   const [saving, setSaving] = useState(false);
   const [profileSaving, setProfileSaving] = useState(false);
   const [storeSaving, setStoreSaving] = useState(false);
   const [nrcSaving, setNrcSaving] = useState(false);
-  const [settings, setSettings] = useState<SettingsForm>(() => initialSettingsForm(store));
+  const [settings, setSettings] = useState<SettingsForm>(() =>
+    initialSettingsForm(store),
+  );
   const [profile, setProfile] = useState(() => initialProfileForm(user));
-  const [storeForm, setStoreForm] = useState<StoreForm>(() => initialStoreForm(store));
-  const [identity, setIdentity] = useState<IdentityForm>(() => initialIdentityForm(store));
-  const [nrcValue, setNrcValue] = useState<NrcInputValue>(() => nrcValueFromSeller(store || {}));
-  const [password, setPassword] = useState({ current: '', next: '', confirm: '' });
+  const [storeForm, setStoreForm] = useState<StoreForm>(() =>
+    initialStoreForm(store),
+  );
+  const [identity, setIdentity] = useState<IdentityForm>(() =>
+    initialIdentityForm(store),
+  );
+  const [nrcValue, setNrcValue] = useState<NrcInputValue>(() =>
+    nrcValueFromSeller(store || {}),
+  );
+  const [password, setPassword] = useState({
+    current: "",
+    next: "",
+    confirm: "",
+  });
   const [deleteOpen, setDeleteOpen] = useState(false);
-  const [deleteText, setDeleteText] = useState('');
+  const [deleteText, setDeleteText] = useState("");
   const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState<string | null>(null);
   const [submittingVerification, setSubmittingVerification] = useState(false);
@@ -775,8 +895,11 @@ export function SellerSettingsNative({
       } catch (error) {
         if (!cancelled) {
           setMessage({
-            type: 'error',
-            text: formatApiErrorMessage(error, 'Failed to load business types.'),
+            type: "error",
+            text: formatApiErrorMessage(
+              error,
+              "Failed to load business types.",
+            ),
           });
         }
       } finally {
@@ -804,67 +927,82 @@ export function SellerSettingsNative({
   }, [store?.id]);
 
   const activeSettings = useMemo(
-    () => SETTINGS_TABS.find((tab) => tab.key === activeTab) || SETTINGS_TABS[0],
-    [activeTab]
+    () =>
+      SETTINGS_TABS.find((tab) => tab.key === activeTab) || SETTINGS_TABS[0],
+    [activeTab],
   );
   const businessTypeOptions = useMemo(
     () =>
       businessTypes.map((type) => ({
         value: type.slug,
         label: type.name,
+        description: type.description || undefined,
+        icon: type.icon || undefined,
       })),
-    [businessTypes]
+    [businessTypes],
   );
   const selectedBusinessType = useMemo(
     () =>
       businessTypes.find(
         (type) =>
           type.slug === storeForm.business_type ||
-          type.name.toLowerCase() === storeForm.business_type.toLowerCase()
+          type.name.toLowerCase() === storeForm.business_type.toLowerCase(),
       ) || null,
-    [businessTypes, storeForm.business_type]
+    [businessTypes, storeForm.business_type],
   );
 
-  const setSetting = <K extends keyof SettingsForm>(key: K, value: SettingsForm[K]) => {
+  const setSetting = <K extends keyof SettingsForm>(
+    key: K,
+    value: SettingsForm[K],
+  ) => {
     setSettings((current) => ({ ...current, [key]: value }));
   };
 
   const setBusinessHour = (
     day: string,
-    field: 'open' | 'close' | 'closed',
-    value: string | boolean
+    field: "open" | "close" | "closed",
+    value: string | boolean,
   ) => {
     setSettings((current) => ({
       ...current,
       business_hours: {
         ...current.business_hours,
         [day]: {
-          ...(current.business_hours[day] || DEFAULT_SELLER_BUSINESS_HOURS[day]),
+          ...(current.business_hours[day] ||
+            DEFAULT_SELLER_BUSINESS_HOURS[day]),
           [field]: value,
         },
       },
     }));
   };
 
-  const setIdentityField = <K extends keyof IdentityForm>(key: K, value: IdentityForm[K]) => {
+  const setIdentityField = <K extends keyof IdentityForm>(
+    key: K,
+    value: IdentityForm[K],
+  ) => {
     setIdentity((current) => ({ ...current, [key]: value }));
   };
 
-  const setStoreField = <K extends keyof StoreForm>(key: K, value: StoreForm[K]) => {
+  const setStoreField = <K extends keyof StoreForm>(
+    key: K,
+    value: StoreForm[K],
+  ) => {
     setStoreForm((current) => ({ ...current, [key]: value }));
   };
 
-  const fileFromDocumentAsset = (asset: DocumentPickerAsset): NativeUploadFile => ({
+  const fileFromDocumentAsset = (
+    asset: DocumentPickerAsset,
+  ): NativeUploadFile => ({
     uri: asset.uri,
-    name: asset.name || getUploadNameFromUri(asset.uri, 'seller-document'),
-    type: asset.mimeType || 'application/octet-stream',
+    name: asset.name || getUploadNameFromUri(asset.uri, "seller-document"),
+    type: asset.mimeType || "application/octet-stream",
   });
 
   const pickDocument = async () => {
     try {
-      const DocumentPicker = await import('expo-document-picker');
+      const DocumentPicker = await import("expo-document-picker");
       const result = await DocumentPicker.getDocumentAsync({
-        type: ['image/*', 'application/pdf'],
+        type: ["image/*", "application/pdf"],
         copyToCacheDirectory: true,
         multiple: false,
       });
@@ -872,35 +1010,50 @@ export function SellerSettingsNative({
       return fileFromDocumentAsset(result.assets[0]);
     } catch (error) {
       setMessage({
-        type: 'error',
-        text: formatApiErrorMessage(error, 'Document picker is not available. Please restart Expo Go.'),
+        type: "error",
+        text: formatApiErrorMessage(
+          error,
+          "Document picker is not available. Please restart Expo Go.",
+        ),
       });
       return null;
     }
   };
 
-  const uploadStoreMedia = async (kind: 'logo' | 'banner', source: 'gallery' | 'camera') => {
+  const uploadStoreMedia = async (
+    kind: "logo" | "banner",
+    source: "gallery" | "camera",
+  ) => {
     const result =
-      source === 'camera'
-        ? await pickImageFromCamera({ allowsEditing: kind === 'logo' })
-        : await pickImagesFromLibrary({ allowsEditing: kind === 'logo' });
+      source === "camera"
+        ? await pickImageFromCamera({ allowsEditing: kind === "logo" })
+        : await pickImagesFromLibrary({ allowsEditing: kind === "logo" });
     const file = result.accepted[0];
     if (!file) return;
     if (result.rejected > 0) {
-      setMessage({ type: 'error', text: 'Some images were rejected. Use JPEG, PNG, or WebP under 5 MB.' });
+      setMessage({
+        type: "error",
+        text: "Some images were rejected. Use JPEG, PNG, or WebP under 5 MB.",
+      });
     }
     setUploading(kind);
     setMessage(null);
     try {
-      if (kind === 'logo') {
+      if (kind === "logo") {
         await uploadSellerStoreLogo(file);
       } else {
         await uploadSellerStoreBanner(file);
       }
       await onRefresh();
-      setMessage({ type: 'success', text: kind === 'logo' ? 'Store logo updated.' : 'Store banner updated.' });
+      setMessage({
+        type: "success",
+        text: kind === "logo" ? "Store logo updated." : "Store banner updated.",
+      });
     } catch (error) {
-      setMessage({ type: 'error', text: formatApiErrorMessage(error, 'Upload failed.') });
+      setMessage({
+        type: "error",
+        text: formatApiErrorMessage(error, "Upload failed."),
+      });
     } finally {
       setUploading(null);
     }
@@ -914,9 +1067,12 @@ export function SellerSettingsNative({
     try {
       await uploadSellerVerificationDocument(documentType, file);
       await onRefresh();
-      setMessage({ type: 'success', text: 'Verification document uploaded.' });
+      setMessage({ type: "success", text: "Verification document uploaded." });
     } catch (error) {
-      setMessage({ type: 'error', text: formatApiErrorMessage(error, 'Document upload failed.') });
+      setMessage({
+        type: "error",
+        text: formatApiErrorMessage(error, "Document upload failed."),
+      });
     } finally {
       setUploading(null);
     }
@@ -924,7 +1080,10 @@ export function SellerSettingsNative({
 
   const submitForVerification = async () => {
     if (!allRequiredDocumentsUploaded) {
-      setMessage({ type: 'error', text: 'Upload all required documents before submitting for verification.' });
+      setMessage({
+        type: "error",
+        text: "Upload all required documents before submitting for verification.",
+      });
       return;
     }
 
@@ -934,13 +1093,16 @@ export function SellerSettingsNative({
       const result = await submitSellerDocumentsForVerification();
       await onRefresh();
       setMessage({
-        type: 'success',
+        type: "success",
         text: `${result.message} Review usually takes 1–3 business days.`,
       });
     } catch (error) {
       setMessage({
-        type: 'error',
-        text: formatApiErrorMessage(error, 'Failed to submit documents for verification.'),
+        type: "error",
+        text: formatApiErrorMessage(
+          error,
+          "Failed to submit documents for verification.",
+        ),
       });
     } finally {
       setSubmittingVerification(false);
@@ -953,11 +1115,17 @@ export function SellerSettingsNative({
     try {
       await updateSellerStoreIdentity(identity);
       await onRefresh();
-      setMessage({ type: 'success', text: 'Business and identity details updated.' });
+      setMessage({
+        type: "success",
+        text: "Business and identity details updated.",
+      });
     } catch (error) {
       setMessage({
-        type: 'error',
-        text: formatApiErrorMessage(error, 'Failed to update business details.'),
+        type: "error",
+        text: formatApiErrorMessage(
+          error,
+          "Failed to update business details.",
+        ),
       });
     } finally {
       setSaving(false);
@@ -966,7 +1134,7 @@ export function SellerSettingsNative({
 
   const saveProfile = async () => {
     if (!profile.name.trim() || !profile.phone.trim()) {
-      setMessage({ type: 'error', text: 'Full name and phone are required.' });
+      setMessage({ type: "error", text: "Full name and phone are required." });
       return;
     }
     setProfileSaving(true);
@@ -974,9 +1142,12 @@ export function SellerSettingsNative({
     try {
       await updateSellerProfile(profile);
       await onRefresh();
-      setMessage({ type: 'success', text: 'Profile updated!' });
+      setMessage({ type: "success", text: "Profile updated!" });
     } catch (error) {
-      setMessage({ type: 'error', text: formatApiErrorMessage(error, 'Update failed.') });
+      setMessage({
+        type: "error",
+        text: formatApiErrorMessage(error, "Update failed."),
+      });
     } finally {
       setProfileSaving(false);
     }
@@ -984,18 +1155,18 @@ export function SellerSettingsNative({
 
   const saveStoreProfile = async () => {
     if (!storeForm.store_name.trim()) {
-      setMessage({ type: 'error', text: 'Store name is required.' });
+      setMessage({ type: "error", text: "Store name is required." });
       return;
     }
     if (!isEnglishStoreName(storeForm.store_name)) {
       setMessage({
-        type: 'error',
-        text: 'Store name must be written in English letters, numbers, spaces, or common punctuation.',
+        type: "error",
+        text: "Store name must be written in English letters, numbers, spaces, or common punctuation.",
       });
       return;
     }
     if (!storeForm.business_type.trim()) {
-      setMessage({ type: 'error', text: 'Please select a business type.' });
+      setMessage({ type: "error", text: "Please select a business type." });
       return;
     }
 
@@ -1004,11 +1175,11 @@ export function SellerSettingsNative({
     try {
       await updateSellerStoreProfile(storeForm);
       await onRefresh();
-      setMessage({ type: 'success', text: 'Store profile updated.' });
+      setMessage({ type: "success", text: "Store profile updated." });
     } catch (error) {
       setMessage({
-        type: 'error',
-        text: formatApiErrorMessage(error, 'Failed to update store profile.'),
+        type: "error",
+        text: formatApiErrorMessage(error, "Failed to update store profile."),
       });
     } finally {
       setStoreSaving(false);
@@ -1017,7 +1188,10 @@ export function SellerSettingsNative({
 
   const saveNrc = async () => {
     if (!isNrcInputComplete(nrcValue)) {
-      setMessage({ type: 'error', text: 'Complete all NRC fields before saving.' });
+      setMessage({
+        type: "error",
+        text: "Complete all NRC fields before saving.",
+      });
       return;
     }
 
@@ -1027,11 +1201,17 @@ export function SellerSettingsNative({
       await updateSellerStoreIdentity(nrcValue);
       setIdentity((current) => ({ ...current, ...nrcValue }));
       await onRefresh();
-      setMessage({ type: 'success', text: 'National identity number updated.' });
+      setMessage({
+        type: "success",
+        text: "National identity number updated.",
+      });
     } catch (error) {
       setMessage({
-        type: 'error',
-        text: formatApiErrorMessage(error, 'Failed to update national identity number.'),
+        type: "error",
+        text: formatApiErrorMessage(
+          error,
+          "Failed to update national identity number.",
+        ),
       });
     } finally {
       setNrcSaving(false);
@@ -1051,11 +1231,14 @@ export function SellerSettingsNative({
       const refreshed = await fetchSellerSettings();
       setSettings(mergeSettingsForm(store, refreshed));
       await onRefresh();
-      setMessage({ type: 'success', text: 'Store settings updated successfully!' });
+      setMessage({
+        type: "success",
+        text: "Store settings updated successfully!",
+      });
     } catch (error) {
       setMessage({
-        type: 'error',
-        text: formatApiErrorMessage(error, 'Failed to update store settings.'),
+        type: "error",
+        text: formatApiErrorMessage(error, "Failed to update store settings."),
       });
     } finally {
       setSaving(false);
@@ -1067,30 +1250,40 @@ export function SellerSettingsNative({
     setMessage(null);
 
     if (password.next !== password.confirm) {
-      setMessage({ type: 'error', text: 'New passwords do not match' });
+      setMessage({ type: "error", text: "New passwords do not match" });
       setSaving(false);
       return;
     }
     if (password.next.length < 6) {
-      setMessage({ type: 'error', text: 'Password must be at least 6 characters' });
+      setMessage({
+        type: "error",
+        text: "Password must be at least 6 characters",
+      });
       setSaving(false);
       return;
     }
 
     try {
-      await updateSellerPassword(password.current, password.next, password.confirm);
-      setPassword({ current: '', next: '', confirm: '' });
-      setMessage({ type: 'success', text: 'Password changed successfully!' });
+      await updateSellerPassword(
+        password.current,
+        password.next,
+        password.confirm,
+      );
+      setPassword({ current: "", next: "", confirm: "" });
+      setMessage({ type: "success", text: "Password changed successfully!" });
     } catch (error) {
-      setMessage({ type: 'error', text: formatApiErrorMessage(error, 'Failed to change password.') });
+      setMessage({
+        type: "error",
+        text: formatApiErrorMessage(error, "Failed to change password."),
+      });
     } finally {
       setSaving(false);
     }
   };
 
   const deleteAccount = async () => {
-    if (deleteText !== 'DELETE' || !user) {
-      setMessage({ type: 'error', text: 'Please type DELETE to confirm' });
+    if (deleteText !== "DELETE" || !user) {
+      setMessage({ type: "error", text: "Please type DELETE to confirm" });
       return;
     }
 
@@ -1099,730 +1292,1211 @@ export function SellerSettingsNative({
       await deleteSellerAccount(user.id);
       await onLogout();
     } catch (error) {
-      setMessage({ type: 'error', text: formatApiErrorMessage(error, 'Failed to delete account.') });
+      setMessage({
+        type: "error",
+        text: formatApiErrorMessage(error, "Failed to delete account."),
+      });
       setDeleting(false);
     }
   };
 
-  const individualStore = (store?.businessType || '').toLowerCase().includes('individual');
+  const individualStore = (store?.businessType || "")
+    .toLowerCase()
+    .includes("individual");
   const documentItems = [
     {
-      type: 'identity_document_front' as const,
-      title: 'Front of Identity Document',
-      description: 'Clear photo of the front side of your ID card, passport, or driving license.',
+      type: "identity_document_front" as const,
+      title: "Front of Identity Document",
+      description:
+        "Clear photo of the front side of your ID card, passport, or driving license.",
       fileUrl: store?.identityDocumentFrontUrl,
       required: true,
     },
     {
-      type: 'identity_document_back' as const,
-      title: 'Back of Identity Document',
-      description: 'Clear photo of the back side of your ID card or passport.',
+      type: "identity_document_back" as const,
+      title: "Back of Identity Document",
+      description: "Clear photo of the back side of your ID card or passport.",
       fileUrl: store?.identityDocumentBackUrl,
       required: true,
     },
     {
-      type: 'business_registration_document' as const,
-      title: 'Business Registration Certificate',
-      description: 'Official business registration certificate from the government authority.',
+      type: "business_registration_document" as const,
+      title: "Business Registration Certificate",
+      description:
+        "Official business registration certificate from the government authority.",
       fileUrl: store?.businessRegistrationDocumentUrl,
       required: !individualStore,
     },
     {
-      type: 'tax_registration_document' as const,
-      title: 'Tax Registration Document',
-      description: 'Tax certificate or tax registration document, if required for your business type.',
+      type: "tax_registration_document" as const,
+      title: "Tax Registration Document",
+      description:
+        "Tax certificate or tax registration document, if required for your business type.",
       fileUrl: store?.taxRegistrationDocumentUrl,
       required: !individualStore,
     },
     {
-      type: 'business_certificate' as const,
-      title: 'Business Certificate',
-      description: 'Additional business certificate or supporting verification document.',
+      type: "business_certificate" as const,
+      title: "Business Certificate",
+      description:
+        "Additional business certificate or supporting verification document.",
       fileUrl: store?.businessCertificateUrl,
       required: false,
     },
   ];
-  const requiredDocumentCount = documentItems.filter((item) => item.required).length;
-  const uploadedRequiredDocumentCount = documentItems.filter((item) => item.required && item.fileUrl).length;
-  const allRequiredDocumentsUploaded = uploadedRequiredDocumentCount === requiredDocumentCount;
-  const verificationStatus = (store?.verificationStatus || '').toLowerCase();
+  const requiredDocumentCount = documentItems.filter(
+    (item) => item.required,
+  ).length;
+  const uploadedRequiredDocumentCount = documentItems.filter(
+    (item) => item.required && item.fileUrl,
+  ).length;
+  const allRequiredDocumentsUploaded =
+    uploadedRequiredDocumentCount === requiredDocumentCount;
+  const verificationStatus = (store?.verificationStatus || "").toLowerCase();
   const documentsSubmitted = Boolean(store?.documentsSubmitted);
-  const isVerified = verificationStatus === 'verified';
-  const isRejected = verificationStatus === 'rejected' || store?.documentStatus === 'rejected';
+  const isVerified = verificationStatus === "verified";
+  const isRejected =
+    verificationStatus === "rejected" || store?.documentStatus === "rejected";
   const isUnderReview =
     documentsSubmitted &&
     !isVerified &&
     !isRejected &&
-    (verificationStatus === 'under_review' || verificationStatus === 'pending' || !verificationStatus);
-  const canSubmitForVerification = allRequiredDocumentsUploaded && !documentsSubmitted && !isVerified && !isUnderReview;
+    (verificationStatus === "under_review" ||
+      verificationStatus === "pending" ||
+      !verificationStatus);
+  const canSubmitForVerification =
+    allRequiredDocumentsUploaded &&
+    !documentsSubmitted &&
+    !isVerified &&
+    !isUnderReview;
   const verificationStatusLabel = isVerified
-    ? 'Verified'
+    ? "Verified"
     : isRejected
-      ? 'Rejected'
+      ? "Rejected"
       : isUnderReview
-        ? 'Under admin review'
+        ? "Under admin review"
         : documentsSubmitted
-          ? 'Submitted'
+          ? "Submitted"
           : allRequiredDocumentsUploaded
-            ? 'Ready to submit'
-            : 'Documents incomplete';
+            ? "Ready to submit"
+            : "Documents incomplete";
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}>
-    <View className="mx-auto w-full max-w-6xl gap-6">
-      <View className="rounded-2xl bg-white p-6 dark:bg-slate-800">
-        <View className="gap-4 sm:flex-row sm:items-center sm:justify-between">
-          <View>
-            <Text className="font-sans text-2xl font-bold text-gray-900 dark:text-white">Store Settings</Text>
-            <Text className="mt-1 font-sans text-sm text-gray-600 dark:text-slate-400">
-              Manage your store preferences and account settings
-            </Text>
-          </View>
-          <View className="self-start rounded-full bg-green-100 px-3 py-1 dark:bg-green-900/30">
-            <Text className="font-sans text-sm font-medium capitalize text-green-800 dark:text-green-300">
-              {store?.status || 'active'}
-            </Text>
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
+      keyboardVerticalOffset={Platform.OS === "ios" ? 88 : 0}
+    >
+      <View className="mx-auto w-full max-w-6xl gap-6">
+        <View className="rounded-2xl bg-white p-6 dark:bg-slate-800">
+          <View className="gap-4 sm:flex-row sm:items-center sm:justify-between">
+            <View>
+              <Text className="font-sans text-2xl font-bold text-gray-900 dark:text-white">
+                Store Settings
+              </Text>
+              <Text className="mt-1 font-sans text-sm text-gray-600 dark:text-slate-400">
+                Manage your store preferences and account settings
+              </Text>
+            </View>
+            <View className="self-start rounded-full bg-green-100 px-3 py-1 dark:bg-green-900/30">
+              <Text className="font-sans text-sm font-medium capitalize text-green-800 dark:text-green-300">
+                {store?.status || "active"}
+              </Text>
+            </View>
           </View>
         </View>
-      </View>
 
-      <StatusToast message={message} onClose={() => setMessage(null)} />
+        <StatusToast message={message} onClose={() => setMessage(null)} />
 
-      <View className="overflow-hidden rounded-2xl bg-white dark:bg-slate-800">
-        <View className="border-b border-gray-200 p-2 dark:border-slate-700">
-          <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerClassName="gap-1">
-            {SETTINGS_TABS.map((tab) => {
-              const active = activeTab === tab.key;
-              return (
-                <Pressable
-                  key={tab.key}
-                  onPress={() => setActiveTab(tab.key)}
-                  className={`flex-row items-center gap-2 rounded-xl px-4 py-2.5 ${
-                    active ? 'bg-green-600' : 'bg-transparent'
-                  }`}
-                >
-                  <Feather name={tab.icon} color={active ? '#ffffff' : '#64748b'} size={16} />
-                  <Text
-                    className={`font-sans text-sm font-semibold ${
-                      active ? 'text-white' : 'text-gray-500 dark:text-slate-400'
+        <View className="overflow-hidden rounded-2xl bg-white dark:bg-slate-800">
+          <View className="border-b border-gray-200 p-2 dark:border-slate-700">
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              contentContainerClassName="gap-1"
+            >
+              {SETTINGS_TABS.map((tab) => {
+                const active = activeTab === tab.key;
+                return (
+                  <Pressable
+                    key={tab.key}
+                    onPress={() => setActiveTab(tab.key)}
+                    className={`flex-row items-center gap-2 rounded-xl px-4 py-2.5 ${
+                      active ? "bg-green-600" : "bg-transparent"
                     }`}
                   >
-                    {t(tab.labelKey, tab.key)}
-                  </Text>
-                </Pressable>
-              );
-            })}
-          </ScrollView>
-        </View>
-
-        <View className="p-6">
-          <SectionHeading tab={activeSettings} t={t} />
-
-          {settingsLoading ? (
-            <View className="items-center py-10">
-              <ActivityIndicator color="#16a34a" />
-              <Text className="mt-3 font-sans text-sm text-gray-500 dark:text-slate-400">
-                Loading store settings...
-              </Text>
-            </View>
-          ) : null}
-
-          {!settingsLoading && activeTab === 'personal' ? (
-            <View className="max-w-3xl gap-4">
-              <View className="gap-4 md:flex-row">
-                <Field label="Full name" required value={profile.name} onChangeText={(value) => setProfile((p) => ({ ...p, name: value }))} />
-                <Field label="Phone" required keyboardType="phone-pad" value={profile.phone} onChangeText={(value) => setProfile((p) => ({ ...p, phone: value }))} />
-              </View>
-              <View className="gap-4 md:flex-row">
-                <Field label="Email" keyboardType="email-address" value={profile.email} onChangeText={(value) => setProfile((p) => ({ ...p, email: value }))} />
-                <NativeDateField
-                  label="Date of birth"
-                  value={profile.date_of_birth}
-                  maximumDate={new Date().toISOString().slice(0, 10)}
-                  onChange={(value) => setProfile((p) => ({ ...p, date_of_birth: value }))}
-                />
-              </View>
-              <Field label="Address" value={profile.address} onChangeText={(value) => setProfile((p) => ({ ...p, address: value }))} />
-              <View className="gap-4 md:flex-row">
-                <Field label="City" value={profile.city} onChangeText={(value) => setProfile((p) => ({ ...p, city: value }))} />
-                <Field label="State / region" value={profile.state} onChangeText={(value) => setProfile((p) => ({ ...p, state: value }))} />
-              </View>
-              <View className="gap-4 md:flex-row">
-                <Field label="Country" value={profile.country} onChangeText={(value) => setProfile((p) => ({ ...p, country: value }))} />
-                <Field label="Postal code" value={profile.postal_code} onChangeText={(value) => setProfile((p) => ({ ...p, postal_code: value }))} />
-              </View>
-              <View className="items-end">
-                <Pressable
-                  onPress={saveProfile}
-                  disabled={profileSaving}
-                  className="flex-row items-center gap-2 rounded-xl bg-green-500 px-6 py-3 disabled:opacity-60"
-                >
-                  {profileSaving ? <ActivityIndicator color="#ffffff" /> : <Feather name="save" color="#ffffff" size={16} />}
-                  <Text className="font-sans text-sm font-medium text-white">
-                    {profileSaving ? 'Saving...' : 'Save changes'}
-                  </Text>
-                </Pressable>
-              </View>
-            </View>
-          ) : null}
-
-          {!settingsLoading && activeTab === 'store' ? (
-            <View className="max-w-4xl gap-6">
-              <View className="gap-4 md:flex-row">
-                <Field label="Store name" required value={storeForm.store_name} onChangeText={(value) => setStoreField('store_name', value)} />
-                <SelectPickerNative
-                  label="Business type"
-                  required
-                  value={storeForm.business_type}
-                  options={businessTypeOptions}
-                  placeholder={businessTypesLoading ? 'Loading business types...' : 'Select business type'}
-                  disabled={businessTypesLoading || storeSaving}
-                  onChange={(value) => setStoreField('business_type', value)}
-                />
-              </View>
-              <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">
-                Store name accepts English letters, numbers, spaces, and common punctuation only.
-              </Text>
-              {selectedBusinessType ? (
-                <View className="flex-row items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
-                  <View className="h-9 w-9 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-800/40">
                     <Feather
-                      name={
-                        selectedBusinessType.icon === 'user'
-                          ? 'user'
-                          : selectedBusinessType.icon === 'truck'
-                            ? 'truck'
-                            : selectedBusinessType.icon === 'users'
-                              ? 'users'
-                              : 'briefcase'
+                      name={tab.icon}
+                      color={active ? "#ffffff" : "#64748b"}
+                      size={16}
+                    />
+                    <Text
+                      className={`font-sans text-sm font-semibold ${
+                        active
+                          ? "text-white"
+                          : "text-gray-500 dark:text-slate-400"
+                      }`}
+                    >
+                      {t(tab.labelKey, tab.key)}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </ScrollView>
+          </View>
+
+          <View className="p-6">
+            <SectionHeading tab={activeSettings} t={t} />
+
+            {settingsLoading ? (
+              <View className="items-center py-10">
+                <ActivityIndicator color="#16a34a" />
+                <Text className="mt-3 font-sans text-sm text-gray-500 dark:text-slate-400">
+                  Loading store settings...
+                </Text>
+              </View>
+            ) : null}
+
+            {!settingsLoading && activeTab === "personal" ? (
+              <View className="max-w-3xl gap-4">
+                <View className="gap-4 md:flex-row">
+                  <Field
+                    label="Full name"
+                    required
+                    value={profile.name}
+                    onChangeText={(value) =>
+                      setProfile((p) => ({ ...p, name: value }))
+                    }
+                  />
+                  <Field
+                    label="Phone"
+                    required
+                    keyboardType="phone-pad"
+                    value={profile.phone}
+                    onChangeText={(value) =>
+                      setProfile((p) => ({ ...p, phone: value }))
+                    }
+                  />
+                </View>
+                <View className="gap-4 md:flex-row">
+                  <Field
+                    label="Email"
+                    keyboardType="email-address"
+                    value={profile.email}
+                    onChangeText={(value) =>
+                      setProfile((p) => ({ ...p, email: value }))
+                    }
+                  />
+                  <NativeDateField
+                    label="Date of birth"
+                    value={profile.date_of_birth}
+                    maximumDate={new Date().toISOString().slice(0, 10)}
+                    onChange={(value) =>
+                      setProfile((p) => ({ ...p, date_of_birth: value }))
+                    }
+                  />
+                </View>
+                <Field
+                  label="Address"
+                  value={profile.address}
+                  onChangeText={(value) =>
+                    setProfile((p) => ({ ...p, address: value }))
+                  }
+                />
+                <View className="gap-4 md:flex-row">
+                  <Field
+                    label="City"
+                    value={profile.city}
+                    onChangeText={(value) =>
+                      setProfile((p) => ({ ...p, city: value }))
+                    }
+                  />
+                  <Field
+                    label="State / region"
+                    value={profile.state}
+                    onChangeText={(value) =>
+                      setProfile((p) => ({ ...p, state: value }))
+                    }
+                  />
+                </View>
+                <View className="gap-4 md:flex-row">
+                  <Field
+                    label="Country"
+                    value={profile.country}
+                    onChangeText={(value) =>
+                      setProfile((p) => ({ ...p, country: value }))
+                    }
+                  />
+                  <Field
+                    label="Postal code"
+                    value={profile.postal_code}
+                    onChangeText={(value) =>
+                      setProfile((p) => ({ ...p, postal_code: value }))
+                    }
+                  />
+                </View>
+                <View className="items-end">
+                  <Pressable
+                    onPress={saveProfile}
+                    disabled={profileSaving}
+                    className="flex-row items-center gap-2 rounded-xl bg-green-500 px-6 py-3 disabled:opacity-60"
+                  >
+                    {profileSaving ? (
+                      <ActivityIndicator color="#ffffff" />
+                    ) : (
+                      <Feather name="save" color="#ffffff" size={16} />
+                    )}
+                    <Text className="font-sans text-sm font-medium text-white">
+                      {profileSaving ? "Saving..." : "Save changes"}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
+
+            {!settingsLoading && activeTab === "store" ? (
+              <View className="max-w-4xl gap-6">
+                <View className="gap-4 md:flex-row">
+                  <Field
+                    label="Store name"
+                    required
+                    value={storeForm.store_name}
+                    onChangeText={(value) => setStoreField("store_name", value)}
+                  />
+                  <SelectPickerNative
+                    label="Business type"
+                    required
+                    value={storeForm.business_type}
+                    options={businessTypeOptions}
+                    placeholder={
+                      businessTypesLoading
+                        ? "Loading business types..."
+                        : "Select business type"
+                    }
+                    disabled={businessTypesLoading || storeSaving}
+                    onChange={(value) => setStoreField("business_type", value)}
+                  />
+                </View>
+                <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">
+                  Store name accepts English letters, numbers, spaces, and
+                  common punctuation only.
+                </Text>
+                {selectedBusinessType ? (
+                  <View className="flex-row items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
+                    <View className="h-9 w-9 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-800/40">
+                      <Feather
+                        name={
+                          selectedBusinessType.icon === "user"
+                            ? "user"
+                            : selectedBusinessType.icon === "truck"
+                              ? "truck"
+                              : selectedBusinessType.icon === "users"
+                                ? "users"
+                                : "briefcase"
+                        }
+                        color="#2563eb"
+                        size={17}
+                      />
+                    </View>
+                    <View className="min-w-0 flex-1">
+                      <Text className="font-sans text-sm font-semibold text-blue-900 dark:text-blue-200">
+                        {selectedBusinessType.name}
+                      </Text>
+                      {selectedBusinessType.description ? (
+                        <Text className="mt-0.5 font-sans text-xs leading-5 text-blue-700 dark:text-blue-300">
+                          {selectedBusinessType.description}
+                        </Text>
+                      ) : null}
+                    </View>
+                  </View>
+                ) : null}
+                <Field
+                  label="Store description"
+                  multiline
+                  value={storeForm.store_description}
+                  onChangeText={(value) =>
+                    setStoreField("store_description", value)
+                  }
+                />
+                <View className="gap-4 md:flex-row">
+                  <Field
+                    label="Contact email"
+                    keyboardType="email-address"
+                    value={storeForm.contact_email}
+                    onChangeText={(value) =>
+                      setStoreField("contact_email", value)
+                    }
+                  />
+                  <Field
+                    label="Contact phone"
+                    keyboardType="phone-pad"
+                    value={storeForm.contact_phone}
+                    onChangeText={(value) =>
+                      setStoreField("contact_phone", value)
+                    }
+                  />
+                </View>
+                <Field
+                  label="Website"
+                  value={storeForm.website}
+                  onChangeText={(value) => setStoreField("website", value)}
+                />
+                <Field
+                  label="Address"
+                  value={storeForm.address}
+                  onChangeText={(value) => setStoreField("address", value)}
+                />
+                <View className="gap-4 md:flex-row">
+                  <MyanmarRegionPicker
+                    label="State / region"
+                    value={storeForm.state}
+                    onChange={(value) => setStoreField("state", value)}
+                  />
+                  <Field
+                    label="City"
+                    value={storeForm.city}
+                    onChangeText={(value) => setStoreField("city", value)}
+                  />
+                </View>
+                <View className="gap-4 md:flex-row">
+                  <Field
+                    label="Country"
+                    value={storeForm.country}
+                    onChangeText={(value) => setStoreField("country", value)}
+                  />
+                  <Field
+                    label="Postal code"
+                    value={storeForm.postal_code}
+                    onChangeText={(value) =>
+                      setStoreField("postal_code", value)
+                    }
+                  />
+                </View>
+                <View className="gap-4 md:flex-row">
+                  <Field
+                    label="Business registration number"
+                    value={storeForm.business_registration_number}
+                    onChangeText={(value) =>
+                      setStoreField("business_registration_number", value)
+                    }
+                  />
+                  <Field
+                    label="Tax ID"
+                    value={storeForm.tax_id}
+                    onChangeText={(value) => setStoreField("tax_id", value)}
+                  />
+                </View>
+                <Field
+                  label="Account number"
+                  value={storeForm.account_number}
+                  onChangeText={(value) =>
+                    setStoreField("account_number", value)
+                  }
+                />
+
+                <View className="gap-4 rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-slate-700 dark:bg-slate-900/40">
+                  <View>
+                    <Text className="font-sans text-base font-bold text-gray-900 dark:text-slate-100">
+                      National Identity Number (NRC)
+                    </Text>
+                    <Text className="mt-1 font-sans text-sm leading-6 text-gray-500 dark:text-slate-400">
+                      Current NRC: {store?.nrcFull || "Not provided"}
+                      {store?.nrcVerificationStatus
+                        ? ` - ${store.nrcVerificationStatus}`
+                        : ""}
+                    </Text>
+                  </View>
+                  <NrcInputNative
+                    value={nrcValue}
+                    onChange={setNrcValue}
+                    disabled={nrcSaving}
+                  />
+                  <View className="items-end">
+                    <Pressable
+                      onPress={saveNrc}
+                      disabled={nrcSaving}
+                      className="flex-row items-center gap-2 rounded-xl border border-green-600 px-6 py-3 disabled:opacity-60"
+                    >
+                      {nrcSaving ? (
+                        <ActivityIndicator color="#16a34a" />
+                      ) : (
+                        <Feather name="credit-card" color="#16a34a" size={16} />
+                      )}
+                      <Text className="font-sans text-sm font-bold text-green-700 dark:text-green-300">
+                        {nrcSaving ? "Saving..." : "Save NRC"}
+                      </Text>
+                    </Pressable>
+                  </View>
+                </View>
+
+                <View className="items-end">
+                  <Pressable
+                    onPress={saveStoreProfile}
+                    disabled={storeSaving}
+                    className="flex-row items-center gap-2 rounded-xl bg-green-600 px-6 py-3 disabled:opacity-60"
+                  >
+                    {storeSaving ? (
+                      <ActivityIndicator color="#ffffff" />
+                    ) : (
+                      <Feather name="save" color="#ffffff" size={16} />
+                    )}
+                    <Text className="font-sans text-sm font-bold text-white">
+                      {storeSaving ? "Saving..." : "Save store profile"}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+            ) : null}
+
+            {!settingsLoading && activeTab === "brand" ? (
+              <View className="gap-6">
+                <View className="gap-4 md:flex-row">
+                  <MediaUploadCard
+                    title="Store logo"
+                    description="Used on seller cards, product pages, and your public store profile."
+                    imageUrl={store?.logoUrl}
+                    icon="image"
+                    uploading={uploading === "logo"}
+                    onGalleryUpload={() =>
+                      void uploadStoreMedia("logo", "gallery")
+                    }
+                    onCameraUpload={() =>
+                      void uploadStoreMedia("logo", "camera")
+                    }
+                  />
+                  <MediaUploadCard
+                    title="Store banner"
+                    description="Wide cover image shown at the top of your seller profile."
+                    imageUrl={store?.bannerUrl}
+                    icon="layout"
+                    wide
+                    uploading={uploading === "banner"}
+                    onGalleryUpload={() =>
+                      void uploadStoreMedia("banner", "gallery")
+                    }
+                    onCameraUpload={() =>
+                      void uploadStoreMedia("banner", "camera")
+                    }
+                  />
+                </View>
+
+                <View className="gap-4 rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-slate-700 dark:bg-slate-900/40">
+                  <View>
+                    <Text className="font-sans text-base font-bold text-gray-900 dark:text-slate-100">
+                      Business details
+                    </Text>
+                    <Text className="mt-1 font-sans text-sm leading-6 text-gray-500 dark:text-slate-400">
+                      Keep registration, tax, payout, and national identity
+                      details up to date for verification review.
+                    </Text>
+                  </View>
+                  <View className="gap-4 md:flex-row">
+                    <Field
+                      label="Business registration number"
+                      value={identity.business_registration_number}
+                      onChangeText={(value) =>
+                        setIdentityField("business_registration_number", value)
                       }
-                      color="#2563eb"
-                      size={17}
+                    />
+                    <Field
+                      label="Tax ID"
+                      value={identity.tax_id}
+                      onChangeText={(value) =>
+                        setIdentityField("tax_id", value)
+                      }
                     />
                   </View>
-                  <View className="min-w-0 flex-1">
-                    <Text className="font-sans text-sm font-semibold text-blue-900 dark:text-blue-200">
-                      {selectedBusinessType.name}
-                    </Text>
-                    {selectedBusinessType.description ? (
-                      <Text className="mt-0.5 font-sans text-xs leading-5 text-blue-700 dark:text-blue-300">
-                        {selectedBusinessType.description}
+                  <View className="gap-4 md:flex-row">
+                    <Field
+                      label="Website"
+                      value={identity.website}
+                      onChangeText={(value) =>
+                        setIdentityField("website", value)
+                      }
+                    />
+                    <Field
+                      label="Account number"
+                      value={identity.account_number}
+                      onChangeText={(value) =>
+                        setIdentityField("account_number", value)
+                      }
+                    />
+                  </View>
+                  <View className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
+                    <View className="mb-4 flex-row items-start gap-3">
+                      <View className="h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
+                        <Feather name="credit-card" color="#16a34a" size={18} />
+                      </View>
+                      <View className="min-w-0 flex-1">
+                        <Text className="font-sans text-sm font-bold text-gray-900 dark:text-slate-100">
+                          National Identity Number (NRC)
+                        </Text>
+                        <Text className="mt-1 font-sans text-xs leading-5 text-gray-500 dark:text-slate-400">
+                          Current NRC: {store?.nrcFull || "Not provided"}
+                          {store?.nrcVerificationStatus
+                            ? ` - ${store.nrcVerificationStatus}`
+                            : ""}
+                        </Text>
+                      </View>
+                    </View>
+                    <View className="gap-4 md:flex-row">
+                      <Field
+                        label="Division"
+                        value={identity.nrc_division}
+                        onChangeText={(value) =>
+                          setIdentityField("nrc_division", value)
+                        }
+                      />
+                      <Field
+                        label="Township code"
+                        value={identity.nrc_township_code}
+                        onChangeText={(value) =>
+                          setIdentityField("nrc_township_code", value)
+                        }
+                      />
+                    </View>
+                    <View className="mt-4 gap-4 md:flex-row">
+                      <Field
+                        label="Township MM"
+                        value={identity.nrc_township_mm}
+                        onChangeText={(value) =>
+                          setIdentityField("nrc_township_mm", value)
+                        }
+                      />
+                      <Field
+                        label="Type"
+                        value={identity.nrc_type}
+                        onChangeText={(value) =>
+                          setIdentityField("nrc_type", value)
+                        }
+                      />
+                      <Field
+                        label="Number"
+                        keyboardType="numeric"
+                        value={identity.nrc_number}
+                        onChangeText={(value) =>
+                          setIdentityField("nrc_number", value)
+                        }
+                      />
+                    </View>
+                  </View>
+                  <View className="items-end">
+                    <Pressable
+                      onPress={saveIdentity}
+                      disabled={saving}
+                      className="flex-row items-center gap-2 rounded-xl bg-green-600 px-6 py-3 disabled:opacity-60"
+                    >
+                      {saving ? (
+                        <ActivityIndicator color="#ffffff" />
+                      ) : (
+                        <Feather name="save" color="#ffffff" size={16} />
+                      )}
+                      <Text className="font-sans text-sm font-bold text-white">
+                        {saving ? "Saving..." : "Save business details"}
                       </Text>
+                    </Pressable>
+                  </View>
+                </View>
+
+                <View className="gap-4">
+                  <View>
+                    <Text className="font-sans text-base font-bold text-gray-900 dark:text-slate-100">
+                      Verification documents
+                    </Text>
+                    <Text className="mt-1 font-sans text-sm leading-6 text-gray-500 dark:text-slate-400">
+                      Upload identity and business files for admin verification.
+                      PDF, JPG, PNG, and WEBP are supported.
+                    </Text>
+                  </View>
+                  <View
+                    className={`rounded-xl border p-4 ${
+                      allRequiredDocumentsUploaded
+                        ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20"
+                        : "border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20"
+                    }`}
+                  >
+                    <View className="flex-row items-start gap-3">
+                      <View
+                        className={`h-10 w-10 items-center justify-center rounded-full ${
+                          allRequiredDocumentsUploaded
+                            ? "bg-green-100 dark:bg-green-900/40"
+                            : "bg-amber-100 dark:bg-amber-900/40"
+                        }`}
+                      >
+                        <Feather
+                          name={
+                            allRequiredDocumentsUploaded
+                              ? "check-circle"
+                              : "alert-circle"
+                          }
+                          color={
+                            allRequiredDocumentsUploaded ? "#16a34a" : "#d97706"
+                          }
+                          size={18}
+                        />
+                      </View>
+                      <View className="min-w-0 flex-1">
+                        <Text
+                          className={`font-sans text-sm font-bold ${
+                            allRequiredDocumentsUploaded
+                              ? "text-green-800 dark:text-green-200"
+                              : "text-amber-800 dark:text-amber-200"
+                          }`}
+                        >
+                          Required documents: {uploadedRequiredDocumentCount}/
+                          {requiredDocumentCount} uploaded
+                        </Text>
+                        <Text
+                          className={`mt-1 font-sans text-xs leading-5 ${
+                            allRequiredDocumentsUploaded
+                              ? "text-green-700 dark:text-green-300"
+                              : "text-amber-700 dark:text-amber-300"
+                          }`}
+                        >
+                          {allRequiredDocumentsUploaded
+                            ? "All required verification files are available for review."
+                            : "Upload the missing required files so admins can verify the store without delay."}
+                        </Text>
+                      </View>
+                    </View>
+                  </View>
+                  {documentItems.map((item) => (
+                    <DocumentUploadRow
+                      key={item.type}
+                      title={item.title}
+                      description={item.description}
+                      fileUrl={item.fileUrl}
+                      required={item.required}
+                      uploading={uploading === item.type}
+                      onUpload={() => void uploadDocument(item.type)}
+                    />
+                  ))}
+
+                  <View
+                    className={`rounded-xl border p-4 ${
+                      isVerified
+                        ? "border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20"
+                        : isRejected
+                          ? "border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20"
+                          : isUnderReview
+                            ? "border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20"
+                            : "border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-900/40"
+                    }`}
+                  >
+                    <View className="flex-row items-start gap-3">
+                      <View
+                        className={`h-10 w-10 items-center justify-center rounded-full ${
+                          isVerified
+                            ? "bg-green-100 dark:bg-green-900/40"
+                            : isRejected
+                              ? "bg-red-100 dark:bg-red-900/40"
+                              : isUnderReview
+                                ? "bg-blue-100 dark:bg-blue-900/40"
+                                : "bg-gray-100 dark:bg-slate-700"
+                        }`}
+                      >
+                        <Feather
+                          name={
+                            isVerified
+                              ? "award"
+                              : isRejected
+                                ? "x-circle"
+                                : isUnderReview
+                                  ? "clock"
+                                  : "send"
+                          }
+                          color={
+                            isVerified
+                              ? "#16a34a"
+                              : isRejected
+                                ? "#dc2626"
+                                : isUnderReview
+                                  ? "#2563eb"
+                                  : "#64748b"
+                          }
+                          size={18}
+                        />
+                      </View>
+                      <View className="min-w-0 flex-1 gap-2">
+                        <Text className="font-sans text-sm font-bold text-gray-900 dark:text-slate-100">
+                          Verification status: {verificationStatusLabel}
+                        </Text>
+                        {store?.documentsSubmittedAt ? (
+                          <Text className="font-sans text-xs leading-5 text-gray-500 dark:text-slate-400">
+                            Submitted{" "}
+                            {new Date(
+                              store.documentsSubmittedAt,
+                            ).toLocaleString()}
+                          </Text>
+                        ) : null}
+                        {isRejected && store?.documentRejectionReason ? (
+                          <Text className="font-sans text-xs leading-5 text-red-700 dark:text-red-300">
+                            Rejection reason: {store.documentRejectionReason}
+                          </Text>
+                        ) : null}
+                        {isUnderReview ? (
+                          <Text className="font-sans text-xs leading-5 text-blue-700 dark:text-blue-300">
+                            Your documents are in the admin verification queue.
+                            You will be notified when review is complete.
+                          </Text>
+                        ) : null}
+                        {canSubmitForVerification ? (
+                          <Text className="font-sans text-xs leading-5 text-gray-600 dark:text-slate-300">
+                            All required files are uploaded. Submit them to
+                            admin for KYC review.
+                          </Text>
+                        ) : null}
+                        {!canSubmitForVerification &&
+                        !isUnderReview &&
+                        !isVerified &&
+                        !isRejected &&
+                        !allRequiredDocumentsUploaded ? (
+                          <Text className="font-sans text-xs leading-5 text-gray-600 dark:text-slate-300">
+                            Complete the required uploads above, then submit for
+                            verification.
+                          </Text>
+                        ) : null}
+                      </View>
+                    </View>
+
+                    {canSubmitForVerification ? (
+                      <Pressable
+                        onPress={() => void submitForVerification()}
+                        disabled={submittingVerification}
+                        className="mt-4 flex-row items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 disabled:opacity-60"
+                      >
+                        {submittingVerification ? (
+                          <ActivityIndicator color="#ffffff" />
+                        ) : (
+                          <Feather name="send" color="#ffffff" size={16} />
+                        )}
+                        <Text className="font-sans text-sm font-bold text-white">
+                          {submittingVerification
+                            ? "Submitting..."
+                            : "Submit for verification"}
+                        </Text>
+                      </Pressable>
                     ) : null}
                   </View>
                 </View>
-              ) : null}
-              <Field label="Store description" multiline value={storeForm.store_description} onChangeText={(value) => setStoreField('store_description', value)} />
-              <View className="gap-4 md:flex-row">
-                <Field label="Contact email" keyboardType="email-address" value={storeForm.contact_email} onChangeText={(value) => setStoreField('contact_email', value)} />
-                <Field label="Contact phone" keyboardType="phone-pad" value={storeForm.contact_phone} onChangeText={(value) => setStoreField('contact_phone', value)} />
               </View>
-              <Field label="Website" value={storeForm.website} onChangeText={(value) => setStoreField('website', value)} />
-              <Field label="Address" value={storeForm.address} onChangeText={(value) => setStoreField('address', value)} />
-              <View className="gap-4 md:flex-row">
-                <MyanmarRegionPicker
-                  label="State / region"
-                  value={storeForm.state}
-                  onChange={(value) => setStoreField('state', value)}
+            ) : null}
+
+            {!settingsLoading && activeTab === "general" ? (
+              <View className="gap-5">
+                <View className="gap-4 md:flex-row">
+                  <Field
+                    label="Return policy"
+                    multiline
+                    value={settings.return_policy}
+                    onChangeText={(value) => setSetting("return_policy", value)}
+                  />
+                  <Field
+                    label="Shipping policy"
+                    multiline
+                    value={settings.shipping_policy}
+                    onChangeText={(value) =>
+                      setSetting("shipping_policy", value)
+                    }
+                  />
+                </View>
+                <View className="gap-4 md:flex-row">
+                  <Field
+                    label="Warranty policy"
+                    multiline
+                    value={settings.warranty_policy}
+                    onChangeText={(value) =>
+                      setSetting("warranty_policy", value)
+                    }
+                  />
+                  <Field
+                    label="Privacy policy"
+                    multiline
+                    value={settings.privacy_policy}
+                    onChangeText={(value) =>
+                      setSetting("privacy_policy", value)
+                    }
+                  />
+                </View>
+                <Field
+                  label="Terms of service"
+                  multiline
+                  value={settings.terms_of_service}
+                  onChangeText={(value) =>
+                    setSetting("terms_of_service", value)
+                  }
                 />
-                <Field label="City" value={storeForm.city} onChangeText={(value) => setStoreField('city', value)} />
-              </View>
-              <View className="gap-4 md:flex-row">
-                <Field label="Country" value={storeForm.country} onChangeText={(value) => setStoreField('country', value)} />
-                <Field label="Postal code" value={storeForm.postal_code} onChangeText={(value) => setStoreField('postal_code', value)} />
-              </View>
-              <View className="gap-4 md:flex-row">
-                <Field label="Business registration number" value={storeForm.business_registration_number} onChangeText={(value) => setStoreField('business_registration_number', value)} />
-                <Field label="Tax ID" value={storeForm.tax_id} onChangeText={(value) => setStoreField('tax_id', value)} />
-              </View>
-              <Field label="Account number" value={storeForm.account_number} onChangeText={(value) => setStoreField('account_number', value)} />
-
-              <View className="gap-4 rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-slate-700 dark:bg-slate-900/40">
-                <View>
-                  <Text className="font-sans text-base font-bold text-gray-900 dark:text-slate-100">National Identity Number (NRC)</Text>
-                  <Text className="mt-1 font-sans text-sm leading-6 text-gray-500 dark:text-slate-400">
-                    Current NRC: {store?.nrcFull || 'Not provided'}
-                    {store?.nrcVerificationStatus ? ` - ${store.nrcVerificationStatus}` : ''}
-                  </Text>
-                </View>
-                <NrcInputNative value={nrcValue} onChange={setNrcValue} disabled={nrcSaving} />
-                <View className="items-end">
-                  <Pressable
-                    onPress={saveNrc}
-                    disabled={nrcSaving}
-                    className="flex-row items-center gap-2 rounded-xl border border-green-600 px-6 py-3 disabled:opacity-60"
-                  >
-                    {nrcSaving ? <ActivityIndicator color="#16a34a" /> : <Feather name="credit-card" color="#16a34a" size={16} />}
-                    <Text className="font-sans text-sm font-bold text-green-700 dark:text-green-300">
-                      {nrcSaving ? 'Saving...' : 'Save NRC'}
+                <ToggleRow
+                  title="Show sold out products"
+                  description="Keep unavailable products visible on your store."
+                  value={settings.show_sold_out}
+                  onValueChange={(value) => setSetting("show_sold_out", value)}
+                />
+                <ToggleRow
+                  title="Show reviews"
+                  description="Display customer ratings and reviews on public pages."
+                  value={settings.show_reviews}
+                  onValueChange={(value) => setSetting("show_reviews", value)}
+                />
+                <ToggleRow
+                  title="Show inventory count"
+                  description="Let buyers see remaining stock quantity."
+                  value={settings.show_inventory_count}
+                  onValueChange={(value) =>
+                    setSetting("show_inventory_count", value)
+                  }
+                />
+                <ToggleRow
+                  title="Business hours enabled"
+                  description="Use business hours on your public profile."
+                  value={settings.business_hours_enabled}
+                  onValueChange={(value) =>
+                    setSetting("business_hours_enabled", value)
+                  }
+                />
+                {settings.business_hours_enabled ? (
+                  <View className="gap-3">
+                    <Text className="font-sans text-sm font-medium text-gray-700 dark:text-slate-300">
+                      Weekly business hours
                     </Text>
-                  </Pressable>
+                    <BusinessHoursEditor
+                      hours={settings.business_hours}
+                      onChange={setBusinessHour}
+                    />
+                  </View>
+                ) : null}
+              </View>
+            ) : null}
+
+            {!settingsLoading && activeTab === "payment" ? (
+              <View className="max-w-3xl gap-5">
+                <View className="gap-4 md:flex-row">
+                  <Field
+                    label="Withdrawal threshold"
+                    keyboardType="numeric"
+                    value={String(settings.withdrawal_threshold)}
+                    onChangeText={(value) =>
+                      setSetting("withdrawal_threshold", Number(value) || 0)
+                    }
+                  />
+                  <Field
+                    label="Currency"
+                    value={settings.currency}
+                    onChangeText={(value) => setSetting("currency", value)}
+                  />
+                </View>
+                <View>
+                  <Text className="mb-2 font-sans text-sm font-medium text-gray-700 dark:text-slate-300">
+                    Preferred payment method
+                  </Text>
+                  <View className="flex-row flex-wrap gap-2">
+                    {[
+                      ["bank_transfer", "Bank transfer"],
+                      ["wave_money", "Wave Money"],
+                      ["kbz_pay", "KBZ Pay"],
+                      ["mpu", "MPU"],
+                      ["visa_master", "Visa / Mastercard"],
+                    ].map(([key, label]) => {
+                      const active = settings.preferred_payment_method === key;
+                      return (
+                        <Pressable
+                          key={key}
+                          onPress={() =>
+                            setSetting("preferred_payment_method", key)
+                          }
+                          className={`rounded-xl border px-4 py-3 ${
+                            active
+                              ? "border-green-500 bg-green-50 dark:bg-green-900/30"
+                              : "border-gray-200 bg-white dark:border-slate-600 dark:bg-slate-800"
+                          }`}
+                        >
+                          <Text
+                            className={`font-sans text-sm font-semibold ${active ? "text-green-700 dark:text-green-300" : "text-gray-600 dark:text-slate-300"}`}
+                          >
+                            {label}
+                          </Text>
+                        </Pressable>
+                      );
+                    })}
+                  </View>
+                </View>
+                <ToggleRow
+                  title="Auto withdrawal"
+                  description="Automatically request payout when your balance reaches the threshold."
+                  value={settings.auto_withdrawal}
+                  onValueChange={(value) =>
+                    setSetting("auto_withdrawal", value)
+                  }
+                />
+              </View>
+            ) : null}
+
+            {!settingsLoading && activeTab === "notifications" ? (
+              <View className="gap-4">
+                <ToggleRow
+                  title="Email notifications"
+                  description="Receive general account and marketplace updates."
+                  value={settings.email_notifications}
+                  onValueChange={(value) =>
+                    setSetting("email_notifications", value)
+                  }
+                />
+                <ToggleRow
+                  title="Order notifications"
+                  description="Get notified when new orders are placed."
+                  value={settings.order_notifications}
+                  onValueChange={(value) =>
+                    setSetting("order_notifications", value)
+                  }
+                />
+                <ToggleRow
+                  title="Inventory alerts"
+                  description="Receive alerts when products are running low."
+                  value={settings.inventory_alerts}
+                  onValueChange={(value) =>
+                    setSetting("inventory_alerts", value)
+                  }
+                />
+                <ToggleRow
+                  title="Review notifications"
+                  description="Get alerts when buyers leave reviews."
+                  value={settings.review_notifications}
+                  onValueChange={(value) =>
+                    setSetting("review_notifications", value)
+                  }
+                />
+              </View>
+            ) : null}
+
+            {!settingsLoading && activeTab === "security" ? (
+              <View className="gap-5">
+                <ToggleRow
+                  title="Two-Factor Authentication"
+                  description="Add an extra layer of security to your account."
+                  value={settings.two_factor_auth}
+                  onValueChange={(value) =>
+                    setSetting("two_factor_auth", value)
+                  }
+                />
+                <ToggleRow
+                  title="Login notifications"
+                  description="Get notified when someone logs into your account."
+                  value={settings.login_notifications}
+                  onValueChange={(value) =>
+                    setSetting("login_notifications", value)
+                  }
+                />
+                <View className="mt-3 border-t border-gray-200 pt-6 dark:border-slate-700">
+                  <Text className="mb-4 font-sans text-base font-medium text-gray-900 dark:text-white">
+                    Change Password
+                  </Text>
+                  <View className="max-w-3xl gap-4">
+                    <Field
+                      label="Current Password"
+                      secure
+                      value={password.current}
+                      onChangeText={(value) =>
+                        setPassword((p) => ({ ...p, current: value }))
+                      }
+                    />
+                    <Field
+                      label="New Password"
+                      secure
+                      value={password.next}
+                      onChangeText={(value) =>
+                        setPassword((p) => ({ ...p, next: value }))
+                      }
+                    />
+                    <Field
+                      label="Confirm New Password"
+                      secure
+                      value={password.confirm}
+                      onChangeText={(value) =>
+                        setPassword((p) => ({ ...p, confirm: value }))
+                      }
+                    />
+                    <View className="items-end">
+                      <Pressable
+                        onPress={changePassword}
+                        disabled={saving}
+                        className="flex-row items-center gap-2 rounded-xl bg-green-500 px-6 py-3 disabled:opacity-60"
+                      >
+                        {saving ? (
+                          <ActivityIndicator color="#ffffff" />
+                        ) : (
+                          <Feather name="key" color="#ffffff" size={16} />
+                        )}
+                        <Text className="font-sans text-sm font-medium text-white">
+                          {saving ? "Changing..." : "Change Password"}
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
                 </View>
               </View>
+            ) : null}
 
-              <View className="items-end">
+            {!settingsLoading && activeTab === "account" ? (
+              <View className="gap-5">
+                <ToggleRow
+                  title="Store Active"
+                  description="Enable or disable your store temporarily."
+                  value={settings.is_active}
+                  onValueChange={(value) => setSetting("is_active", value)}
+                />
+                <ToggleRow
+                  title="Vacation Mode"
+                  description="Pause orders and show vacation message."
+                  value={settings.vacation_mode}
+                  onValueChange={(value) => setSetting("vacation_mode", value)}
+                />
+                {settings.vacation_mode ? (
+                  <View className="gap-4">
+                    <Field
+                      label="Vacation Message"
+                      multiline
+                      value={settings.vacation_message}
+                      onChangeText={(value) =>
+                        setSetting("vacation_message", value)
+                      }
+                    />
+                    <View className="gap-4 md:flex-row">
+                      <NativeDateField
+                        label="Start Date"
+                        value={settings.vacation_start_date}
+                        onChange={(value) =>
+                          setSetting("vacation_start_date", value)
+                        }
+                      />
+                      <NativeDateField
+                        label="End Date"
+                        value={settings.vacation_end_date}
+                        minimumDate={settings.vacation_start_date || undefined}
+                        onChange={(value) =>
+                          setSetting("vacation_end_date", value)
+                        }
+                      />
+                    </View>
+                  </View>
+                ) : null}
+                <View className="rounded-xl border border-red-200 bg-red-50 p-6 dark:border-red-800 dark:bg-red-900/20">
+                  <View className="flex-row items-start gap-3">
+                    <Feather name="trash-2" color="#ef4444" size={20} />
+                    <View className="min-w-0 flex-1">
+                      <Text className="font-sans text-lg font-medium text-red-800 dark:text-red-300">
+                        Delete Account
+                      </Text>
+                      <Text className="mt-1 font-sans text-sm leading-6 text-red-700 dark:text-red-400">
+                        This will permanently delete your seller account and all
+                        associated data. This action cannot be undone.
+                      </Text>
+                      <Pressable
+                        onPress={() => setDeleteOpen(true)}
+                        className="mt-4 self-start rounded-lg bg-red-600 px-4 py-2"
+                      >
+                        <Text className="font-sans text-sm font-medium text-white">
+                          Delete My Account
+                        </Text>
+                      </Pressable>
+                    </View>
+                  </View>
+                </View>
+              </View>
+            ) : null}
+
+            {!settingsLoading &&
+            activeTab !== "personal" &&
+            activeTab !== "brand" ? (
+              <View className="mt-8 flex-row justify-end gap-3 border-t border-gray-200 pt-6 dark:border-slate-700">
                 <Pressable
-                  onPress={saveStoreProfile}
-                  disabled={storeSaving}
-                  className="flex-row items-center gap-2 rounded-xl bg-green-600 px-6 py-3 disabled:opacity-60"
+                  onPress={() => setActiveTab("personal")}
+                  className="rounded-xl border border-gray-300 px-6 py-2.5 dark:border-slate-600"
                 >
-                  {storeSaving ? <ActivityIndicator color="#ffffff" /> : <Feather name="save" color="#ffffff" size={16} />}
-                  <Text className="font-sans text-sm font-bold text-white">
-                    {storeSaving ? 'Saving...' : 'Save store profile'}
+                  <Text className="font-sans text-sm font-medium text-gray-700 dark:text-slate-300">
+                    Back to Personal
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={saveSettings}
+                  disabled={saving}
+                  className="flex-row items-center gap-2 rounded-xl bg-green-500 px-6 py-2.5 disabled:opacity-60"
+                >
+                  {saving ? (
+                    <ActivityIndicator color="#ffffff" />
+                  ) : (
+                    <Feather name="save" color="#ffffff" size={16} />
+                  )}
+                  <Text className="font-sans text-sm font-medium text-white">
+                    {saving
+                      ? "Saving..."
+                      : `Save ${t(activeSettings.labelKey, activeSettings.key)} Settings`}
+                  </Text>
+                </Pressable>
+              </View>
+            ) : null}
+          </View>
+        </View>
+
+        <Modal
+          visible={deleteOpen}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setDeleteOpen(false)}
+        >
+          <View className="flex-1 bg-black/60 px-4 py-12">
+            <View className="mx-auto w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
+              <View className="items-center">
+                <View className="h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/40">
+                  <Feather name="trash-2" color="#dc2626" size={24} />
+                </View>
+                <Text className="mt-3 font-sans text-lg font-medium text-gray-900 dark:text-white">
+                  Delete Account
+                </Text>
+                <Text className="mt-2 text-center font-sans text-sm leading-6 text-gray-500 dark:text-slate-400">
+                  This will permanently delete your seller account, store,
+                  products, and all associated data.
+                </Text>
+                <Text className="mt-2 font-sans text-sm font-medium text-red-600 dark:text-red-400">
+                  This action cannot be undone!
+                </Text>
+              </View>
+              <View className="mt-4">
+                <Text className="mb-2 font-sans text-sm font-medium text-gray-700 dark:text-slate-300">
+                  Type DELETE to confirm
+                </Text>
+                <TextInput
+                  value={deleteText}
+                  onChangeText={setDeleteText}
+                  className="h-12 rounded-xl border border-red-300 bg-white px-4 font-sans text-sm text-gray-900 dark:border-red-700 dark:bg-slate-900 dark:text-slate-100"
+                  placeholder="Type DELETE here"
+                  placeholderTextColor="#9ca3af"
+                />
+              </View>
+              <View className="mt-6 flex-row gap-4">
+                <Pressable
+                  onPress={() => {
+                    setDeleteOpen(false);
+                    setDeleteText("");
+                  }}
+                  className="flex-1 rounded-xl bg-gray-100 px-4 py-3 dark:bg-slate-700"
+                >
+                  <Text className="text-center font-sans text-sm font-medium text-gray-700 dark:text-slate-300">
+                    Cancel
+                  </Text>
+                </Pressable>
+                <Pressable
+                  onPress={deleteAccount}
+                  disabled={deleting || deleteText !== "DELETE"}
+                  className="flex-1 rounded-xl bg-red-600 px-4 py-3 disabled:opacity-50"
+                >
+                  <Text className="text-center font-sans text-sm font-medium text-white">
+                    {deleting ? "Deleting..." : "Delete Account"}
                   </Text>
                 </Pressable>
               </View>
             </View>
-          ) : null}
-
-          {!settingsLoading && activeTab === 'brand' ? (
-            <View className="gap-6">
-              <View className="gap-4 md:flex-row">
-                <MediaUploadCard
-                  title="Store logo"
-                  description="Used on seller cards, product pages, and your public store profile."
-                  imageUrl={store?.logoUrl}
-                  icon="image"
-                  uploading={uploading === 'logo'}
-                  onGalleryUpload={() => void uploadStoreMedia('logo', 'gallery')}
-                  onCameraUpload={() => void uploadStoreMedia('logo', 'camera')}
-                />
-                <MediaUploadCard
-                  title="Store banner"
-                  description="Wide cover image shown at the top of your seller profile."
-                  imageUrl={store?.bannerUrl}
-                  icon="layout"
-                  wide
-                  uploading={uploading === 'banner'}
-                  onGalleryUpload={() => void uploadStoreMedia('banner', 'gallery')}
-                  onCameraUpload={() => void uploadStoreMedia('banner', 'camera')}
-                />
-              </View>
-
-              <View className="gap-4 rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-slate-700 dark:bg-slate-900/40">
-                <View>
-                  <Text className="font-sans text-base font-bold text-gray-900 dark:text-slate-100">Business details</Text>
-                  <Text className="mt-1 font-sans text-sm leading-6 text-gray-500 dark:text-slate-400">
-                    Keep registration, tax, payout, and national identity details up to date for verification review.
-                  </Text>
-                </View>
-                <View className="gap-4 md:flex-row">
-                  <Field label="Business registration number" value={identity.business_registration_number} onChangeText={(value) => setIdentityField('business_registration_number', value)} />
-                  <Field label="Tax ID" value={identity.tax_id} onChangeText={(value) => setIdentityField('tax_id', value)} />
-                </View>
-                <View className="gap-4 md:flex-row">
-                  <Field label="Website" value={identity.website} onChangeText={(value) => setIdentityField('website', value)} />
-                  <Field label="Account number" value={identity.account_number} onChangeText={(value) => setIdentityField('account_number', value)} />
-                </View>
-                <View className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-                  <View className="mb-4 flex-row items-start gap-3">
-                    <View className="h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-                      <Feather name="credit-card" color="#16a34a" size={18} />
-                    </View>
-                    <View className="min-w-0 flex-1">
-                      <Text className="font-sans text-sm font-bold text-gray-900 dark:text-slate-100">National Identity Number (NRC)</Text>
-                      <Text className="mt-1 font-sans text-xs leading-5 text-gray-500 dark:text-slate-400">
-                        Current NRC: {store?.nrcFull || 'Not provided'}
-                        {store?.nrcVerificationStatus ? ` - ${store.nrcVerificationStatus}` : ''}
-                      </Text>
-                    </View>
-                  </View>
-                  <View className="gap-4 md:flex-row">
-                    <Field label="Division" value={identity.nrc_division} onChangeText={(value) => setIdentityField('nrc_division', value)} />
-                    <Field label="Township code" value={identity.nrc_township_code} onChangeText={(value) => setIdentityField('nrc_township_code', value)} />
-                  </View>
-                  <View className="mt-4 gap-4 md:flex-row">
-                    <Field label="Township MM" value={identity.nrc_township_mm} onChangeText={(value) => setIdentityField('nrc_township_mm', value)} />
-                    <Field label="Type" value={identity.nrc_type} onChangeText={(value) => setIdentityField('nrc_type', value)} />
-                    <Field label="Number" keyboardType="numeric" value={identity.nrc_number} onChangeText={(value) => setIdentityField('nrc_number', value)} />
-                  </View>
-                </View>
-                <View className="items-end">
-                  <Pressable
-                    onPress={saveIdentity}
-                    disabled={saving}
-                    className="flex-row items-center gap-2 rounded-xl bg-green-600 px-6 py-3 disabled:opacity-60"
-                  >
-                    {saving ? <ActivityIndicator color="#ffffff" /> : <Feather name="save" color="#ffffff" size={16} />}
-                    <Text className="font-sans text-sm font-bold text-white">{saving ? 'Saving...' : 'Save business details'}</Text>
-                  </Pressable>
-                </View>
-              </View>
-
-              <View className="gap-4">
-                <View>
-                  <Text className="font-sans text-base font-bold text-gray-900 dark:text-slate-100">Verification documents</Text>
-                  <Text className="mt-1 font-sans text-sm leading-6 text-gray-500 dark:text-slate-400">
-                    Upload identity and business files for admin verification. PDF, JPG, PNG, and WEBP are supported.
-                  </Text>
-                </View>
-                <View
-                  className={`rounded-xl border p-4 ${
-                    allRequiredDocumentsUploaded
-                      ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
-                      : 'border-amber-200 bg-amber-50 dark:border-amber-800 dark:bg-amber-900/20'
-                  }`}
-                >
-                  <View className="flex-row items-start gap-3">
-                    <View
-                      className={`h-10 w-10 items-center justify-center rounded-full ${
-                        allRequiredDocumentsUploaded ? 'bg-green-100 dark:bg-green-900/40' : 'bg-amber-100 dark:bg-amber-900/40'
-                      }`}
-                    >
-                      <Feather
-                        name={allRequiredDocumentsUploaded ? 'check-circle' : 'alert-circle'}
-                        color={allRequiredDocumentsUploaded ? '#16a34a' : '#d97706'}
-                        size={18}
-                      />
-                    </View>
-                    <View className="min-w-0 flex-1">
-                      <Text
-                        className={`font-sans text-sm font-bold ${
-                          allRequiredDocumentsUploaded ? 'text-green-800 dark:text-green-200' : 'text-amber-800 dark:text-amber-200'
-                        }`}
-                      >
-                        Required documents: {uploadedRequiredDocumentCount}/{requiredDocumentCount} uploaded
-                      </Text>
-                      <Text
-                        className={`mt-1 font-sans text-xs leading-5 ${
-                          allRequiredDocumentsUploaded ? 'text-green-700 dark:text-green-300' : 'text-amber-700 dark:text-amber-300'
-                        }`}
-                      >
-                        {allRequiredDocumentsUploaded
-                          ? 'All required verification files are available for review.'
-                          : 'Upload the missing required files so admins can verify the store without delay.'}
-                      </Text>
-                    </View>
-                  </View>
-                </View>
-                {documentItems.map((item) => (
-                  <DocumentUploadRow
-                    key={item.type}
-                    title={item.title}
-                    description={item.description}
-                    fileUrl={item.fileUrl}
-                    required={item.required}
-                    uploading={uploading === item.type}
-                    onUpload={() => void uploadDocument(item.type)}
-                  />
-                ))}
-
-                <View
-                  className={`rounded-xl border p-4 ${
-                    isVerified
-                      ? 'border-green-200 bg-green-50 dark:border-green-800 dark:bg-green-900/20'
-                      : isRejected
-                        ? 'border-red-200 bg-red-50 dark:border-red-800 dark:bg-red-900/20'
-                        : isUnderReview
-                          ? 'border-blue-200 bg-blue-50 dark:border-blue-800 dark:bg-blue-900/20'
-                          : 'border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-900/40'
-                  }`}
-                >
-                  <View className="flex-row items-start gap-3">
-                    <View
-                      className={`h-10 w-10 items-center justify-center rounded-full ${
-                        isVerified
-                          ? 'bg-green-100 dark:bg-green-900/40'
-                          : isRejected
-                            ? 'bg-red-100 dark:bg-red-900/40'
-                            : isUnderReview
-                              ? 'bg-blue-100 dark:bg-blue-900/40'
-                              : 'bg-gray-100 dark:bg-slate-700'
-                      }`}
-                    >
-                      <Feather
-                        name={
-                          isVerified
-                            ? 'award'
-                            : isRejected
-                              ? 'x-circle'
-                              : isUnderReview
-                                ? 'clock'
-                                : 'send'
-                        }
-                        color={
-                          isVerified
-                            ? '#16a34a'
-                            : isRejected
-                              ? '#dc2626'
-                              : isUnderReview
-                                ? '#2563eb'
-                                : '#64748b'
-                        }
-                        size={18}
-                      />
-                    </View>
-                    <View className="min-w-0 flex-1 gap-2">
-                      <Text className="font-sans text-sm font-bold text-gray-900 dark:text-slate-100">
-                        Verification status: {verificationStatusLabel}
-                      </Text>
-                      {store?.documentsSubmittedAt ? (
-                        <Text className="font-sans text-xs leading-5 text-gray-500 dark:text-slate-400">
-                          Submitted {new Date(store.documentsSubmittedAt).toLocaleString()}
-                        </Text>
-                      ) : null}
-                      {isRejected && store?.documentRejectionReason ? (
-                        <Text className="font-sans text-xs leading-5 text-red-700 dark:text-red-300">
-                          Rejection reason: {store.documentRejectionReason}
-                        </Text>
-                      ) : null}
-                      {isUnderReview ? (
-                        <Text className="font-sans text-xs leading-5 text-blue-700 dark:text-blue-300">
-                          Your documents are in the admin verification queue. You will be notified when review is complete.
-                        </Text>
-                      ) : null}
-                      {canSubmitForVerification ? (
-                        <Text className="font-sans text-xs leading-5 text-gray-600 dark:text-slate-300">
-                          All required files are uploaded. Submit them to admin for KYC review.
-                        </Text>
-                      ) : null}
-                      {!canSubmitForVerification && !isUnderReview && !isVerified && !isRejected && !allRequiredDocumentsUploaded ? (
-                        <Text className="font-sans text-xs leading-5 text-gray-600 dark:text-slate-300">
-                          Complete the required uploads above, then submit for verification.
-                        </Text>
-                      ) : null}
-                    </View>
-                  </View>
-
-                  {canSubmitForVerification ? (
-                    <Pressable
-                      onPress={() => void submitForVerification()}
-                      disabled={submittingVerification}
-                      className="mt-4 flex-row items-center justify-center gap-2 rounded-xl bg-green-600 px-6 py-3 disabled:opacity-60"
-                    >
-                      {submittingVerification ? (
-                        <ActivityIndicator color="#ffffff" />
-                      ) : (
-                        <Feather name="send" color="#ffffff" size={16} />
-                      )}
-                      <Text className="font-sans text-sm font-bold text-white">
-                        {submittingVerification ? 'Submitting...' : 'Submit for verification'}
-                      </Text>
-                    </Pressable>
-                  ) : null}
-                </View>
-              </View>
-            </View>
-          ) : null}
-
-          {!settingsLoading && activeTab === 'general' ? (
-            <View className="gap-5">
-              <View className="gap-4 md:flex-row">
-                <Field label="Return policy" multiline value={settings.return_policy} onChangeText={(value) => setSetting('return_policy', value)} />
-                <Field label="Shipping policy" multiline value={settings.shipping_policy} onChangeText={(value) => setSetting('shipping_policy', value)} />
-              </View>
-              <View className="gap-4 md:flex-row">
-                <Field label="Warranty policy" multiline value={settings.warranty_policy} onChangeText={(value) => setSetting('warranty_policy', value)} />
-                <Field label="Privacy policy" multiline value={settings.privacy_policy} onChangeText={(value) => setSetting('privacy_policy', value)} />
-              </View>
-              <Field label="Terms of service" multiline value={settings.terms_of_service} onChangeText={(value) => setSetting('terms_of_service', value)} />
-              <ToggleRow title="Show sold out products" description="Keep unavailable products visible on your store." value={settings.show_sold_out} onValueChange={(value) => setSetting('show_sold_out', value)} />
-              <ToggleRow title="Show reviews" description="Display customer ratings and reviews on public pages." value={settings.show_reviews} onValueChange={(value) => setSetting('show_reviews', value)} />
-              <ToggleRow title="Show inventory count" description="Let buyers see remaining stock quantity." value={settings.show_inventory_count} onValueChange={(value) => setSetting('show_inventory_count', value)} />
-              <ToggleRow title="Business hours enabled" description="Use business hours on your public profile." value={settings.business_hours_enabled} onValueChange={(value) => setSetting('business_hours_enabled', value)} />
-              {settings.business_hours_enabled ? (
-                <View className="gap-3">
-                  <Text className="font-sans text-sm font-medium text-gray-700 dark:text-slate-300">
-                    Weekly business hours
-                  </Text>
-                  <BusinessHoursEditor hours={settings.business_hours} onChange={setBusinessHour} />
-                </View>
-              ) : null}
-            </View>
-          ) : null}
-
-          {!settingsLoading && activeTab === 'payment' ? (
-            <View className="max-w-3xl gap-5">
-              <View className="gap-4 md:flex-row">
-                <Field
-                  label="Withdrawal threshold"
-                  keyboardType="numeric"
-                  value={String(settings.withdrawal_threshold)}
-                  onChangeText={(value) => setSetting('withdrawal_threshold', Number(value) || 0)}
-                />
-                <Field label="Currency" value={settings.currency} onChangeText={(value) => setSetting('currency', value)} />
-              </View>
-              <View>
-                <Text className="mb-2 font-sans text-sm font-medium text-gray-700 dark:text-slate-300">
-                  Preferred payment method
-                </Text>
-                <View className="flex-row flex-wrap gap-2">
-                  {[
-                    ['bank_transfer', 'Bank transfer'],
-                    ['wave_money', 'Wave Money'],
-                    ['kbz_pay', 'KBZ Pay'],
-                    ['mpu', 'MPU'],
-                    ['visa_master', 'Visa / Mastercard'],
-                  ].map(([key, label]) => {
-                    const active = settings.preferred_payment_method === key;
-                    return (
-                      <Pressable
-                        key={key}
-                        onPress={() => setSetting('preferred_payment_method', key)}
-                        className={`rounded-xl border px-4 py-3 ${
-                          active
-                            ? 'border-green-500 bg-green-50 dark:bg-green-900/30'
-                            : 'border-gray-200 bg-white dark:border-slate-600 dark:bg-slate-800'
-                        }`}
-                      >
-                        <Text className={`font-sans text-sm font-semibold ${active ? 'text-green-700 dark:text-green-300' : 'text-gray-600 dark:text-slate-300'}`}>
-                          {label}
-                        </Text>
-                      </Pressable>
-                    );
-                  })}
-                </View>
-              </View>
-              <ToggleRow title="Auto withdrawal" description="Automatically request payout when your balance reaches the threshold." value={settings.auto_withdrawal} onValueChange={(value) => setSetting('auto_withdrawal', value)} />
-            </View>
-          ) : null}
-
-          {!settingsLoading && activeTab === 'notifications' ? (
-            <View className="gap-4">
-              <ToggleRow title="Email notifications" description="Receive general account and marketplace updates." value={settings.email_notifications} onValueChange={(value) => setSetting('email_notifications', value)} />
-              <ToggleRow title="Order notifications" description="Get notified when new orders are placed." value={settings.order_notifications} onValueChange={(value) => setSetting('order_notifications', value)} />
-              <ToggleRow title="Inventory alerts" description="Receive alerts when products are running low." value={settings.inventory_alerts} onValueChange={(value) => setSetting('inventory_alerts', value)} />
-              <ToggleRow title="Review notifications" description="Get alerts when buyers leave reviews." value={settings.review_notifications} onValueChange={(value) => setSetting('review_notifications', value)} />
-            </View>
-          ) : null}
-
-          {!settingsLoading && activeTab === 'security' ? (
-            <View className="gap-5">
-              <ToggleRow title="Two-Factor Authentication" description="Add an extra layer of security to your account." value={settings.two_factor_auth} onValueChange={(value) => setSetting('two_factor_auth', value)} />
-              <ToggleRow title="Login notifications" description="Get notified when someone logs into your account." value={settings.login_notifications} onValueChange={(value) => setSetting('login_notifications', value)} />
-              <View className="mt-3 border-t border-gray-200 pt-6 dark:border-slate-700">
-                <Text className="mb-4 font-sans text-base font-medium text-gray-900 dark:text-white">Change Password</Text>
-                <View className="max-w-3xl gap-4">
-                  <Field label="Current Password" secure value={password.current} onChangeText={(value) => setPassword((p) => ({ ...p, current: value }))} />
-                  <Field label="New Password" secure value={password.next} onChangeText={(value) => setPassword((p) => ({ ...p, next: value }))} />
-                  <Field label="Confirm New Password" secure value={password.confirm} onChangeText={(value) => setPassword((p) => ({ ...p, confirm: value }))} />
-                  <View className="items-end">
-                    <Pressable
-                      onPress={changePassword}
-                      disabled={saving}
-                      className="flex-row items-center gap-2 rounded-xl bg-green-500 px-6 py-3 disabled:opacity-60"
-                    >
-                      {saving ? <ActivityIndicator color="#ffffff" /> : <Feather name="key" color="#ffffff" size={16} />}
-                      <Text className="font-sans text-sm font-medium text-white">{saving ? 'Changing...' : 'Change Password'}</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              </View>
-            </View>
-          ) : null}
-
-          {!settingsLoading && activeTab === 'account' ? (
-            <View className="gap-5">
-              <ToggleRow title="Store Active" description="Enable or disable your store temporarily." value={settings.is_active} onValueChange={(value) => setSetting('is_active', value)} />
-              <ToggleRow title="Vacation Mode" description="Pause orders and show vacation message." value={settings.vacation_mode} onValueChange={(value) => setSetting('vacation_mode', value)} />
-              {settings.vacation_mode ? (
-                <View className="gap-4">
-                  <Field label="Vacation Message" multiline value={settings.vacation_message} onChangeText={(value) => setSetting('vacation_message', value)} />
-                  <View className="gap-4 md:flex-row">
-                    <NativeDateField
-                      label="Start Date"
-                      value={settings.vacation_start_date}
-                      onChange={(value) => setSetting('vacation_start_date', value)}
-                    />
-                    <NativeDateField
-                      label="End Date"
-                      value={settings.vacation_end_date}
-                      minimumDate={settings.vacation_start_date || undefined}
-                      onChange={(value) => setSetting('vacation_end_date', value)}
-                    />
-                  </View>
-                </View>
-              ) : null}
-              <View className="rounded-xl border border-red-200 bg-red-50 p-6 dark:border-red-800 dark:bg-red-900/20">
-                <View className="flex-row items-start gap-3">
-                  <Feather name="trash-2" color="#ef4444" size={20} />
-                  <View className="min-w-0 flex-1">
-                    <Text className="font-sans text-lg font-medium text-red-800 dark:text-red-300">Delete Account</Text>
-                    <Text className="mt-1 font-sans text-sm leading-6 text-red-700 dark:text-red-400">
-                      This will permanently delete your seller account and all associated data. This action cannot be undone.
-                    </Text>
-                    <Pressable onPress={() => setDeleteOpen(true)} className="mt-4 self-start rounded-lg bg-red-600 px-4 py-2">
-                      <Text className="font-sans text-sm font-medium text-white">Delete My Account</Text>
-                    </Pressable>
-                  </View>
-                </View>
-              </View>
-            </View>
-          ) : null}
-
-          {!settingsLoading && activeTab !== 'personal' && activeTab !== 'brand' ? (
-            <View className="mt-8 flex-row justify-end gap-3 border-t border-gray-200 pt-6 dark:border-slate-700">
-              <Pressable onPress={() => setActiveTab('personal')} className="rounded-xl border border-gray-300 px-6 py-2.5 dark:border-slate-600">
-                <Text className="font-sans text-sm font-medium text-gray-700 dark:text-slate-300">Back to Personal</Text>
-              </Pressable>
-              <Pressable
-                onPress={saveSettings}
-                disabled={saving}
-                className="flex-row items-center gap-2 rounded-xl bg-green-500 px-6 py-2.5 disabled:opacity-60"
-              >
-                {saving ? <ActivityIndicator color="#ffffff" /> : <Feather name="save" color="#ffffff" size={16} />}
-                <Text className="font-sans text-sm font-medium text-white">
-                  {saving ? 'Saving...' : `Save ${t(activeSettings.labelKey, activeSettings.key)} Settings`}
-                </Text>
-              </Pressable>
-            </View>
-          ) : null}
-        </View>
-      </View>
-
-      <Modal visible={deleteOpen} transparent animationType="fade" onRequestClose={() => setDeleteOpen(false)}>
-        <View className="flex-1 bg-black/60 px-4 py-12">
-          <View className="mx-auto w-full max-w-md rounded-2xl border border-gray-200 bg-white p-5 dark:border-slate-700 dark:bg-slate-800">
-            <View className="items-center">
-              <View className="h-12 w-12 items-center justify-center rounded-full bg-red-100 dark:bg-red-900/40">
-                <Feather name="trash-2" color="#dc2626" size={24} />
-              </View>
-              <Text className="mt-3 font-sans text-lg font-medium text-gray-900 dark:text-white">Delete Account</Text>
-              <Text className="mt-2 text-center font-sans text-sm leading-6 text-gray-500 dark:text-slate-400">
-                This will permanently delete your seller account, store, products, and all associated data.
-              </Text>
-              <Text className="mt-2 font-sans text-sm font-medium text-red-600 dark:text-red-400">
-                This action cannot be undone!
-              </Text>
-            </View>
-            <View className="mt-4">
-              <Text className="mb-2 font-sans text-sm font-medium text-gray-700 dark:text-slate-300">
-                Type DELETE to confirm
-              </Text>
-              <TextInput
-                value={deleteText}
-                onChangeText={setDeleteText}
-                className="h-12 rounded-xl border border-red-300 bg-white px-4 font-sans text-sm text-gray-900 dark:border-red-700 dark:bg-slate-900 dark:text-slate-100"
-                placeholder="Type DELETE here"
-                placeholderTextColor="#9ca3af"
-              />
-            </View>
-            <View className="mt-6 flex-row gap-4">
-              <Pressable
-                onPress={() => {
-                  setDeleteOpen(false);
-                  setDeleteText('');
-                }}
-                className="flex-1 rounded-xl bg-gray-100 px-4 py-3 dark:bg-slate-700"
-              >
-                <Text className="text-center font-sans text-sm font-medium text-gray-700 dark:text-slate-300">Cancel</Text>
-              </Pressable>
-              <Pressable
-                onPress={deleteAccount}
-                disabled={deleting || deleteText !== 'DELETE'}
-                className="flex-1 rounded-xl bg-red-600 px-4 py-3 disabled:opacity-50"
-              >
-                <Text className="text-center font-sans text-sm font-medium text-white">
-                  {deleting ? 'Deleting...' : 'Delete Account'}
-                </Text>
-              </Pressable>
-            </View>
           </View>
-        </View>
-      </Modal>
-    </View>
+        </Modal>
+      </View>
     </KeyboardAvoidingView>
   );
 }
