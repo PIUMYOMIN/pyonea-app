@@ -3400,7 +3400,20 @@ const extractRecordPayload = (payload: unknown): UnknownRecord => {
 
 export async function fetchSellerProductCategories(signal?: AbortSignal): Promise<SellerProductCategory[]> {
   const payload = await apiGet('/categories/all', signal);
-  return getArrayPayload(payload).filter(isRecord).map(mapSellerProductCategory);
+  let categories = getArrayPayload(payload);
+  if (!categories.length && isRecord(payload) && Array.isArray(payload.categories)) {
+    categories = payload.categories;
+  }
+  if (
+    !categories.length &&
+    isRecord(payload) &&
+    isRecord(payload.data) &&
+    Array.isArray(payload.data.categories)
+  ) {
+    categories = payload.data.categories;
+  }
+
+  return categories.filter(isRecord).map(mapSellerProductCategory);
 }
 
 const mapSellerBulkImportError = (value: unknown): SellerBulkImportError => {

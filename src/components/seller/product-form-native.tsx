@@ -179,13 +179,10 @@ function buildCategoryOptions(
   categories: SellerProductCategory[],
   language: string,
   parentHint: string,
+  noSubcategoriesLabel: string,
 ): Option[] {
   return categories.flatMap((parent) => {
     const parentName = categoryLabel(parent, language);
-    if (!parent.children.length) {
-      return [{ value: String(parent.id), label: parentName }];
-    }
-
     return [
       {
         value: `parent-${parent.id}`,
@@ -193,11 +190,19 @@ function buildCategoryOptions(
         description: parentHint,
         disabled: true,
       },
-      ...parent.children.map((child) => ({
-        value: String(child.id),
-        label: categoryLabel(child, language),
-        description: parentName,
-      })),
+      ...(parent.children.length
+        ? parent.children.map((child) => ({
+            value: String(child.id),
+            label: categoryLabel(child, language),
+            description: parentName,
+          }))
+        : [
+            {
+              value: `empty-${parent.id}`,
+              label: noSubcategoriesLabel,
+              disabled: true,
+            },
+          ]),
     ];
   });
 }
@@ -1019,7 +1024,10 @@ export function ProductFormNative({
         categories,
         language,
         t("product_form.category_parent_hint", {
-          defaultValue: "Select a subcategory below",
+          defaultValue: "Select a child category below",
+        }),
+        t("product_form.messages.no_sub_categories", {
+          defaultValue: "No sub-categories",
         }),
       ),
     [categories, language, t],
