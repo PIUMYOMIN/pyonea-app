@@ -16,6 +16,7 @@ import {
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { MyanmarRegionPicker } from '@/components/ui/myanmar-region-picker-native';
 import { NativeDateField } from '@/components/ui/native-date-field';
+import { SelectPickerNative } from '@/components/ui/select-picker-native';
 import {
   isNrcInputComplete,
   NrcInputNative,
@@ -26,6 +27,7 @@ import { useAppTranslation } from '@/i18n';
 import {
   DEFAULT_SELLER_BUSINESS_HOURS,
   deleteSellerAccount,
+  fetchAdminBusinessTypes,
   fetchSellerSettings,
   formatApiErrorMessage,
   submitSellerDocumentsForVerification,
@@ -37,12 +39,14 @@ import {
   uploadSellerStoreBanner,
   uploadSellerStoreLogo,
   uploadSellerVerificationDocument,
+  type AdminBusinessType,
   type NativeUser,
   type NativeUploadFile,
   type SellerBusinessHours,
   type SellerDashboardOverview,
   type SellerDocumentType,
   type SellerSettingsPayload,
+  type SellerStoreIdentityPayload,
   type SellerStoreSummary,
 } from '@/utils/native-api';
 import {
@@ -103,6 +107,12 @@ type StoreForm = {
   tax_id: string;
   account_number: string;
 };
+
+type IdentityForm = Required<SellerStoreIdentityPayload>;
+
+const ENGLISH_STORE_NAME_PATTERN = /^[A-Za-z0-9][A-Za-z0-9\s&.,'()/-]*$/;
+
+const isEnglishStoreName = (value: string) => ENGLISH_STORE_NAME_PATTERN.test(value.trim());
 
 const SETTINGS_TABS: {
   key: SettingsTab;
@@ -200,6 +210,27 @@ const SETTINGS_TAB_FIELDS: Partial<Record<SettingsTab, Array<keyof SettingsForm>
   ],
 };
 
+const normalizeBusinessHours = (value: unknown): SellerBusinessHours => {
+  const merged: SellerBusinessHours = { ...DEFAULT_SELLER_BUSINESS_HOURS };
+  if (!value || typeof value !== 'object') {
+    return merged;
+  }
+
+  const record = value as Record<string, unknown>;
+  for (const day of Object.keys(DEFAULT_SELLER_BUSINESS_HOURS)) {
+    const entry = record[day];
+    if (!entry || typeof entry !== 'object') continue;
+    const hour = entry as Record<string, unknown>;
+    merged[day] = {
+      open: typeof hour.open === 'string' ? hour.open : merged[day].open,
+      close: typeof hour.close === 'string' ? hour.close : merged[day].close,
+      closed: typeof hour.closed === 'boolean' ? hour.closed : merged[day].closed,
+    };
+  }
+
+  return merged;
+};
+
 const mergeSettingsForm = (
   store: SellerStoreSummary | null,
   remote?: SellerSettingsPayload | null
@@ -232,7 +263,7 @@ const mergeSettingsForm = (
         show_inventory_count: Boolean(remote.show_inventory_count),
         currency: remote.currency || store?.currency || 'MMK',
         business_hours_enabled: Boolean(remote.business_hours_enabled ?? store?.businessHoursEnabled),
-        business_hours: remote.business_hours || store?.businessHours || { ...DEFAULT_SELLER_BUSINESS_HOURS },
+        business_hours: normalizeBusinessHours(remote.business_hours || store?.businessHours),
       }
     : {}),
 });
@@ -292,9 +323,7 @@ const initialSettingsForm = (store: SellerStoreSummary | null): SettingsForm => 
   show_inventory_count: Boolean(store?.showInventoryCount),
   currency: store?.currency || 'MMK',
   business_hours_enabled: Boolean(store?.businessHoursEnabled),
-  business_hours: store?.businessHours
-    ? { ...DEFAULT_SELLER_BUSINESS_HOURS, ...store.businessHours }
-    : { ...DEFAULT_SELLER_BUSINESS_HOURS },
+  business_hours: normalizeBusinessHours(store?.businessHours),
 });
 
 const initialProfileForm = (user: NativeUser | null) => ({
@@ -324,6 +353,18 @@ const initialStoreForm = (store: SellerStoreSummary | null): StoreForm => ({
   business_registration_number: store?.registrationNumber || '',
   tax_id: store?.taxId || '',
   account_number: store?.accountNumber || '',
+});
+
+const initialIdentityForm = (store: SellerStoreSummary | null): IdentityForm => ({
+  business_registration_number: store?.registrationNumber || '',
+  tax_id: store?.taxId || '',
+  website: store?.website || '',
+  account_number: store?.accountNumber || '',
+  nrc_division: store?.nrcDivision || '',
+  nrc_township_code: store?.nrcTownshipCode || '',
+  nrc_township_mm: store?.nrcTownshipMm || '',
+  nrc_type: store?.nrcType || '',
+  nrc_number: store?.nrcNumber || '',
 });
 
 function StatusToast({ message, onClose }: { message: Message; onClose: () => void }) {
@@ -686,6 +727,7 @@ export function SellerSettingsNative({
   const [settings, setSettings] = useState<SettingsForm>(() => initialSettingsForm(store));
   const [profile, setProfile] = useState(() => initialProfileForm(user));
   const [storeForm, setStoreForm] = useState<StoreForm>(() => initialStoreForm(store));
+  const [identity, setIdentity] = useState<IdentityForm>(() => initialIdentityForm(store));
   const [nrcValue, setNrcValue] = useState<NrcInputValue>(() => nrcValueFromSeller(store || {}));
   const [password, setPassword] = useState({ current: '', next: '', confirm: '' });
   const [deleteOpen, setDeleteOpen] = useState(false);
@@ -694,6 +736,8 @@ export function SellerSettingsNative({
   const [uploading, setUploading] = useState<string | null>(null);
   const [submittingVerification, setSubmittingVerification] = useState(false);
   const [settingsLoading, setSettingsLoading] = useState(true);
+  const [businessTypes, setBusinessTypes] = useState<AdminBusinessType[]>([]);
+  const [businessTypesLoading, setBusinessTypesLoading] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -722,12 +766,39 @@ export function SellerSettingsNative({
   }, [store?.id]);
 
   useEffect(() => {
+    let cancelled = false;
+    const loadBusinessTypes = async () => {
+      setBusinessTypesLoading(true);
+      try {
+        const types = await fetchAdminBusinessTypes();
+        if (!cancelled) setBusinessTypes(types);
+      } catch (error) {
+        if (!cancelled) {
+          setMessage({
+            type: 'error',
+            text: formatApiErrorMessage(error, 'Failed to load business types.'),
+          });
+        }
+      } finally {
+        if (!cancelled) setBusinessTypesLoading(false);
+      }
+    };
+
+    void loadBusinessTypes();
+
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
     setProfile(initialProfileForm(user));
   }, [user?.id]);
 
   useEffect(() => {
     if (store?.id) {
       setStoreForm(initialStoreForm(store));
+      setIdentity(initialIdentityForm(store));
       setNrcValue(nrcValueFromSeller(store));
     }
   }, [store?.id]);
@@ -735,6 +806,23 @@ export function SellerSettingsNative({
   const activeSettings = useMemo(
     () => SETTINGS_TABS.find((tab) => tab.key === activeTab) || SETTINGS_TABS[0],
     [activeTab]
+  );
+  const businessTypeOptions = useMemo(
+    () =>
+      businessTypes.map((type) => ({
+        value: type.slug,
+        label: type.name,
+      })),
+    [businessTypes]
+  );
+  const selectedBusinessType = useMemo(
+    () =>
+      businessTypes.find(
+        (type) =>
+          type.slug === storeForm.business_type ||
+          type.name.toLowerCase() === storeForm.business_type.toLowerCase()
+      ) || null,
+    [businessTypes, storeForm.business_type]
   );
 
   const setSetting = <K extends keyof SettingsForm>(key: K, value: SettingsForm[K]) => {
@@ -760,6 +848,10 @@ export function SellerSettingsNative({
 
   const setIdentityField = <K extends keyof IdentityForm>(key: K, value: IdentityForm[K]) => {
     setIdentity((current) => ({ ...current, [key]: value }));
+  };
+
+  const setStoreField = <K extends keyof StoreForm>(key: K, value: StoreForm[K]) => {
+    setStoreForm((current) => ({ ...current, [key]: value }));
   };
 
   const fileFromDocumentAsset = (asset: DocumentPickerAsset): NativeUploadFile => ({
@@ -887,6 +979,62 @@ export function SellerSettingsNative({
       setMessage({ type: 'error', text: formatApiErrorMessage(error, 'Update failed.') });
     } finally {
       setProfileSaving(false);
+    }
+  };
+
+  const saveStoreProfile = async () => {
+    if (!storeForm.store_name.trim()) {
+      setMessage({ type: 'error', text: 'Store name is required.' });
+      return;
+    }
+    if (!isEnglishStoreName(storeForm.store_name)) {
+      setMessage({
+        type: 'error',
+        text: 'Store name must be written in English letters, numbers, spaces, or common punctuation.',
+      });
+      return;
+    }
+    if (!storeForm.business_type.trim()) {
+      setMessage({ type: 'error', text: 'Please select a business type.' });
+      return;
+    }
+
+    setStoreSaving(true);
+    setMessage(null);
+    try {
+      await updateSellerStoreProfile(storeForm);
+      await onRefresh();
+      setMessage({ type: 'success', text: 'Store profile updated.' });
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: formatApiErrorMessage(error, 'Failed to update store profile.'),
+      });
+    } finally {
+      setStoreSaving(false);
+    }
+  };
+
+  const saveNrc = async () => {
+    if (!isNrcInputComplete(nrcValue)) {
+      setMessage({ type: 'error', text: 'Complete all NRC fields before saving.' });
+      return;
+    }
+
+    setNrcSaving(true);
+    setMessage(null);
+    try {
+      await updateSellerStoreIdentity(nrcValue);
+      setIdentity((current) => ({ ...current, ...nrcValue }));
+      await onRefresh();
+      setMessage({ type: 'success', text: 'National identity number updated.' });
+    } catch (error) {
+      setMessage({
+        type: 'error',
+        text: formatApiErrorMessage(error, 'Failed to update national identity number.'),
+      });
+    } finally {
+      setNrcSaving(false);
     }
   };
 
@@ -1061,7 +1209,7 @@ export function SellerSettingsNative({
                       active ? 'text-white' : 'text-gray-500 dark:text-slate-400'
                     }`}
                   >
-                    {tab.label}
+                    {t(tab.labelKey, tab.key)}
                   </Text>
                 </Pressable>
               );
@@ -1070,7 +1218,7 @@ export function SellerSettingsNative({
         </View>
 
         <View className="p-6">
-          <SectionHeading tab={activeSettings} />
+          <SectionHeading tab={activeSettings} t={t} />
 
           {settingsLoading ? (
             <View className="items-center py-10">
@@ -1114,6 +1262,115 @@ export function SellerSettingsNative({
                   {profileSaving ? <ActivityIndicator color="#ffffff" /> : <Feather name="save" color="#ffffff" size={16} />}
                   <Text className="font-sans text-sm font-medium text-white">
                     {profileSaving ? 'Saving...' : 'Save changes'}
+                  </Text>
+                </Pressable>
+              </View>
+            </View>
+          ) : null}
+
+          {!settingsLoading && activeTab === 'store' ? (
+            <View className="max-w-4xl gap-6">
+              <View className="gap-4 md:flex-row">
+                <Field label="Store name" required value={storeForm.store_name} onChangeText={(value) => setStoreField('store_name', value)} />
+                <SelectPickerNative
+                  label="Business type"
+                  required
+                  value={storeForm.business_type}
+                  options={businessTypeOptions}
+                  placeholder={businessTypesLoading ? 'Loading business types...' : 'Select business type'}
+                  disabled={businessTypesLoading || storeSaving}
+                  onChange={(value) => setStoreField('business_type', value)}
+                />
+              </View>
+              <Text className="font-sans text-xs text-gray-500 dark:text-slate-400">
+                Store name accepts English letters, numbers, spaces, and common punctuation only.
+              </Text>
+              {selectedBusinessType ? (
+                <View className="flex-row items-start gap-3 rounded-xl border border-blue-100 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-900/20">
+                  <View className="h-9 w-9 items-center justify-center rounded-lg bg-blue-100 dark:bg-blue-800/40">
+                    <Feather
+                      name={
+                        selectedBusinessType.icon === 'user'
+                          ? 'user'
+                          : selectedBusinessType.icon === 'truck'
+                            ? 'truck'
+                            : selectedBusinessType.icon === 'users'
+                              ? 'users'
+                              : 'briefcase'
+                      }
+                      color="#2563eb"
+                      size={17}
+                    />
+                  </View>
+                  <View className="min-w-0 flex-1">
+                    <Text className="font-sans text-sm font-semibold text-blue-900 dark:text-blue-200">
+                      {selectedBusinessType.name}
+                    </Text>
+                    {selectedBusinessType.description ? (
+                      <Text className="mt-0.5 font-sans text-xs leading-5 text-blue-700 dark:text-blue-300">
+                        {selectedBusinessType.description}
+                      </Text>
+                    ) : null}
+                  </View>
+                </View>
+              ) : null}
+              <Field label="Store description" multiline value={storeForm.store_description} onChangeText={(value) => setStoreField('store_description', value)} />
+              <View className="gap-4 md:flex-row">
+                <Field label="Contact email" keyboardType="email-address" value={storeForm.contact_email} onChangeText={(value) => setStoreField('contact_email', value)} />
+                <Field label="Contact phone" keyboardType="phone-pad" value={storeForm.contact_phone} onChangeText={(value) => setStoreField('contact_phone', value)} />
+              </View>
+              <Field label="Website" value={storeForm.website} onChangeText={(value) => setStoreField('website', value)} />
+              <Field label="Address" value={storeForm.address} onChangeText={(value) => setStoreField('address', value)} />
+              <View className="gap-4 md:flex-row">
+                <MyanmarRegionPicker
+                  label="State / region"
+                  value={storeForm.state}
+                  onChange={(value) => setStoreField('state', value)}
+                />
+                <Field label="City" value={storeForm.city} onChangeText={(value) => setStoreField('city', value)} />
+              </View>
+              <View className="gap-4 md:flex-row">
+                <Field label="Country" value={storeForm.country} onChangeText={(value) => setStoreField('country', value)} />
+                <Field label="Postal code" value={storeForm.postal_code} onChangeText={(value) => setStoreField('postal_code', value)} />
+              </View>
+              <View className="gap-4 md:flex-row">
+                <Field label="Business registration number" value={storeForm.business_registration_number} onChangeText={(value) => setStoreField('business_registration_number', value)} />
+                <Field label="Tax ID" value={storeForm.tax_id} onChangeText={(value) => setStoreField('tax_id', value)} />
+              </View>
+              <Field label="Account number" value={storeForm.account_number} onChangeText={(value) => setStoreField('account_number', value)} />
+
+              <View className="gap-4 rounded-2xl border border-gray-200 bg-gray-50 p-5 dark:border-slate-700 dark:bg-slate-900/40">
+                <View>
+                  <Text className="font-sans text-base font-bold text-gray-900 dark:text-slate-100">National Identity Number (NRC)</Text>
+                  <Text className="mt-1 font-sans text-sm leading-6 text-gray-500 dark:text-slate-400">
+                    Current NRC: {store?.nrcFull || 'Not provided'}
+                    {store?.nrcVerificationStatus ? ` - ${store.nrcVerificationStatus}` : ''}
+                  </Text>
+                </View>
+                <NrcInputNative value={nrcValue} onChange={setNrcValue} disabled={nrcSaving} />
+                <View className="items-end">
+                  <Pressable
+                    onPress={saveNrc}
+                    disabled={nrcSaving}
+                    className="flex-row items-center gap-2 rounded-xl border border-green-600 px-6 py-3 disabled:opacity-60"
+                  >
+                    {nrcSaving ? <ActivityIndicator color="#16a34a" /> : <Feather name="credit-card" color="#16a34a" size={16} />}
+                    <Text className="font-sans text-sm font-bold text-green-700 dark:text-green-300">
+                      {nrcSaving ? 'Saving...' : 'Save NRC'}
+                    </Text>
+                  </Pressable>
+                </View>
+              </View>
+
+              <View className="items-end">
+                <Pressable
+                  onPress={saveStoreProfile}
+                  disabled={storeSaving}
+                  className="flex-row items-center gap-2 rounded-xl bg-green-600 px-6 py-3 disabled:opacity-60"
+                >
+                  {storeSaving ? <ActivityIndicator color="#ffffff" /> : <Feather name="save" color="#ffffff" size={16} />}
+                  <Text className="font-sans text-sm font-bold text-white">
+                    {storeSaving ? 'Saving...' : 'Save store profile'}
                   </Text>
                 </Pressable>
               </View>
@@ -1168,7 +1425,7 @@ export function SellerSettingsNative({
                       <Text className="font-sans text-sm font-bold text-gray-900 dark:text-slate-100">National Identity Number (NRC)</Text>
                       <Text className="mt-1 font-sans text-xs leading-5 text-gray-500 dark:text-slate-400">
                         Current NRC: {store?.nrcFull || 'Not provided'}
-                        {store?.nrcVerificationStatus ? ` · ${store.nrcVerificationStatus}` : ''}
+                        {store?.nrcVerificationStatus ? ` - ${store.nrcVerificationStatus}` : ''}
                       </Text>
                     </View>
                   </View>
@@ -1507,7 +1764,7 @@ export function SellerSettingsNative({
               >
                 {saving ? <ActivityIndicator color="#ffffff" /> : <Feather name="save" color="#ffffff" size={16} />}
                 <Text className="font-sans text-sm font-medium text-white">
-                  {saving ? 'Saving...' : `Save ${activeSettings.label} Settings`}
+                  {saving ? 'Saving...' : `Save ${t(activeSettings.labelKey, activeSettings.key)} Settings`}
                 </Text>
               </Pressable>
             </View>

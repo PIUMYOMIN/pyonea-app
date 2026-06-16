@@ -8770,6 +8770,9 @@ export type AdminCommissionCategory = {
 export type AdminBusinessType = {
   id: string;
   name: string;
+  slug: string;
+  description: string;
+  icon: string;
 };
 
 const mapAdminCommissionRule = (rule: UnknownRecord): AdminCommissionRule => {
@@ -8848,6 +8851,9 @@ export async function fetchAdminBusinessTypes(signal?: AbortSignal): Promise<Adm
     .map((item) => ({
       id: getString(item.id),
       name: getString(item.name || item.name_en || item.name_mm, 'Business Type'),
+      slug: getString(item.slug || item.slug_en || item.slugEn || item.id),
+      description: getString(item.description || item.description_en || item.description_mm),
+      icon: getString(item.icon),
     }));
 }
 
