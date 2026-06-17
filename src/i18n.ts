@@ -1,61 +1,77 @@
-import { useGlobalSearchParams, usePathname, useRouter, type Href } from 'expo-router';
-import { createInstance } from 'i18next';
-import { createElement, useCallback, useEffect, useState } from 'react';
-import { Platform } from 'react-native';
-
-import en from '@/locales/en.json';
-import my from '@/locales/my.json';
 import {
-  persistStoredLanguage,
-  readStoredLanguageSync,
-  resolveStoredLanguage,
-  PYONEA_LANGUAGE_STORAGE_KEY,
-} from '@/utils/language-storage';
-import { mergeRouterAndWebParams, readWebQueryParams } from '@/utils/route-params';
+    useGlobalSearchParams,
+    usePathname,
+    useRouter,
+    type Href,
+} from "expo-router";
+import { createInstance } from "i18next";
+import { createElement, useCallback, useEffect, useState } from "react";
+import { Platform } from "react-native";
+
+import en from "@/locales/en.json";
+import my from "@/locales/my.json";
+import {
+    persistStoredLanguage,
+    PYONEA_LANGUAGE_STORAGE_KEY,
+    readStoredLanguageSync,
+    resolveStoredLanguage,
+} from "@/utils/language-storage";
+import { mergeRouterAndWebParams } from "@/utils/route-params";
 
 export { PYONEA_LANGUAGE_STORAGE_KEY };
 
-export const supportedLanguages = ['en', 'my'] as const;
+export const supportedLanguages = ["en", "my"] as const;
 export type SupportedLanguage = (typeof supportedLanguages)[number];
 
-export const DEFAULT_LANGUAGE: SupportedLanguage = 'my';
+export const DEFAULT_LANGUAGE: SupportedLanguage = "my";
 
-export const normalizeLanguage = (language?: string | null): SupportedLanguage => {
-  const code = String(language || '').toLowerCase().replace('_', '-');
+export const normalizeLanguage = (
+  language?: string | null,
+): SupportedLanguage => {
+  const code = String(language || "")
+    .toLowerCase()
+    .replace("_", "-");
 
-  if (code.startsWith('my') || code.startsWith('mm')) return 'my';
-  if (code.startsWith('en')) return 'en';
+  if (code.startsWith("my") || code.startsWith("mm")) return "my";
+  if (code.startsWith("en")) return "en";
 
-  return 'my';
+  return "my";
 };
 
 export const localizeBilingualName = (
   language: SupportedLanguage,
   nameEn?: string,
   nameMm?: string,
-  fallback = '',
-) => (language === 'my' ? nameMm || nameEn || fallback : nameEn || nameMm || fallback);
+  fallback = "",
+) =>
+  language === "my"
+    ? nameMm || nameEn || fallback
+    : nameEn || nameMm || fallback;
 
 function readLangFromUrl(): SupportedLanguage | null {
-  if (typeof window === 'undefined') return null;
+  if (typeof window === "undefined") return null;
 
-  const value = new URLSearchParams(window.location.search).get('lang');
+  const value = new URLSearchParams(window.location.search).get("lang");
   return value ? normalizeLanguage(value) : null;
 }
 
 /** Re-export for callers that already import from `@/i18n`. */
-export { readWebQueryParams } from '@/utils/route-params';
+export { readWebQueryParams } from "@/utils/route-params";
 
 export function mergeRouteLangFromLocation(
   pathname: string,
   routerParams: Record<string, string | string[] | undefined>,
   language: SupportedLanguage,
 ): string {
-  return mergeRouteLang(pathname, mergeRouterAndWebParams(routerParams), language);
+  return mergeRouteLang(
+    pathname,
+    mergeRouterAndWebParams(routerParams),
+    language,
+  );
 }
 
 export function getPreferredLanguage(): SupportedLanguage {
-  if (Platform.OS === 'web') {
+  if (Platform.OS === "web") {
     return readLangFromUrl() || readStoredLanguageSync() || DEFAULT_LANGUAGE;
   }
 
@@ -67,10 +83,10 @@ function detectInitialLanguage(): SupportedLanguage {
 }
 
 export function syncDocumentLanguage(language: SupportedLanguage) {
-  if (typeof document === 'undefined') return;
+  if (typeof document === "undefined") return;
 
   document.documentElement.lang = language;
-  document.documentElement.dir = 'ltr';
+  document.documentElement.dir = "ltr";
 }
 
 export function persistLanguage(language: SupportedLanguage) {
@@ -85,7 +101,7 @@ export function mergeRouteLang(
   const search = new URLSearchParams();
 
   Object.entries(params).forEach(([key, value]) => {
-    if (key === 'lang' || value == null || value === '') return;
+    if (key === "lang" || value == null || value === "") return;
 
     if (Array.isArray(value)) {
       value.forEach((item) => search.append(key, String(item)));
@@ -96,8 +112,8 @@ export function mergeRouteLang(
   });
 
   // Web uses ?lang= for SEO/sharing; native keeps language in i18n + storage only.
-  if (Platform.OS === 'web') {
-    search.set('lang', language);
+  if (Platform.OS === "web") {
+    search.set("lang", language);
   }
 
   const query = search.toString();
@@ -117,8 +133,10 @@ export function useLocalizedHref() {
   const { language } = useAppTranslation();
 
   return useCallback(
-    (pathname: string, params: Record<string, string | string[] | undefined> = {}) =>
-      mergeRouteLang(pathname, params, language) as Href,
+    (
+      pathname: string,
+      params: Record<string, string | string[] | undefined> = {},
+    ) => mergeRouteLang(pathname, params, language) as Href,
     [language],
   );
 }
@@ -132,33 +150,35 @@ void i18n.init({
     my: { translation: my },
   },
   supportedLngs: supportedLanguages,
-  fallbackLng: 'my',
+  fallbackLng: "my",
   lng: initialLanguage,
   interpolation: {
     escapeValue: false,
   },
-  compatibilityJSON: 'v4',
+  compatibilityJSON: "v4",
 });
 
 syncDocumentLanguage(normalizeLanguage(i18n.resolvedLanguage || i18n.language));
 
-i18n.on('languageChanged', (nextLanguage) => {
+i18n.on("languageChanged", (nextLanguage) => {
   const language = normalizeLanguage(nextLanguage);
   syncDocumentLanguage(language);
   persistLanguage(language);
 });
 
 export function useAppTranslation() {
-  const [language, setLanguage] = useState(i18n.resolvedLanguage || i18n.language);
+  const [language, setLanguage] = useState(
+    i18n.resolvedLanguage || i18n.language,
+  );
 
   useEffect(() => {
     const handleLanguageChanged = (nextLanguage: string) => {
       setLanguage(nextLanguage);
     };
 
-    i18n.on('languageChanged', handleLanguageChanged);
+    i18n.on("languageChanged", handleLanguageChanged);
     return () => {
-      i18n.off('languageChanged', handleLanguageChanged);
+      i18n.off("languageChanged", handleLanguageChanged);
     };
   }, []);
 
@@ -177,7 +197,7 @@ export function useAppTranslation() {
 
 /** Load saved language on native before first paint (no-op on web). */
 export async function hydrateLanguageFromStorage(): Promise<void> {
-  if (Platform.OS === 'web') return;
+  if (Platform.OS === "web") return;
 
   const preferred = await resolveStoredLanguage();
   const current = normalizeLanguage(i18n.resolvedLanguage || i18n.language);
@@ -191,14 +211,17 @@ export async function hydrateLanguageFromStorage(): Promise<void> {
 export function useChangeLanguage() {
   const { i18n } = useAppTranslation();
 
-  return useCallback((nextLanguage: SupportedLanguage) => {
-    void i18n.changeLanguage(nextLanguage);
-  }, [i18n]);
+  return useCallback(
+    (nextLanguage: SupportedLanguage) => {
+      void i18n.changeLanguage(nextLanguage);
+    },
+    [i18n],
+  );
 }
 
 function RouteLanguageSyncWeb() {
-  const params = useGlobalSearchParams<Record<string, string | string[] | undefined>>();
-  const pathname = usePathname() || '/';
+  const params = useGlobalSearchParams();
+  const pathname = usePathname() || "/";
   const router = useRouter();
   const { i18n } = useAppTranslation();
 
@@ -206,22 +229,33 @@ function RouteLanguageSyncWeb() {
     const fromUrl = readLangFromUrl();
 
     if (fromUrl) {
-      if (normalizeLanguage(i18n.resolvedLanguage || i18n.language) === fromUrl) return;
+      if (normalizeLanguage(i18n.resolvedLanguage || i18n.language) === fromUrl)
+        return;
       void i18n.changeLanguage(fromUrl);
       return;
     }
 
     const preferred = getPreferredLanguage();
-    if (normalizeLanguage(i18n.resolvedLanguage || i18n.language) !== preferred) {
+    if (
+      normalizeLanguage(i18n.resolvedLanguage || i18n.language) !== preferred
+    ) {
       void i18n.changeLanguage(preferred);
     }
 
-    if (typeof window !== 'undefined') {
-      const currentLang = new URLSearchParams(window.location.search).get('lang');
+    if (typeof window !== "undefined") {
+      const currentLang = new URLSearchParams(window.location.search).get(
+        "lang",
+      );
       if (currentLang === preferred) return;
     }
 
-    router.replace(mergeRouteLangFromLocation(pathname, params, preferred) as Href);
+    router.replace(
+      mergeRouteLangFromLocation(
+        pathname,
+        params as Record<string, string | string[] | undefined>,
+        preferred,
+      ) as Href,
+    );
   }, [i18n, params, pathname, router]);
 
   useEffect(() => {
@@ -229,12 +263,18 @@ function RouteLanguageSyncWeb() {
       const language = normalizeLanguage(nextLanguage);
       if (readLangFromUrl() === language) return;
 
-      router.replace(mergeRouteLangFromLocation(pathname, params, language) as Href);
+      router.replace(
+        mergeRouteLangFromLocation(
+          pathname,
+          params as Record<string, string | string[] | undefined>,
+          language,
+        ) as Href,
+      );
     };
 
-    i18n.on('languageChanged', syncUrlToLanguage);
+    i18n.on("languageChanged", syncUrlToLanguage);
     return () => {
-      i18n.off('languageChanged', syncUrlToLanguage);
+      i18n.off("languageChanged", syncUrlToLanguage);
     };
   }, [i18n, params, pathname, router]);
 
@@ -243,7 +283,7 @@ function RouteLanguageSyncWeb() {
 
 /** Keeps i18n and the URL in sync with `?lang=` on web only. */
 export function RouteLanguageSync() {
-  if (Platform.OS !== 'web') {
+  if (Platform.OS !== "web") {
     return null;
   }
 

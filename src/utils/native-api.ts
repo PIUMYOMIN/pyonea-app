@@ -3,14 +3,14 @@ import * as SecureStore from "expo-secure-store";
 import { Platform } from "react-native";
 
 import {
-  API_BASE_URL,
-  DEFAULT_PRODUCT_IMAGE,
-  IMAGE_BASE_URL,
+    API_BASE_URL,
+    DEFAULT_PRODUCT_IMAGE,
+    IMAGE_BASE_URL,
 } from "@/config/native";
 import {
-  DATA_CACHE_TTL,
-  withDataCache,
-  withInFlightRequest,
+    DATA_CACHE_TTL,
+    withDataCache,
+    withInFlightRequest,
 } from "@/utils/data-cache";
 import { invalidateScreenCache } from "@/utils/screen-cache";
 
@@ -6234,12 +6234,13 @@ export async function fetchCheckoutSellerPolicies(
         );
         const data =
           isRecord(payload) && isRecord(payload.data) ? payload.data : payload;
-        const rows = Array.isArray(data.policies)
-          ? data.policies.filter(isRecord)
-          : [];
+        const policyRows =
+          isRecord(data) && Array.isArray(data.policies)
+            ? data.policies.filter(isRecord)
+            : [];
 
-        return rows
-          .map((seller) =>
+        return policyRows
+          .map((seller: UnknownRecord) =>
             mapSellerPolicy(
               seller,
               getString(seller.store_slug || seller.slug),
@@ -8424,6 +8425,18 @@ export async function updateAdminSellerNrcDetails(
   );
   const data =
     isRecord(response) && isRecord(response.data) ? response.data : response;
+  if (!isRecord(data)) {
+    return {
+      nrcDivision: "",
+      nrcTownshipCode: "",
+      nrcTownshipMm: "",
+      nrcType: "",
+      nrcNumber: "",
+      nrcFull: "",
+      nrcFullMm: "",
+      nrcVerificationStatus: "pending",
+    };
+  }
   return {
     nrcDivision: getString(data.nrc_division),
     nrcTownshipCode: getString(data.nrc_township_code),

@@ -1502,7 +1502,7 @@ export function CheckoutNative() {
                   {t("checkout.order_summary")}
                 </Text>
                 <View className="mt-4">
-                  {cart.items.map((item) => (
+                  {cart?.items.map((item) => (
                     <CheckoutItem key={String(item.id)} item={item} />
                   ))}
                 </View>
@@ -1547,10 +1547,12 @@ export function CheckoutNative() {
                 <View className="mt-6 gap-3 border-t border-gray-100 pt-5 dark:border-slate-800">
                   <View className="flex-row justify-between">
                     <Text className="font-sans text-sm text-gray-600 dark:text-slate-400">
-                      {t("checkout.subtotal_items", { count: cart.totalItems })}
+                      {t("checkout.subtotal_items", {
+                        count: cart?.totalItems ?? 0,
+                      })}
                     </Text>
                     <Text className="font-sans text-sm font-semibold text-gray-900 dark:text-slate-100">
-                      {cart.subtotal}
+                      {cart?.subtotal}
                     </Text>
                   </View>
                   <View className="flex-row justify-between">

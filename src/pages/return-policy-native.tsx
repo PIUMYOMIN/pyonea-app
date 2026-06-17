@@ -1,8 +1,8 @@
-import Feather from '@expo/vector-icons/Feather';
-import { Text, View } from 'react-native';
+import Feather from "@expo/vector-icons/Feather";
+import { Text, View } from "react-native";
 
-import { AppLayout } from '@/components/layout/app-layout';
-import { useAppTranslation } from '@/i18n';
+import { AppLayout } from "@/components/layout/app-layout";
+import { useAppTranslation } from "@/i18n";
 
 function PolicyCard({ children }: { children: React.ReactNode }) {
   return (
@@ -36,14 +36,25 @@ function PolicySection({
   );
 }
 
-function BulletList({ items, tone = 'green' }: { items: string[]; tone?: 'green' | 'blue' }) {
-  const color = tone === 'blue' ? '#2563eb' : '#16a34a';
+function BulletList({
+  items,
+  tone = "green",
+}: {
+  items: string[];
+  tone?: "green" | "blue";
+}) {
+  const color = tone === "blue" ? "#2563eb" : "#16a34a";
 
   return (
     <View className="gap-2">
       {items.map((item) => (
         <View key={item} className="flex-row items-start gap-3">
-          <Feather name="check-circle" color={color} size={17} style={{ marginTop: 2 }} />
+          <Feather
+            name="check-circle"
+            color={color}
+            size={17}
+            style={{ marginTop: 2 }}
+          />
           <Text className="min-w-0 flex-1 font-sans text-sm leading-6 text-gray-700 dark:text-slate-300">
             {item}
           </Text>
@@ -55,23 +66,26 @@ function BulletList({ items, tone = 'green' }: { items: string[]; tone?: 'green'
 
 export function ReturnPolicyNative() {
   const { t } = useAppTranslation();
-  const lastUpdated = new Date().toLocaleDateString('en-GB');
-  const minimumRequirements = t('returnPolicy.platformPolicy.minimumRequirements.items', {
+  const lastUpdated = new Date().toLocaleDateString("en-GB");
+  const minimumRequirements = t(
+    "returnPolicy.platformPolicy.minimumRequirements.items",
+    {
+      returnObjects: true,
+    },
+  ) as unknown as string[];
+  const consumerRights = t("returnPolicy.platformPolicy.consumerRights.items", {
     returnObjects: true,
-  }) as string[];
-  const consumerRights = t('returnPolicy.platformPolicy.consumerRights.items', {
-    returnObjects: true,
-  }) as string[];
+  }) as unknown as string[];
 
   return (
     <AppLayout>
       <View className="bg-gray-50 px-4 py-12 dark:bg-slate-950 sm:px-6 lg:px-8">
         <View className="mx-auto w-full max-w-4xl">
           <Text className="mb-2 text-center font-sans text-2xl font-bold text-gray-950 dark:text-slate-100 sm:text-3xl">
-            {t('returnPolicy.title')}
+            {t("returnPolicy.title")}
           </Text>
           <Text className="mb-8 text-center font-sans text-base leading-6 text-gray-600 dark:text-slate-400">
-            {t('returnPolicy.subtitle')}
+            {t("returnPolicy.subtitle")}
           </Text>
 
           <View className="gap-8">
@@ -81,48 +95,59 @@ export function ReturnPolicyNative() {
                   <Feather name="refresh-cw" color="#15803d" size={21} />
                 </View>
                 <Text className="min-w-0 flex-1 font-sans text-2xl font-semibold text-gray-950 dark:text-slate-100">
-                  {t('returnPolicy.platformPolicy.title')}
+                  {t("returnPolicy.platformPolicy.title")}
                 </Text>
               </View>
 
               <Text className="mb-6 font-sans text-base leading-7 text-gray-700 dark:text-slate-300">
-                {t('returnPolicy.platformPolicy.description')}
+                {t("returnPolicy.platformPolicy.description")}
               </Text>
 
               <View className="gap-6">
                 <PolicySection
                   icon="user-check"
-                  title={t('returnPolicy.platformPolicy.buyerResponsibility.title')}>
+                  title={t(
+                    "returnPolicy.platformPolicy.buyerResponsibility.title",
+                  )}
+                >
                   <Text className="font-sans text-base leading-7 text-gray-700 dark:text-slate-300">
-                    {t('returnPolicy.platformPolicy.buyerResponsibility.text')}
+                    {t("returnPolicy.platformPolicy.buyerResponsibility.text")}
                   </Text>
                 </PolicySection>
 
                 <PolicySection
                   icon="shield"
-                  title={t('returnPolicy.platformPolicy.platformRole.title')}>
+                  title={t("returnPolicy.platformPolicy.platformRole.title")}
+                >
                   <Text className="font-sans text-base leading-7 text-gray-700 dark:text-slate-300">
-                    {t('returnPolicy.platformPolicy.platformRole.text')}
+                    {t("returnPolicy.platformPolicy.platformRole.text")}
                   </Text>
                 </PolicySection>
 
                 <PolicySection
                   icon="check-square"
-                  title={t('returnPolicy.platformPolicy.minimumRequirements.title')}>
+                  title={t(
+                    "returnPolicy.platformPolicy.minimumRequirements.title",
+                  )}
+                >
                   <BulletList items={minimumRequirements} />
                 </PolicySection>
 
                 <PolicySection
                   icon="file-text"
-                  title={t('returnPolicy.platformPolicy.consumerRights.title')}>
+                  title={t("returnPolicy.platformPolicy.consumerRights.title")}
+                >
                   <BulletList items={consumerRights} tone="blue" />
                 </PolicySection>
 
                 <PolicySection
                   icon="message-circle"
-                  title={t('returnPolicy.platformPolicy.disputeResolution.title')}>
+                  title={t(
+                    "returnPolicy.platformPolicy.disputeResolution.title",
+                  )}
+                >
                   <Text className="font-sans text-base leading-7 text-gray-700 dark:text-slate-300">
-                    {t('returnPolicy.platformPolicy.disputeResolution.text')}
+                    {t("returnPolicy.platformPolicy.disputeResolution.text")}
                   </Text>
                 </PolicySection>
               </View>
@@ -134,17 +159,17 @@ export function ReturnPolicyNative() {
                   <Feather name="shopping-bag" color="#2563eb" size={21} />
                 </View>
                 <Text className="min-w-0 flex-1 font-sans text-2xl font-semibold text-gray-950 dark:text-slate-100">
-                  {t('returnPolicy.sellerPolicy.title')}
+                  {t("returnPolicy.sellerPolicy.title")}
                 </Text>
               </View>
               <Text className="font-sans text-base leading-7 text-gray-700 dark:text-slate-300">
-                {t('returnPolicy.sellerPolicy.description')}
+                {t("returnPolicy.sellerPolicy.description")}
               </Text>
             </PolicyCard>
 
             <View className="border-t border-gray-200 pt-6 dark:border-slate-700">
               <Text className="text-center font-sans text-sm text-gray-500 dark:text-slate-400">
-                {t('returnPolicy.lastUpdated', { date: lastUpdated })}
+                {t("returnPolicy.lastUpdated", { date: lastUpdated })}
               </Text>
             </View>
           </View>

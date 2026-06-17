@@ -1,4 +1,4 @@
-import { useCallback, useMemo, type ReactNode } from 'react';
+import { useCallback, useMemo, type ReactNode } from "react";
 import {
   FlatList,
   Platform,
@@ -6,24 +6,24 @@ import {
   useWindowDimensions,
   View,
   type ListRenderItemInfo,
-} from 'react-native';
+} from "react-native";
 
 import {
   CardSkeleton,
+  PRODUCT_CARD_ROW_CLASS,
   ProductListCard,
   ProductListRowSkeleton,
-  PRODUCT_CARD_ROW_CLASS,
-} from '@/components/marketplace/product-list-cards';
-import { CategoryCardSkeleton } from '@/components/ui/category-card';
-import type { HomeProduct } from '@/utils/native-api';
+} from "@/components/marketplace/product-list-cards";
+import { CategoryCardSkeleton } from "@/components/ui/category-card";
 import {
   CATEGORY_BROWSER_GRID_CLASS,
   HOME_CATEGORY_GRID_CLASS,
   HOME_PRODUCT_GRID_CLASS,
   PRODUCT_LIST_GRID_CLASS,
-} from '@/constants/layout';
+} from "@/constants/layout";
+import type { HomeProduct } from "@/utils/native-api";
 
-export const isMarketplaceWeb = Platform.OS === 'web';
+export const isMarketplaceWeb = Platform.OS === "web";
 
 /** Approximate product card height for FlatList windowing (square image + meta/actions). */
 export const PRODUCT_GRID_ESTIMATED_ITEM_SIZE = 320;
@@ -87,7 +87,11 @@ export function MarketplaceGridRow({
   children: ReactNode;
 }) {
   const cells = useMemo(() => {
-    const list = Array.isArray(children) ? children : children != null ? [children] : [];
+    const list = Array.isArray(children)
+      ? children
+      : children != null
+        ? [children]
+        : [];
     return list.filter((cell) => cell != null && cell !== false);
   }, [children]);
   const emptySlots = Math.max(0, columns - cells.length);
@@ -95,7 +99,10 @@ export function MarketplaceGridRow({
   return (
     <View className="mb-3 flex-row items-stretch gap-3 sm:mb-4 sm:gap-4">
       {cells.map((child, index) => (
-        <View key={`marketplace-grid-cell-${index}`} className={PRODUCT_CARD_ROW_CLASS}>
+        <View
+          key={`marketplace-grid-cell-${index}`}
+          className={PRODUCT_CARD_ROW_CLASS}
+        >
           {child}
         </View>
       ))}
@@ -144,7 +151,10 @@ export function ProductMarketplaceGrid({
   const estimatedItemSize = useMemo(() => {
     const horizontalPadding = 32;
     const gap = 12 * Math.max(0, columns - 1);
-    const cardWidth = Math.max(120, (width - horizontalPadding - gap) / columns);
+    const cardWidth = Math.max(
+      120,
+      (width - horizontalPadding - gap) / columns,
+    );
     return Math.round(cardWidth + 132);
   }, [columns, width]);
 
@@ -180,7 +190,10 @@ export function ProductMarketplaceGrid({
         <View className={webGridClass}>
           {loading
             ? Array.from({ length: skeletonCount }).map((_, index) => (
-                <CardSkeleton key={`product-grid-skeleton-${index}`} className="w-full min-w-0" />
+                <CardSkeleton
+                  key={`product-grid-skeleton-${index}`}
+                  className="w-full min-w-0"
+                />
               ))
             : products.map((product, index) => (
                 <ProductListCard
@@ -223,7 +236,9 @@ export function ProductMarketplaceGrid({
       ListHeaderComponent={listHeaderComponent ? renderListHeader : undefined}
       ListFooterComponent={listFooter ? () => listFooter : undefined}
       ListEmptyComponent={listEmptyComponent ? renderListEmpty : undefined}
-      columnWrapperStyle={columns > 1 ? nativeGridStyles.columnWrapper : undefined}
+      columnWrapperStyle={
+        columns > 1 ? nativeGridStyles.columnWrapper : undefined
+      }
       contentContainerStyle={nativeGridStyles.content}
       style={scrollEnabled ? nativeGridStyles.list : undefined}
       keyboardShouldPersistTaps="handled"
@@ -231,16 +246,7 @@ export function ProductMarketplaceGrid({
       initialNumToRender={columns * 4}
       maxToRenderPerBatch={columns * 3}
       windowSize={7}
-      removeClippedSubviews={Platform.OS === 'android'}
-      getItemLayout={
-        columns === 1
-          ? (_, index) => ({
-              length: estimatedItemSize,
-              offset: estimatedItemSize * index,
-              index,
-            })
-          : undefined
-      }
+      removeClippedSubviews={Platform.OS === "android"}
     />
   );
 }
@@ -265,14 +271,20 @@ export function CategoryMarketplaceGrid<T>({
   renderItem,
 }: CategoryMarketplaceGridProps<T>) {
   const columns = useCategoryGridColumns();
-  const rows = useMemo(() => chunkMarketplaceItems(items, columns), [columns, items]);
+  const rows = useMemo(
+    () => chunkMarketplaceItems(items, columns),
+    [columns, items],
+  );
 
   if (isMarketplaceWeb) {
     return (
       <View className={webGridClass}>
         {loading
           ? Array.from({ length: skeletonCount }).map((_, index) => (
-              <CategoryCardSkeleton key={`category-grid-skeleton-${index}`} className="w-full min-w-0" />
+              <CategoryCardSkeleton
+                key={`category-grid-skeleton-${index}`}
+                className="w-full min-w-0"
+              />
             ))
           : items.map((item, index) => (
               <View key={keyExtractor(item, index)} className="w-full min-w-0">
@@ -287,7 +299,10 @@ export function CategoryMarketplaceGrid<T>({
     return (
       <>
         {Array.from({ length: skeletonRows }).map((_, rowIndex) => (
-          <MarketplaceGridRow key={`category-grid-skeleton-row-${rowIndex}`} columns={columns}>
+          <MarketplaceGridRow
+            key={`category-grid-skeleton-row-${rowIndex}`}
+            columns={columns}
+          >
             {Array.from({ length: columns }).map((__, cellIndex) => (
               <CategoryCardSkeleton
                 key={`category-grid-skeleton-${rowIndex}-${cellIndex}`}
@@ -303,11 +318,17 @@ export function CategoryMarketplaceGrid<T>({
   return (
     <>
       {rows.map((row, rowIndex) => (
-        <MarketplaceGridRow key={`category-grid-row-${rowIndex}`} columns={columns}>
+        <MarketplaceGridRow
+          key={`category-grid-row-${rowIndex}`}
+          columns={columns}
+        >
           {row.map((item, cellIndex) => {
             const index = rowIndex * columns + cellIndex;
             return (
-              <View key={keyExtractor(item, index)} className="w-full min-w-0 self-stretch">
+              <View
+                key={keyExtractor(item, index)}
+                className="w-full min-w-0 self-stretch"
+              >
                 {renderItem(item, index)}
               </View>
             );
