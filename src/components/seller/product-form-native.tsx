@@ -1,5 +1,5 @@
-import { Feather } from "@expo/vector-icons";
 import { OptimizedImage as Image } from "@/components/ui/optimized-image";
+import { Feather } from "@expo/vector-icons";
 import { router, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -15,10 +15,30 @@ import {
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
-import { useTheme } from "@/context/theme";
-import { useAppTranslation } from "@/i18n";
 import { ProductOptionsEditorNative } from "@/components/seller/product-options-editor-native";
 import { VariantTableNative } from "@/components/seller/variant-table-native";
+import { useTheme } from "@/context/theme";
+import { useAppTranslation } from "@/i18n";
+import {
+  ApiError,
+  createSellerProduct,
+  fetchAdminProductForEdit,
+  fetchSellerProductCategories,
+  fetchSellerProductForEdit,
+  fetchSellerWholesaleTiers,
+  formatApiErrorMessage,
+  formatMMK,
+  getNativeImageUrl,
+  syncSellerWholesaleTiers,
+  updateAdminProduct,
+  updateSellerProduct,
+  uploadAdminProductImage,
+  uploadSellerProductImage,
+  type SellerProductCategory,
+  type SellerProductFormData,
+  type SellerProductImage,
+  type SellerWholesaleTier,
+} from "@/utils/native-api";
 import {
   appendUploadFile,
   pickImageFromCamera,
@@ -32,26 +52,6 @@ import {
   saveProductDraftImages,
   shouldAutoSaveProductDraft,
 } from "@/utils/product-draft-storage";
-import {
-  ApiError,
-  createSellerProduct,
-  fetchAdminProductForEdit,
-  fetchSellerProductCategories,
-  fetchSellerProductForEdit,
-  fetchSellerWholesaleTiers,
-  formatMMK,
-  getNativeImageUrl,
-  syncSellerWholesaleTiers,
-  updateAdminProduct,
-  updateSellerProduct,
-  uploadAdminProductImage,
-  uploadSellerProductImage,
-  type SellerProductCategory,
-  type SellerProductFormData,
-  type SellerProductImage,
-  type SellerWholesaleTier,
-  formatApiErrorMessage,
-} from "@/utils/native-api";
 
 const productTypes = [
   {
@@ -179,10 +179,13 @@ function buildCategoryOptions(
   categories: SellerProductCategory[],
   language: string,
   parentHint: string,
-  noSubcategoriesLabel: string,
 ): Option[] {
   return categories.flatMap((parent) => {
     const parentName = categoryLabel(parent, language);
+    if (!parent.children.length) {
+      return [{ value: String(parent.id), label: parentName }];
+    }
+
     return [
       {
         value: `parent-${parent.id}`,
@@ -190,19 +193,11 @@ function buildCategoryOptions(
         description: parentHint,
         disabled: true,
       },
-      ...(parent.children.length
-        ? parent.children.map((child) => ({
-            value: String(child.id),
-            label: categoryLabel(child, language),
-            description: parentName,
-          }))
-        : [
-            {
-              value: `empty-${parent.id}`,
-              label: noSubcategoriesLabel,
-              disabled: true,
-            },
-          ]),
+      ...parent.children.map((child) => ({
+        value: String(child.id),
+        label: categoryLabel(child, language),
+        description: parentName,
+      })),
     ];
   });
 }
@@ -1024,10 +1019,7 @@ export function ProductFormNative({
         categories,
         language,
         t("product_form.category_parent_hint", {
-          defaultValue: "Select a child category below",
-        }),
-        t("product_form.messages.no_sub_categories", {
-          defaultValue: "No sub-categories",
+          defaultValue: "Select a subcategory below",
         }),
       ),
     [categories, language, t],
