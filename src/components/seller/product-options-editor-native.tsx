@@ -1,19 +1,19 @@
-import Feather from '@expo/vector-icons/Feather';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
+import Feather from '@expo/vector-icons/Feather';
 import { createElement, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Modal,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Modal,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    TextInput,
+    View,
 } from 'react-native';
 
 import { useAppTranslation } from '@/i18n';
-import { formatApiErrorMessage, apiGet, apiPost } from '@/utils/native-api';
+import { apiGet, apiPost, formatApiErrorMessage } from '@/utils/native-api';
 
 type OptionType = 'color' | 'size' | 'text' | 'image' | 'input';
 
@@ -707,9 +707,11 @@ export function ProductOptionsEditorNative({
         })),
       });
       setSuccess(t('product_form.options.saved', 'Options saved! Now generate your variants below.'));
+      setTimeout(() => setSuccess(''), 3500);
       onSaved?.();
     } catch (nextError) {
       setError(formatApiErrorMessage(nextError, t('product_form.options.save_failed', 'Failed to save options.')));
+      setTimeout(() => setError(''), 3500);
     } finally {
       setSaving(false);
     }

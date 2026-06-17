@@ -1,25 +1,24 @@
 import Feather from '@expo/vector-icons/Feather';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import {
-  ActivityIndicator,
-  Alert,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Alert,
+    Pressable,
+    ScrollView,
+    Text,
+    TextInput,
+    View,
 } from 'react-native';
 
 import { useAppTranslation } from '@/i18n';
 import {
-  deleteSellerProductVariant,
-  fetchSellerProductVariants,
-  generateSellerProductVariants,
-  toggleSellerProductVariant,
-  updateSellerProductVariant,
-  type SellerManagedVariant,
-
-  formatApiErrorMessage,
+    deleteSellerProductVariant,
+    fetchSellerProductVariants,
+    formatApiErrorMessage,
+    generateSellerProductVariants,
+    toggleSellerProductVariant,
+    updateSellerProductVariant,
+    type SellerManagedVariant,
 } from '@/utils/native-api';
 
 type VariantEditRow = {
@@ -302,6 +301,8 @@ export function VariantTableNative({
         sku: row.sku || null,
         is_active: row.is_active,
       });
+      setErrors((current) => ({ ...current, [key]: '' }));
+      setGlobalError('');
       onUpdated?.();
     } catch (err) {
       setErrors((current) => ({
@@ -316,18 +317,23 @@ export function VariantTableNative({
   const toggleActive = async (variant: SellerManagedVariant) => {
     if (!productId) return;
     const key = String(variant.id);
+    setSaving((current) => ({ ...current, [key]: true }));
+    setErrors((current) => ({ ...current, [key]: '' }));
     try {
       const nextActive = await toggleSellerProductVariant(productId, variant.id);
       updateEdit(variant.id, 'is_active', nextActive);
       setVariants((current) =>
         current.map((item) => (String(item.id) === key ? { ...item, isActive: nextActive } : item)),
       );
+      setGlobalError('');
       onUpdated?.();
     } catch {
       setErrors((current) => ({
         ...current,
         [key]: t('product_form.variants.toggle_failed', 'Toggle failed.'),
       }));
+    } finally {
+      setSaving((current) => ({ ...current, [key]: false }));
     }
   };
 
@@ -408,6 +414,7 @@ export function VariantTableNative({
       });
       await loadVariants();
       setShowGenForm(false);
+      setGenDefaults({ price: '', quantity: '0', moq: '' });
       onUpdated?.();
     } catch (err) {
       setGlobalError(
@@ -555,7 +562,7 @@ export function VariantTableNative({
                     <Text
                       key={heading}
                       className={`pr-3 font-sans text-[11px] font-bold uppercase tracking-wide text-gray-500 dark:text-slate-400 ${
-                        index === 0 ? 'w-56' : index === 7 ? 'w-36' : 'w-24'
+                        index === 0 ? 'w-64' : index === 7 ? 'w-40' : 'w-28'
                       }`}>
                       {heading}
                     </Text>
@@ -572,10 +579,10 @@ export function VariantTableNative({
                         !row.is_active ? 'opacity-60' : ''
                       }`}>
                       <View className="flex-row items-center">
-                        <View className="w-56 pr-3">
+                        <View className="w-64 pr-3">
                           <VariantBadges variant={variant} />
                         </View>
-                        <View className="w-24 pr-3">
+                        <View className="w-28 pr-3">
                           <TextInput
                             value={row.price}
                             onChangeText={(value) => updateEdit(variant.id, 'price', value)}
@@ -583,7 +590,7 @@ export function VariantTableNative({
                             className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 font-sans text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                           />
                         </View>
-                        <View className="w-24 pr-3">
+                        <View className="w-28 pr-3">
                           <TextInput
                             value={row.quantity}
                             onChangeText={(value) => updateEdit(variant.id, 'quantity', value)}
@@ -591,14 +598,14 @@ export function VariantTableNative({
                             className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 font-sans text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                           />
                         </View>
-                        <View className="w-24 pr-3">
+                        <View className="w-28 pr-3">
                           <TextInput
                             value={row.quantity_unit}
                             onChangeText={(value) => updateEdit(variant.id, 'quantity_unit', value)}
                             className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 font-sans text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                           />
                         </View>
-                        <View className="w-24 pr-3">
+                        <View className="w-28 pr-3">
                           <TextInput
                             value={row.moq}
                             onChangeText={(value) => updateEdit(variant.id, 'moq', value)}
@@ -606,14 +613,14 @@ export function VariantTableNative({
                             className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 font-sans text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                           />
                         </View>
-                        <View className="w-24 pr-3">
+                        <View className="w-28 pr-3">
                           <TextInput
                             value={row.sku}
                             onChangeText={(value) => updateEdit(variant.id, 'sku', value)}
                             className="rounded-lg border border-gray-200 bg-white px-2 py-1.5 font-sans text-sm dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
                           />
                         </View>
-                        <View className="w-24 items-center pr-3">
+                        <View className="w-28 items-center pr-3">
                           <Pressable
                             onPress={() => void toggleActive(variant)}
                             className={`h-5 w-10 rounded-full ${row.is_active ? 'bg-green-500' : 'bg-gray-300 dark:bg-slate-600'}`}>
@@ -624,7 +631,7 @@ export function VariantTableNative({
                             />
                           </Pressable>
                         </View>
-                        <View className="w-36 flex-row gap-2">
+                        <View className="w-40 flex-row gap-2">
                           <Pressable
                             disabled={saving[key]}
                             onPress={() => void saveVariant(variant)}
