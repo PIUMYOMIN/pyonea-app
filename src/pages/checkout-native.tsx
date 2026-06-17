@@ -1,5 +1,5 @@
-import Feather from "@expo/vector-icons/Feather";
 import { OptimizedImage as Image } from "@/components/ui/optimized-image";
+import Feather from "@expo/vector-icons/Feather";
 import { Link, useRouter, type Href } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -13,15 +13,16 @@ import {
   View,
 } from "react-native";
 
-import { AppLayout } from "@/components/layout/app-layout";
-import { SITE_CONTAINER_CLASS } from "@/constants/layout";
 import { CheckoutLocationSelect } from "@/components/checkout/checkout-location-select";
 import { CheckoutPaymentModal } from "@/components/checkout/checkout-payment-modal";
+import { AppLayout } from "@/components/layout/app-layout";
+import { SITE_CONTAINER_CLASS } from "@/constants/layout";
 import { useCartCount } from "@/context/cart-count-context";
 import { useNativeAuth } from "@/context/native-auth";
 import { getMyanmarStates } from "@/data/myanmar-locations";
 import { useAppTranslation } from "@/i18n";
 import { hasUserRole } from "@/utils/auth-routing";
+import { getThumbUrl } from "@/utils/image-thumbs";
 import {
   buildCheckoutLocationRows,
   myanmarLocationsEng,
@@ -38,6 +39,7 @@ import {
   fetchCheckoutSellerPolicies,
   fetchPaymentMethods,
   fetchPaymentReceipt,
+  formatApiErrorMessage,
   formatMMK,
   requestCheckoutOtp,
   validateCheckoutCoupon,
@@ -48,13 +50,10 @@ import {
   type CheckoutCoupon,
   type CheckoutLocationRow,
   type CheckoutOrderResult,
-  type CheckoutSellerShippingFee,
   type CheckoutProfile,
   type CheckoutSellerPolicy,
-
-  formatApiErrorMessage,
-} from '@/utils/native-api';
-import { getThumbUrl } from "@/utils/image-thumbs";
+  type CheckoutSellerShippingFee,
+} from "@/utils/native-api";
 import { emitCartCountChanged } from "@/utils/native-cart-events";
 
 const placeholderProduct = require("@/assets/images/placeholder-product.png");
@@ -137,7 +136,11 @@ function CheckoutItem({ item }: { item: CartItem }) {
     <View className="flex-row gap-3 border-b border-gray-100 py-4 dark:border-slate-800">
       <View className="h-16 w-16 overflow-hidden rounded-lg border border-gray-200 bg-gray-50 dark:border-slate-700 dark:bg-slate-800">
         <Image
-          source={item.imageUrl ? { uri: getThumbUrl(item.imageUrl, 160) } : placeholderProduct}
+          source={
+            item.imageUrl
+              ? { uri: getThumbUrl(item.imageUrl, 160) }
+              : placeholderProduct
+          }
           className="h-full w-full"
           contentFit="contain"
         />
@@ -267,7 +270,10 @@ function OtpModal({
       return;
     }
 
-    const digits = Array.from({ length: 6 }, (_, digitIndex) => otp[digitIndex] || "");
+    const digits = Array.from(
+      { length: 6 },
+      (_, digitIndex) => otp[digitIndex] || "",
+    );
     digits[index] = cleanValue;
     onChangeOtp(digits.join("").slice(0, 6));
 
@@ -306,104 +312,110 @@ function OtpModal({
             </View>
 
             <View className="gap-3 px-4 py-4">
-            {verified ? (
-              <View className="items-center py-4">
-                <View className="mb-3 h-14 w-14 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/40">
-                  <Feather name="check-circle" color="#16a34a" size={32} />
-                </View>
-                <Text className="text-center font-sans text-base font-semibold text-green-700 dark:text-green-300">
-                  {t("checkout.otp_verified")}
-                </Text>
-              </View>
-            ) : (
-              <>
-                <Text className="text-center font-sans text-sm leading-6 text-gray-600 dark:text-slate-400">
-                  {t("checkout.otp_sent_prefix")}{" "}
-                  <Text className="font-bold text-gray-700 dark:text-slate-200">
-                    {t("checkout.otp_6_digit_code")}
-                  </Text>{" "}
-                  {t("checkout.otp_sent_to")}{" "}
-                  <Text className="font-medium text-gray-900 dark:text-slate-100">
-                    {emailHint || t("checkout.email")}
-                  </Text>
-                </Text>
-
-                <View className="w-full flex-row gap-1.5">
-                  {otpDigits.map((digit, index) => (
-                    <TextInput
-                      key={`otp-input-${index}`}
-                      ref={(ref) => {
-                        inputRefs.current[index] = ref;
-                      }}
-                      value={digit}
-                      onChangeText={(value) => handleDigitChange(value, index)}
-                      onKeyPress={({ nativeEvent }) => {
-                        if (nativeEvent.key === "Backspace" && !otp[index] && index > 0) {
-                          focusInput(index - 1);
-                        }
-                      }}
-                      onSubmitEditing={() => {
-                        if (otp.length === 6) {
-                          onVerify();
-                        }
-                      }}
-                      keyboardType="number-pad"
-                      maxLength={1}
-                      selectTextOnFocus
-                      className={`h-12 min-w-0 flex-1 max-w-10 rounded-xl border-2 text-center font-sans text-lg font-bold text-gray-900 transition-colors dark:bg-slate-700 dark:text-slate-100 ${
-                        error
-                          ? "border-red-400 bg-red-50 dark:border-red-600 dark:bg-red-900/30"
-                          : "border-gray-200 bg-white focus:border-green-500 dark:border-slate-600"
-                      }`}
-                    />
-                  ))}
-                </View>
-
-                {error ? (
-                  <View className="flex-row items-center justify-center gap-1.5">
-                    <Feather name="x-circle" color="#dc2626" size={16} />
-                    <Text className="text-center font-sans text-sm text-red-600">
-                      {error}
-                    </Text>
+              {verified ? (
+                <View className="items-center py-4">
+                  <View className="mb-3 h-14 w-14 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/40">
+                    <Feather name="check-circle" color="#16a34a" size={32} />
                   </View>
-                ) : null}
-                <View className="flex-row justify-center">
-                  {countdown > 0 ? (
-                    <Text className="text-center font-sans text-xs text-gray-400 dark:text-slate-600">
-                      {t("checkout.otp_expires_in")}{" "}
-                      <Text className="font-semibold text-gray-600 dark:text-slate-400">
-                        {minutes}:{seconds}
-                      </Text>
-                    </Text>
-                  ) : (
-                    <Text className="text-center font-sans text-xs font-medium text-red-500">
-                      {t("checkout.otp_expired")}
-                    </Text>
-                  )}
+                  <Text className="text-center font-sans text-base font-semibold text-green-700 dark:text-green-300">
+                    {t("checkout.otp_verified")}
+                  </Text>
                 </View>
-                <Pressable
-                  onPress={onVerify}
-                  disabled={loading || otp.length !== 6 || countdown === 0}
-                  className="flex-row items-center justify-center gap-2 rounded-xl bg-green-600 py-3 disabled:opacity-50"
-                >
-                  {loading ? <ActivityIndicator color="#ffffff" /> : null}
-                  <Text className="text-center font-sans text-sm font-semibold text-white">
-                    {loading
-                      ? t("checkout.verifying")
-                      : t("checkout.confirm_order")}
+              ) : (
+                <>
+                  <Text className="text-center font-sans text-sm leading-6 text-gray-600 dark:text-slate-400">
+                    {t("checkout.otp_sent_prefix")}{" "}
+                    <Text className="font-bold text-gray-700 dark:text-slate-200">
+                      {t("checkout.otp_6_digit_code")}
+                    </Text>{" "}
+                    {t("checkout.otp_sent_to")}{" "}
+                    <Text className="font-medium text-gray-900 dark:text-slate-100">
+                      {emailHint || t("checkout.email")}
+                    </Text>
                   </Text>
-                </Pressable>
-                <Pressable onPress={onResend} disabled={countdown > 0}>
-                  <Text
-                    className={`text-center font-sans text-sm font-medium text-green-600 dark:text-green-300 ${
-                      countdown > 0 ? "opacity-40" : "opacity-100"
-                    }`}
+
+                  <View className="w-full flex-row gap-1.5">
+                    {otpDigits.map((digit, index) => (
+                      <TextInput
+                        key={`otp-input-${index}`}
+                        ref={(ref) => {
+                          inputRefs.current[index] = ref;
+                        }}
+                        value={digit}
+                        onChangeText={(value) =>
+                          handleDigitChange(value, index)
+                        }
+                        onKeyPress={({ nativeEvent }) => {
+                          if (
+                            nativeEvent.key === "Backspace" &&
+                            !otp[index] &&
+                            index > 0
+                          ) {
+                            focusInput(index - 1);
+                          }
+                        }}
+                        onSubmitEditing={() => {
+                          if (otp.length === 6) {
+                            onVerify();
+                          }
+                        }}
+                        keyboardType="number-pad"
+                        maxLength={1}
+                        selectTextOnFocus
+                        className={`h-12 min-w-0 flex-1 max-w-10 rounded-xl border-2 text-center font-sans text-lg font-bold text-gray-900 transition-colors dark:bg-slate-700 dark:text-slate-100 ${
+                          error
+                            ? "border-red-400 bg-red-50 dark:border-red-600 dark:bg-red-900/30"
+                            : "border-gray-200 bg-white focus:border-green-500 dark:border-slate-600"
+                        }`}
+                      />
+                    ))}
+                  </View>
+
+                  {error ? (
+                    <View className="flex-row items-center justify-center gap-1.5">
+                      <Feather name="x-circle" color="#dc2626" size={16} />
+                      <Text className="text-center font-sans text-sm text-red-600">
+                        {error}
+                      </Text>
+                    </View>
+                  ) : null}
+                  <View className="flex-row justify-center">
+                    {countdown > 0 ? (
+                      <Text className="text-center font-sans text-xs text-gray-400 dark:text-slate-600">
+                        {t("checkout.otp_expires_in")}{" "}
+                        <Text className="font-semibold text-gray-600 dark:text-slate-400">
+                          {minutes}:{seconds}
+                        </Text>
+                      </Text>
+                    ) : (
+                      <Text className="text-center font-sans text-xs font-medium text-red-500">
+                        {t("checkout.otp_expired")}
+                      </Text>
+                    )}
+                  </View>
+                  <Pressable
+                    onPress={onVerify}
+                    disabled={loading || otp.length !== 6 || countdown === 0}
+                    className="flex-row items-center justify-center gap-2 rounded-xl bg-green-600 py-3 disabled:opacity-50"
                   >
-                    {t("checkout.otp_resend")}
-                  </Text>
-                </Pressable>
-              </>
-            )}
+                    {loading ? <ActivityIndicator color="#ffffff" /> : null}
+                    <Text className="text-center font-sans text-sm font-semibold text-white">
+                      {loading
+                        ? t("checkout.verifying")
+                        : t("checkout.confirm_order")}
+                    </Text>
+                  </Pressable>
+                  <Pressable onPress={onResend} disabled={countdown > 0}>
+                    <Text
+                      className={`text-center font-sans text-sm font-medium text-green-600 dark:text-green-300 ${
+                        countdown > 0 ? "opacity-40" : "opacity-100"
+                      }`}
+                    >
+                      {t("checkout.otp_resend")}
+                    </Text>
+                  </Pressable>
+                </>
+              )}
             </View>
           </View>
         </View>
@@ -420,7 +432,12 @@ function CheckoutMessageToast({
   onClose: () => void;
 }) {
   return (
-    <Modal visible={Boolean(message)} transparent animationType="fade" onRequestClose={onClose}>
+    <Modal
+      visible={Boolean(message)}
+      transparent
+      animationType="fade"
+      onRequestClose={onClose}
+    >
       <View className="flex-1 items-center px-4 pt-24" pointerEvents="box-none">
         <View
           className="w-full max-w-md flex-row items-start gap-3 rounded-2xl border border-red-200 bg-white px-4 py-3 shadow-2xl dark:border-red-900/60 dark:bg-slate-900"
@@ -457,7 +474,7 @@ export function CheckoutNative() {
   const otpSessionVerifiedRef = useRef(false);
   const idempotencyKeyRef = useRef(
     globalThis.crypto?.randomUUID?.() ??
-      `checkout-${Date.now()}-${Math.random().toString(36).slice(2)}`
+      `checkout-${Date.now()}-${Math.random().toString(36).slice(2)}`,
   );
   const [cart, setCart] = useState<CartResult | null>(() => cartSnapshot);
   const [address, setAddress] = useState<CheckoutAddress>(emptyAddress);
@@ -468,7 +485,9 @@ export function CheckoutNative() {
   const [checkoutApiStates, setCheckoutApiStates] = useState<
     { state: string; cities: string[] }[] | null
   >(null);
-  const [savedProfile, setSavedProfile] = useState<CheckoutProfile | null>(null);
+  const [savedProfile, setSavedProfile] = useState<CheckoutProfile | null>(
+    null,
+  );
   const [orderNotes, setOrderNotes] = useState("");
   const [shippingFee, setShippingFee] = useState(5000);
   const [taxRate, setTaxRate] = useState(0.05);
@@ -479,7 +498,9 @@ export function CheckoutNative() {
   const [locationLoading, setLocationLoading] = useState(true);
   const [feesLoading, setFeesLoading] = useState(true);
   const [feesError, setFeesError] = useState("");
-  const [sellerShippingFees, setSellerShippingFees] = useState<CheckoutSellerShippingFee[]>([]);
+  const [sellerShippingFees, setSellerShippingFees] = useState<
+    CheckoutSellerShippingFee[]
+  >([]);
   const [sellerPolicies, setSellerPolicies] = useState<CheckoutSellerPolicy[]>(
     [],
   );
@@ -497,7 +518,9 @@ export function CheckoutNative() {
   const [otpError, setOtpError] = useState("");
   const [otpLoading, setOtpLoading] = useState(false);
   const [otpVerified, setOtpVerified] = useState(false);
-  const [paymentOrder, setPaymentOrder] = useState<CheckoutOrderResult | null>(null);
+  const [paymentOrder, setPaymentOrder] = useState<CheckoutOrderResult | null>(
+    null,
+  );
   const [paymentQueue, setPaymentQueue] = useState<CheckoutOrderResult[]>([]);
   const [paymentQueueIndex, setPaymentQueueIndex] = useState(0);
   const [paymentVisible, setPaymentVisible] = useState(false);
@@ -515,11 +538,17 @@ export function CheckoutNative() {
     [language],
   );
   const selectedTreeNode = useMemo(
-    () => displayTree.find((node: LocationTreeNode) => node.engState === addressState),
+    () =>
+      displayTree.find(
+        (node: LocationTreeNode) => node.engState === addressState,
+      ),
     [addressState, displayTree],
   );
   const selectedCityNode = useMemo(
-    () => selectedTreeNode?.cities.find((city: LocationCityNode) => city.engCity === addressCity),
+    () =>
+      selectedTreeNode?.cities.find(
+        (city: LocationCityNode) => city.engCity === addressCity,
+      ),
     [addressCity, selectedTreeNode],
   );
   const selectedLocationRow = useMemo(
@@ -546,7 +575,12 @@ export function CheckoutNative() {
     ]
       .filter(Boolean)
       .join(", ");
-  }, [addressTownship, selectedCityNode, selectedLocationCity?.label, selectedLocationRow?.label]);
+  }, [
+    addressTownship,
+    selectedCityNode,
+    selectedLocationCity?.label,
+    selectedLocationRow?.label,
+  ]);
   const needsTownship = Boolean(selectedCityNode?.engTownships?.length);
 
   useEffect(() => {
@@ -577,7 +611,9 @@ export function CheckoutNative() {
         emitCartCountChanged({ cart: cartResult });
         setEnabledMethods(methods);
         setPaymentMethod((current) =>
-          methods.includes(current) ? current : methods[0] || "cash_on_delivery",
+          methods.includes(current)
+            ? current
+            : methods[0] || "cash_on_delivery",
         );
         setCheckoutApiStates(apiStates);
 
@@ -589,7 +625,9 @@ export function CheckoutNative() {
           setMessage(
             err instanceof Error
               ? err.message
-              : t("checkout.load_failed", { defaultValue: "Failed to load checkout" }),
+              : t("checkout.load_failed", {
+                  defaultValue: "Failed to load checkout",
+                }),
           );
         }
       } finally {
@@ -729,7 +767,9 @@ export function CheckoutNative() {
 
   const uniqueSellerCount = useMemo(() => {
     const sellers = new Set(
-      cart?.items.map((item) => item.sellerSlug || item.seller).filter(Boolean) || [],
+      cart?.items
+        .map((item) => item.sellerSlug || item.seller)
+        .filter(Boolean) || [],
     );
     return sellers.size;
   }, [cart?.items]);
@@ -801,13 +841,26 @@ export function CheckoutNative() {
 
     if (!isBuyer) {
       showMessage(
-        t("checkout.buyer_only_checkout", { defaultValue: "Only buyer accounts can checkout." })
+        t("checkout.buyer_only_checkout", {
+          defaultValue: "Only buyer accounts can checkout.",
+        }),
       );
       router.replace("/products" as Href);
     }
-  }, [authLoading, isAuthenticated, isBuyer, otpVisible, paymentVisible, router, t]);
+  }, [
+    authLoading,
+    isAuthenticated,
+    isBuyer,
+    otpVisible,
+    paymentVisible,
+    router,
+    t,
+  ]);
 
-  const finishOrder = async (order: CheckoutOrderResult, allOrders: CheckoutOrderResult[] = []) => {
+  const finishOrder = async (
+    order: CheckoutOrderResult,
+    allOrders: CheckoutOrderResult[] = [],
+  ) => {
     checkoutBusyRef.current = true;
     setRedirecting(true);
     setPaymentVisible(false);
@@ -817,7 +870,15 @@ export function CheckoutNative() {
     setOtpVisible(false);
     await clearCartItems().catch(() => {});
     setCart((current) =>
-      current ? { ...current, items: [], totalItems: 0, subtotalValue: 0, subtotal: "0 MMK" } : current
+      current
+        ? {
+            ...current,
+            items: [],
+            totalItems: 0,
+            subtotalValue: 0,
+            subtotal: "0 MMK",
+          }
+        : current,
     );
     emitCartCountChanged({
       cart: {
@@ -842,7 +903,9 @@ export function CheckoutNative() {
       pathname: "/payment-success",
       params: {
         order_id: String(order.id),
-        order_ids: (allOrders.length ? allOrders : [order]).map((entry) => String(entry.id)).join(","),
+        order_ids: (allOrders.length ? allOrders : [order])
+          .map((entry) => String(entry.id))
+          .join(","),
       },
     } as Href);
   };
@@ -928,9 +991,7 @@ export function CheckoutNative() {
       setCouponInput("");
     } catch (err) {
       setCoupon(null);
-      setCouponError(
-        formatApiErrorMessage(err, t("checkout.coupon_invalid")),
-      );
+      setCouponError(formatApiErrorMessage(err, t("checkout.coupon_invalid")));
     }
   };
 
@@ -941,7 +1002,12 @@ export function CheckoutNative() {
     setOtpError("");
 
     try {
-      const result = await requestCheckoutOtp(cart, address, paymentMethod, coupon);
+      const result = await requestCheckoutOtp(
+        cart,
+        address,
+        paymentMethod,
+        coupon,
+      );
       setOtpEmailHint(result.emailHint);
       setOtp("");
       setOtpVerified(false);
@@ -950,9 +1016,7 @@ export function CheckoutNative() {
       startOtpCountdown(result.expiresIn);
     } catch (err) {
       checkoutBusyRef.current = false;
-      showMessage(
-        formatApiErrorMessage(err, t("checkout.otp_send_failed")),
-      );
+      showMessage(formatApiErrorMessage(err, t("checkout.otp_send_failed")));
     } finally {
       setSubmitting(false);
     }
@@ -985,14 +1049,16 @@ export function CheckoutNative() {
     };
   };
 
-  const placeOrder = async (): Promise<{ success: true } | { success: false; message: string }> => {
+  const placeOrder = async (): Promise<
+    { success: true } | { success: false; message: string }
+  > => {
     setSubmitting(true);
     try {
       const pendingPayment = paymentMethod !== "cash_on_delivery";
       const result = await createCheckoutOrder(
         buildOrderPayload("pending"),
         undefined,
-        idempotencyKeyRef.current
+        idempotencyKeyRef.current,
       );
 
       if (pendingPayment) {
@@ -1008,8 +1074,7 @@ export function CheckoutNative() {
       checkoutBusyRef.current = false;
       return {
         success: false,
-        message:
-          formatApiErrorMessage(err, t("checkout.order_create_failed")),
+        message: formatApiErrorMessage(err, t("checkout.order_create_failed")),
       };
     } finally {
       setSubmitting(false);
@@ -1018,7 +1083,9 @@ export function CheckoutNative() {
 
   const completePaidOrder = async (order: CheckoutOrderResult) => {
     const queue = paymentQueue.length ? paymentQueue : [order];
-    const currentIndex = queue.findIndex((entry) => String(entry.id) === String(order.id));
+    const currentIndex = queue.findIndex(
+      (entry) => String(entry.id) === String(order.id),
+    );
     const resolvedIndex = currentIndex >= 0 ? currentIndex : paymentQueueIndex;
     const nextIndex = resolvedIndex + 1;
 
@@ -1026,7 +1093,8 @@ export function CheckoutNative() {
       void refreshCartFromServer();
       showMessage(
         t("checkout.payment_step_complete", {
-          defaultValue: "Payment {{step}} of {{total}} complete. Continue with the next seller.",
+          defaultValue:
+            "Payment {{step}} of {{total}} complete. Continue with the next seller.",
           step: nextIndex,
           total: queue.length,
         }),
@@ -1036,6 +1104,21 @@ export function CheckoutNative() {
       return;
     }
 
+    // The modal already verified payment and populated order.paymentStatus before
+    // calling onSuccess — trust it rather than re-fetching, which would introduce
+    // a second network round-trip that can fail and silently block navigation.
+    const alreadyConfirmed =
+      String(order.paymentStatus).toLowerCase() === "paid" ||
+      order.paymentMethod === "cash_on_delivery";
+
+    if (alreadyConfirmed) {
+      setPaymentVisible(false);
+      setPaymentOrder(null);
+      await finishOrder(queue[0], queue);
+      return;
+    }
+
+    // Fallback: re-verify when the modal did not supply a confirmed status.
     try {
       const receipt = await fetchPaymentReceipt(order.id);
       const isPaid = String(receipt.paymentStatus).toLowerCase() === "paid";
@@ -1044,7 +1127,8 @@ export function CheckoutNative() {
       if (!isCod && !isPaid) {
         showMessage(
           t("checkout.payment_not_confirmed_yet", {
-            defaultValue: "Payment is not confirmed yet. Please complete payment first.",
+            defaultValue:
+              "Payment is not confirmed yet. Please complete payment first.",
           }),
         );
         setPaymentOrder({ ...order, paymentMethod: receipt.paymentMethod });
@@ -1093,9 +1177,7 @@ export function CheckoutNative() {
       checkoutBusyRef.current = false;
       otpSessionVerifiedRef.current = false;
       setOtpVerified(false);
-      setOtpError(
-        formatApiErrorMessage(err, t("checkout.otp_incorrect")),
-      );
+      setOtpError(formatApiErrorMessage(err, t("checkout.otp_incorrect")));
     } finally {
       setOtpLoading(false);
     }
@@ -1107,7 +1189,9 @@ export function CheckoutNative() {
         <View className="flex-1 items-center justify-center bg-gray-50 px-4 py-16 dark:bg-slate-950">
           <ActivityIndicator color="#16a34a" size="large" />
           <Text className="mt-4 font-sans text-sm text-gray-500 dark:text-slate-400">
-            {redirecting ? t("checkout.processing_order") : t("checkout.loading", { defaultValue: "Loading checkout..." })}
+            {redirecting
+              ? t("checkout.processing_order")
+              : t("checkout.loading", { defaultValue: "Loading checkout..." })}
           </Text>
         </View>
       </AppLayout>
@@ -1117,7 +1201,9 @@ export function CheckoutNative() {
   if (loading) {
     return (
       <AppLayout>
-        <View className={`${SITE_CONTAINER_CLASS} bg-gray-50 py-8 dark:bg-slate-950`}>
+        <View
+          className={`${SITE_CONTAINER_CLASS} bg-gray-50 py-8 dark:bg-slate-950`}
+        >
           <View className="gap-6">
             <View className="h-8 w-48 rounded bg-gray-200 dark:bg-slate-800" />
             <View className="gap-6 lg:flex-row">
@@ -1176,7 +1262,10 @@ export function CheckoutNative() {
           rotateIdempotencyKey();
           setPaymentVisible(false);
           setPaymentOrder(null);
-          const remaining = Math.max(0, paymentQueue.length - paymentQueueIndex);
+          const remaining = Math.max(
+            0,
+            paymentQueue.length - paymentQueueIndex,
+          );
           setPaymentQueue([]);
           setPaymentQueueIndex(0);
           void refreshCartFromServer();
@@ -1241,7 +1330,9 @@ export function CheckoutNative() {
         enabled={Platform.OS === "ios"}
         keyboardVerticalOffset={Platform.OS === "ios" ? 72 : 0}
       >
-        <View className={`${SITE_CONTAINER_CLASS} bg-gray-50 py-8 dark:bg-slate-950`}>
+        <View
+          className={`${SITE_CONTAINER_CLASS} bg-gray-50 py-8 dark:bg-slate-950`}
+        >
           <View className="mb-8">
             <Text className="font-sans text-3xl font-bold text-gray-950 dark:text-slate-100">
               {t("checkout.title")}
@@ -1632,7 +1723,12 @@ export function CheckoutNative() {
 
                 <Pressable
                   onPress={handleRequestOtp}
-                  disabled={submitting || feesLoading || hasCartIssues || Boolean(feesError)}
+                  disabled={
+                    submitting ||
+                    feesLoading ||
+                    hasCartIssues ||
+                    Boolean(feesError)
+                  }
                   className="mt-6 rounded-lg bg-green-600 px-4 py-3 disabled:opacity-50"
                 >
                   <Text className="text-center font-sans text-base font-semibold text-white">
