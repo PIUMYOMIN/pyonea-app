@@ -1945,7 +1945,7 @@ export function ProductFormNative({
 
           {savedProductId ? (
             <>
-              <View className="rounded-xl border border-gray-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
+              <View className="rounded-xl border-0 bg-white p-0 md:border md:border-gray-200 md:p-6 dark:bg-slate-800 md:dark:border-slate-700">
                 <Text className="font-sans text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500">
                   {t(
                     "product_form.sections.step_a_options",
@@ -1967,7 +1967,7 @@ export function ProductFormNative({
                 </View>
               </View>
 
-              <View className="rounded-xl border border-gray-200 bg-white p-6 dark:border-slate-700 dark:bg-slate-800">
+              <View className="rounded-xl border-0 bg-white p-0 md:border md:border-gray-200 md:p-6 dark:bg-slate-800 md:dark:border-slate-700">
                 <Text className="font-sans text-xs font-bold uppercase tracking-wide text-gray-400 dark:text-slate-500">
                   {t(
                     "product_form.sections.step_b_variants",

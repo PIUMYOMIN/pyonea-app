@@ -1,15 +1,23 @@
-import { useGlobalSearchParams, useLoaderData } from 'expo-router';
+import { useGlobalSearchParams, useLoaderData } from "expo-router";
 
-import { NativeSeo } from '@/components/SEO/native-seo';
-import { SITE_PUBLIC_URL } from '@/config/native';
-import { BlogDetailNative } from '@/pages/blog-detail-native';
-import { fetchBlogDetail, fetchBlogPagePosts, type BlogPost } from '@/utils/native-api';
-import { buildBlogPageSeo, resolveSeoLanguage } from '@/utils/seo-localization';
-import { shouldSkipDynamicSeoExport } from '@/utils/static-export';
+import { NativeSeo } from "@/components/SEO/native-seo";
+import { SITE_PUBLIC_URL } from "@/config/native";
+import { BlogDetailNative } from "@/pages/blog-detail-native";
+import {
+  fetchBlogDetail,
+  fetchBlogPagePosts,
+  type BlogPost,
+} from "@/utils/native-api";
+import { buildBlogPageSeo, resolveSeoLanguage } from "@/utils/seo-localization";
+import { shouldSkipDynamicSeoExport } from "@/utils/static-export";
 
-const firstParam = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
+const firstParam = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value[0] : value;
 
-const buildBlogSchema = (post: BlogPost, language: ReturnType<typeof resolveSeoLanguage>) => {
+const buildBlogSchema = (
+  post: BlogPost,
+  language: ReturnType<typeof resolveSeoLanguage>,
+) => {
   const seo = buildBlogPageSeo(
     {
       title: post.title,
@@ -27,20 +35,20 @@ const buildBlogSchema = (post: BlogPost, language: ReturnType<typeof resolveSeoL
   );
 
   return {
-    '@context': 'https://schema.org',
-    '@type': 'BlogPosting',
+    "@context": "https://schema.org",
+    "@type": "BlogPosting",
     headline: seo.schemaName,
     description: seo.description,
     image: post.imageUrl,
     author: {
-      '@type': 'Person',
-      name: post.author || 'Pyonea Team',
+      "@type": "Person",
+      name: post.author || "Pyonea Team",
     },
     publisher: {
-      '@type': 'Organization',
-      name: 'Pyonea',
+      "@type": "Organization",
+      name: "Pyonea",
       logo: {
-        '@type': 'ImageObject',
+        "@type": "ImageObject",
         url: `${SITE_PUBLIC_URL}/logo.png`,
       },
     },
@@ -66,12 +74,15 @@ export async function generateStaticParams(): Promise<{ slug: string }[]> {
   }
 }
 
-export async function loader(_request: unknown, params: Record<string, string | string[]>) {
-  const slug = firstParam(params.slug);
+export async function loader(
+  request?: { signal?: AbortSignal },
+  params?: Record<string, string | string[]>,
+) {
+  const slug = firstParam(params?.slug);
   if (!slug) return null;
 
   try {
-    return await fetchBlogDetail(slug);
+    return await fetchBlogDetail(slug, request?.signal);
   } catch {
     return null;
   }

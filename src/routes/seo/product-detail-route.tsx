@@ -1,22 +1,28 @@
-import { useGlobalSearchParams, useLoaderData, useLocalSearchParams, type ErrorBoundaryProps } from 'expo-router';
+import {
+  useGlobalSearchParams,
+  useLoaderData,
+  useLocalSearchParams,
+  type ErrorBoundaryProps,
+} from "expo-router";
 
-import { NativeSeo } from '@/components/SEO/native-seo';
-import { SITE_PUBLIC_URL } from '@/config/native';
-import { ProductDetailNative } from '@/pages/product-detail-native';
-import { fetchProductDetail, type ProductDetail } from '@/utils/native-api';
+import { NativeSeo } from "@/components/SEO/native-seo";
+import { SITE_PUBLIC_URL } from "@/config/native";
+import { ProductDetailNative } from "@/pages/product-detail-native";
+import { fetchProductDetail, type ProductDetail } from "@/utils/native-api";
+import { fetchAllProductSlugs, loadSeoDataWithRetry } from "@/utils/seo-export";
 import {
   buildProductPageSeo,
   compactSeoText,
   resolveSeoLanguage,
-} from '@/utils/seo-localization';
-import { fetchAllProductSlugs, loadSeoDataWithRetry } from '@/utils/seo-export';
-import { shouldSkipDynamicSeoExport } from '@/utils/static-export';
+} from "@/utils/seo-localization";
+import { shouldSkipDynamicSeoExport } from "@/utils/static-export";
 
-const firstParam = (value: string | string[] | undefined) => (Array.isArray(value) ? value[0] : value);
+const firstParam = (value: string | string[] | undefined) =>
+  Array.isArray(value) ? value[0] : value;
 
 const buildProductSchema = (
   product: ProductDetail,
-  language: ReturnType<typeof resolveSeoLanguage>
+  language: ReturnType<typeof resolveSeoLanguage>,
 ) => {
   const seo = buildProductPageSeo(
     {
@@ -31,30 +37,32 @@ const buildProductSchema = (
   );
 
   const schema: Record<string, unknown> = {
-    '@context': 'https://schema.org',
-    '@type': 'Product',
+    "@context": "https://schema.org",
+    "@type": "Product",
     name: seo.schemaName,
     ...(seo.alternateName ? { alternateName: seo.alternateName } : {}),
     description: compactSeoText(
-      language === 'my'
+      language === "my"
         ? product.descriptionMm || product.descriptionEn
         : product.descriptionEn || product.descriptionMm,
       `${product.name} on Pyonea`,
-      300
+      300,
     ),
     image: product.images,
     sku: product.sku || String(product.id),
     category: product.categoryName,
     offers: {
-      '@type': 'Offer',
+      "@type": "Offer",
       url: `${SITE_PUBLIC_URL}/products/${product.slug}?lang=${language}`,
-      priceCurrency: 'MMK',
+      priceCurrency: "MMK",
       price: product.priceValue,
       availability:
-        product.stock > 0 ? 'https://schema.org/InStock' : 'https://schema.org/OutOfStock',
+        product.stock > 0
+          ? "https://schema.org/InStock"
+          : "https://schema.org/OutOfStock",
       seller: product.seller
         ? {
-            '@type': 'Organization',
+            "@type": "Organization",
             name: product.seller.name,
             url: `${SITE_PUBLIC_URL}/sellers/${product.seller.slug}`,
           }
@@ -64,7 +72,7 @@ const buildProductSchema = (
 
   if (product.rating > 0 && product.reviewCount > 0) {
     schema.aggregateRating = {
-      '@type': 'AggregateRating',
+      "@type": "AggregateRating",
       ratingValue: product.rating,
       reviewCount: product.reviewCount,
     };
@@ -84,16 +92,25 @@ export async function generateStaticParams(): Promise<{ slug: string }[]> {
   }
 }
 
-export async function loader(_request: unknown, params: Record<string, string | string[]>) {
-  const slug = firstParam(params.slug);
+export async function loader(
+  request?: { signal?: AbortSignal },
+  params?: Record<string, string | string[]>,
+) {
+  const slug = firstParam(params?.slug);
   if (!slug) return null;
 
-  return loadSeoDataWithRetry(`product ${slug}`, () => fetchProductDetail(slug));
+  return loadSeoDataWithRetry(
+    `product ${slug}`,
+    (signal) => fetchProductDetail(slug, signal),
+    3,
+    2000,
+    request?.signal,
+  );
 }
 
 export function ErrorBoundary(_props: ErrorBoundaryProps) {
   const { slug } = useLocalSearchParams<{ slug?: string | string[] }>();
-  const productSlug = firstParam(slug) || '';
+  const productSlug = firstParam(slug) || "";
 
   // SEO loader failed during export/navigation — render the page normally from the API.
   return <ProductDetailNative slug={productSlug} />;
@@ -105,7 +122,7 @@ export default function ProductDetailRoute() {
   const productSlug = firstParam(slug);
   const initialProduct = useLoaderData<typeof loader>();
   const product = initialProduct || null;
-  const resolvedSlug = product?.slug || productSlug || '';
+  const resolvedSlug = product?.slug || productSlug || "";
   const seoLanguage = resolveSeoLanguage(params.lang);
   const seo = product
     ? buildProductPageSeo(
@@ -134,7 +151,10 @@ export default function ProductDetailRoute() {
           schema={buildProductSchema(product, seoLanguage)}
         />
       ) : null}
-      <ProductDetailNative slug={resolvedSlug} initialProduct={initialProduct} />
+      <ProductDetailNative
+        slug={resolvedSlug}
+        initialProduct={initialProduct}
+      />
     </>
   );
 }
