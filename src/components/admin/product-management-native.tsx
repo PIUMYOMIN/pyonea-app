@@ -1457,7 +1457,7 @@ export function ProductManagementNative() {
       ) : null}
 
       <View className="gap-3 sm:flex-row sm:items-center">
-        <View className="min-w-0 flex-1 flex-row items-center rounded-xl border border-gray-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900">
+        <View className="min-w-0 flex-1 w-full flex-row items-center rounded-xl border border-gray-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900">
           <Feather name="search" color="#94a3b8" size={16} />
           <TextInput
             value={search}

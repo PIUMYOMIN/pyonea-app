@@ -691,6 +691,7 @@ function OrderRow({
 export function OrderManagementNative() {
   const { t } = useAppTranslation();
   const [selectedStatus, setSelectedStatus] = useState<OrderStatus>("all");
+  const [searchTerm, setSearchTerm] = useState("");
   const [orders, setOrders] = useState<SellerManagedOrder[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
@@ -745,10 +746,37 @@ export function OrderManagementNative() {
     return () => clearTimeout(timeout);
   }, [loadOrders]);
 
-  const filteredOrders =
-    selectedStatus === "all"
-      ? orders
-      : orders.filter((order) => order.status === selectedStatus);
+  const filteredOrders = useMemo(() => {
+    const term = searchTerm.trim().toLowerCase();
+
+    return orders.filter((order) => {
+      const searchableValues = [
+        order.orderNumber,
+        order.customerName,
+        order.customerPhone,
+        order.customerEmail,
+        order.shippingAddress?.fullName,
+        order.shippingAddress?.address,
+        order.shippingAddress?.township,
+        order.shippingAddress?.city,
+        order.shippingAddress?.state,
+        order.delivery?.trackingNumber,
+        ...(order.items || []).flatMap((item) => [
+          item.productName,
+          item.productSku,
+        ]),
+      ]
+        .filter(Boolean)
+        .map((value) => String(value).toLowerCase());
+
+      const matchesSearch =
+        !term || searchableValues.some((value) => value.includes(term));
+      const matchesStatus =
+        selectedStatus === "all" || order.status === selectedStatus;
+
+      return matchesSearch && matchesStatus;
+    });
+  }, [orders, searchTerm, selectedStatus]);
   const stats = {
     pending: orders.filter((order) => order.status === "pending").length,
     processing: orders.filter((order) =>
@@ -1127,35 +1155,51 @@ export function OrderManagementNative() {
       </View>
 
       <View className="gap-3 sm:flex-row sm:items-center sm:justify-between">
-        <ScrollView
-          horizontal
-          showsHorizontalScrollIndicator={false}
-          className="-mx-1"
-        >
-          <View className="flex-row gap-2 px-1">
-            {statuses.map((status) => {
-              const active = selectedStatus === status.id;
-              const count =
-                status.id === "all"
-                  ? orders.length
-                  : orders.filter((order) => order.status === status.id).length;
-              return (
-                <Pressable
-                  key={status.id}
-                  onPress={() => setSelectedStatus(status.id)}
-                  className={`rounded-full px-4 py-1.5 ${active ? "bg-green-600" : "bg-gray-100 dark:bg-slate-700"}`}
-                >
-                  <Text
-                    className={`font-sans text-sm font-semibold ${active ? "text-white" : "text-gray-700 dark:text-slate-300"}`}
-                  >
-                    {status.name}
-                    {status.id === "all" ? "" : ` (${count})`}
-                  </Text>
-                </Pressable>
-              );
-            })}
+        <View className="min-w-0 flex-1 gap-3">
+          <View className="min-w-0 flex-row items-center rounded-xl border border-gray-200 bg-white px-3 dark:border-slate-700 dark:bg-slate-900">
+            <Feather name="search" color="#94a3b8" size={16} />
+            <TextInput
+              value={searchTerm}
+              onChangeText={setSearchTerm}
+              placeholder={t(
+                "seller.order.searchPlaceholder",
+                "Search by order #, customer, or tracking…",
+              )}
+              placeholderTextColor="#94a3b8"
+              className="min-w-0 flex-1 py-2.5 pl-2 font-sans text-sm text-gray-900 dark:text-slate-100"
+            />
           </View>
-        </ScrollView>
+          <ScrollView
+            horizontal
+            showsHorizontalScrollIndicator={false}
+            className="-mx-1"
+          >
+            <View className="flex-row gap-2 px-1">
+              {statuses.map((status) => {
+                const active = selectedStatus === status.id;
+                const count =
+                  status.id === "all"
+                    ? orders.length
+                    : orders.filter((order) => order.status === status.id)
+                        .length;
+                return (
+                  <Pressable
+                    key={status.id}
+                    onPress={() => setSelectedStatus(status.id)}
+                    className={`rounded-full px-4 py-1.5 ${active ? "bg-green-600" : "bg-gray-100 dark:bg-slate-700"}`}
+                  >
+                    <Text
+                      className={`font-sans text-sm font-semibold ${active ? "text-white" : "text-gray-700 dark:text-slate-300"}`}
+                    >
+                      {status.name}
+                      {status.id === "all" ? "" : ` (${count})`}
+                    </Text>
+                  </Pressable>
+                );
+              })}
+            </View>
+          </ScrollView>
+        </View>
         <Pressable
           onPress={() => void loadOrders(false)}
           className="flex-row items-center justify-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2 dark:border-slate-700 dark:bg-slate-800"
