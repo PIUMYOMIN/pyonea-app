@@ -649,11 +649,11 @@ function MediaUploadCard({
         )}
         {imageUrl ? (
           <View className="absolute inset-0 justify-end bg-black/25 p-3 opacity-100 sm:pointer-events-none sm:bg-black/35 sm:opacity-0 sm:transition sm:duration-200 sm:group-hover:opacity-100">
-            <View className="flex-row gap-2 sm:pointer-events-auto">
+            <View className="flex-col gap-2 sm:pointer-events-auto sm:flex-row">
               <Pressable
                 onPress={onGalleryUpload}
                 disabled={uploading}
-                className="flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-white/95 px-4 py-2.5 disabled:opacity-60 sm:flex-none"
+                className="w-full flex-row items-center justify-center gap-2 rounded-xl bg-white/95 px-4 py-2.5 disabled:opacity-60 sm:w-auto sm:flex-1"
               >
                 {uploading ? (
                   <ActivityIndicator color="#16a34a" />
@@ -667,7 +667,7 @@ function MediaUploadCard({
               <Pressable
                 onPress={onCameraUpload}
                 disabled={uploading}
-                className="flex-1 flex-row items-center justify-center gap-2 rounded-xl border border-white/40 bg-black/20 px-4 py-2.5 disabled:opacity-60 sm:flex-none"
+                className="w-full flex-row items-center justify-center gap-2 rounded-xl border border-white/40 bg-black/20 px-4 py-2.5 disabled:opacity-60 sm:w-auto sm:flex-1"
               >
                 <Feather name="camera" color="#ffffff" size={15} />
                 <Text className="font-sans text-sm font-bold text-white">
@@ -687,32 +687,62 @@ function MediaUploadCard({
             {description}
           </Text>
         </View>
-        <View className="hidden gap-2 sm:flex sm:flex-row">
-          <Pressable
-            onPress={onGalleryUpload}
-            disabled={uploading}
-            className="w-full flex-row items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 disabled:opacity-60 sm:flex-1"
-          >
-            {uploading ? (
-              <ActivityIndicator color="#ffffff" />
-            ) : (
-              <Feather name="folder" color="#ffffff" size={15} />
-            )}
-            <Text className="font-sans text-sm font-bold text-white">
-              {uploading ? "Uploading..." : "Gallery"}
-            </Text>
-          </Pressable>
-          <Pressable
-            onPress={onCameraUpload}
-            disabled={uploading}
-            className="w-full flex-row items-center justify-center gap-2 rounded-xl border border-gray-300 px-4 py-2.5 disabled:opacity-60 dark:border-slate-600 sm:flex-1"
-          >
-            <Feather name="camera" color="#64748b" size={15} />
-            <Text className="font-sans text-sm font-bold text-gray-700 dark:text-slate-200">
-              Camera
-            </Text>
-          </Pressable>
-        </View>
+        {!imageUrl ? (
+          <View className="gap-2 sm:flex sm:flex-row">
+            <Pressable
+              onPress={onGalleryUpload}
+              disabled={uploading}
+              className="w-full flex-row items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 disabled:opacity-60 sm:flex-1"
+            >
+              {uploading ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Feather name="folder" color="#ffffff" size={15} />
+              )}
+              <Text className="font-sans text-sm font-bold text-white">
+                {uploading ? "Uploading..." : "Gallery"}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={onCameraUpload}
+              disabled={uploading}
+              className="w-full flex-row items-center justify-center gap-2 rounded-xl border border-gray-300 px-4 py-2.5 disabled:opacity-60 dark:border-slate-600 sm:flex-1"
+            >
+              <Feather name="camera" color="#64748b" size={15} />
+              <Text className="font-sans text-sm font-bold text-gray-700 dark:text-slate-200">
+                Camera
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
+        {imageUrl ? (
+          <View className="hidden gap-2 sm:flex sm:flex-row">
+            <Pressable
+              onPress={onGalleryUpload}
+              disabled={uploading}
+              className="w-full flex-row items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 disabled:opacity-60 sm:flex-1"
+            >
+              {uploading ? (
+                <ActivityIndicator color="#ffffff" />
+              ) : (
+                <Feather name="folder" color="#ffffff" size={15} />
+              )}
+              <Text className="font-sans text-sm font-bold text-white">
+                {uploading ? "Uploading..." : "Gallery"}
+              </Text>
+            </Pressable>
+            <Pressable
+              onPress={onCameraUpload}
+              disabled={uploading}
+              className="w-full flex-row items-center justify-center gap-2 rounded-xl border border-gray-300 px-4 py-2.5 disabled:opacity-60 dark:border-slate-600 sm:flex-1"
+            >
+              <Feather name="camera" color="#64748b" size={15} />
+              <Text className="font-sans text-sm font-bold text-gray-700 dark:text-slate-200">
+                Camera
+              </Text>
+            </Pressable>
+          </View>
+        ) : null}
       </View>
     </View>
   );
