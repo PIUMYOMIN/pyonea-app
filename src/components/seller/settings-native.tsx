@@ -629,9 +629,9 @@ function MediaUploadCard({
   onCameraUpload: () => void;
 }) {
   return (
-    <View className="min-w-0 flex-1 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-800">
+    <View className="group min-w-0 flex-1 overflow-hidden rounded-2xl border border-gray-200 bg-white dark:border-slate-700 dark:bg-slate-800">
       <View
-        className={`${wide ? "aspect-[3/1]" : "aspect-square"} items-center justify-center bg-gray-100 dark:bg-slate-900`}
+        className={`relative ${wide ? "aspect-[3/1]" : "aspect-square"} items-center justify-center overflow-hidden bg-gray-100 dark:bg-slate-900`}
       >
         {imageUrl ? (
           <Image
@@ -647,6 +647,36 @@ function MediaUploadCard({
             </Text>
           </View>
         )}
+        {imageUrl ? (
+          <View className="absolute inset-0 justify-end bg-black/25 p-3 opacity-100 sm:pointer-events-none sm:bg-black/35 sm:opacity-0 sm:transition sm:duration-200 sm:group-hover:opacity-100">
+            <View className="flex-row gap-2 sm:pointer-events-auto">
+              <Pressable
+                onPress={onGalleryUpload}
+                disabled={uploading}
+                className="flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-white/95 px-4 py-2.5 disabled:opacity-60 sm:flex-none"
+              >
+                {uploading ? (
+                  <ActivityIndicator color="#16a34a" />
+                ) : (
+                  <Feather name="folder" color="#16a34a" size={15} />
+                )}
+                <Text className="font-sans text-sm font-bold text-gray-900">
+                  {uploading ? "Uploading..." : "Gallery"}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={onCameraUpload}
+                disabled={uploading}
+                className="flex-1 flex-row items-center justify-center gap-2 rounded-xl border border-white/40 bg-black/20 px-4 py-2.5 disabled:opacity-60 sm:flex-none"
+              >
+                <Feather name="camera" color="#ffffff" size={15} />
+                <Text className="font-sans text-sm font-bold text-white">
+                  Camera
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
       </View>
       <View className="gap-3 p-4">
         <View>
@@ -657,11 +687,11 @@ function MediaUploadCard({
             {description}
           </Text>
         </View>
-        <View className="gap-2 sm:flex-row">
+        <View className="hidden gap-2 sm:flex sm:flex-row">
           <Pressable
             onPress={onGalleryUpload}
             disabled={uploading}
-            className="flex-1 flex-row items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 disabled:opacity-60"
+            className="w-full flex-row items-center justify-center gap-2 rounded-xl bg-green-600 px-4 py-2.5 disabled:opacity-60 sm:flex-1"
           >
             {uploading ? (
               <ActivityIndicator color="#ffffff" />
@@ -675,7 +705,7 @@ function MediaUploadCard({
           <Pressable
             onPress={onCameraUpload}
             disabled={uploading}
-            className="flex-1 flex-row items-center justify-center gap-2 rounded-xl border border-gray-300 px-4 py-2.5 disabled:opacity-60 dark:border-slate-600"
+            className="w-full flex-row items-center justify-center gap-2 rounded-xl border border-gray-300 px-4 py-2.5 disabled:opacity-60 dark:border-slate-600 sm:flex-1"
           >
             <Feather name="camera" color="#64748b" size={15} />
             <Text className="font-sans text-sm font-bold text-gray-700 dark:text-slate-200">
@@ -1749,7 +1779,7 @@ export function SellerSettingsNative({
 
             {!settingsLoading && activeTab === "brand" ? (
               <View className="gap-6">
-                <View className="gap-4 md:flex-row">
+                <View className="gap-4 lg:flex-row">
                   <MediaUploadCard
                     title="Store logo"
                     description="Used on seller cards, product pages, and your public store profile."
@@ -1785,11 +1815,11 @@ export function SellerSettingsNative({
                       Business details
                     </Text>
                     <Text className="mt-1 font-sans text-sm leading-6 text-gray-500 dark:text-slate-400">
-                      Keep registration, tax, payout, and national identity
-                      details up to date for verification review.
+                      Keep registration, tax, and payout details up to date for
+                      verification review.
                     </Text>
                   </View>
-                  <View className="gap-4 md:flex-row">
+                  <View className="gap-4 lg:flex-row">
                     <Field
                       label="Business registration number"
                       value={identity.business_registration_number}
@@ -1805,7 +1835,7 @@ export function SellerSettingsNative({
                       }
                     />
                   </View>
-                  <View className="gap-4 md:flex-row">
+                  <View className="gap-4 lg:flex-row">
                     <Field
                       label="Website"
                       value={identity.website}
@@ -1820,64 +1850,6 @@ export function SellerSettingsNative({
                         setIdentityField("account_number", value)
                       }
                     />
-                  </View>
-                  <View className="rounded-xl border border-gray-200 bg-white p-4 dark:border-slate-700 dark:bg-slate-800">
-                    <View className="mb-4 flex-row items-start gap-3">
-                      <View className="h-10 w-10 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/30">
-                        <Feather name="credit-card" color="#16a34a" size={18} />
-                      </View>
-                      <View className="min-w-0 flex-1">
-                        <Text className="font-sans text-sm font-bold text-gray-900 dark:text-slate-100">
-                          National Identity Number (NRC)
-                        </Text>
-                        <Text className="mt-1 font-sans text-xs leading-5 text-gray-500 dark:text-slate-400">
-                          Current NRC: {store?.nrcFull || "Not provided"}
-                          {store?.nrcVerificationStatus
-                            ? ` - ${store.nrcVerificationStatus}`
-                            : ""}
-                        </Text>
-                      </View>
-                    </View>
-                    <View className="gap-4 md:flex-row">
-                      <Field
-                        label="Division"
-                        value={identity.nrc_division}
-                        onChangeText={(value) =>
-                          setIdentityField("nrc_division", value)
-                        }
-                      />
-                      <Field
-                        label="Township code"
-                        value={identity.nrc_township_code}
-                        onChangeText={(value) =>
-                          setIdentityField("nrc_township_code", value)
-                        }
-                      />
-                    </View>
-                    <View className="mt-4 gap-4 md:flex-row">
-                      <Field
-                        label="Township MM"
-                        value={identity.nrc_township_mm}
-                        onChangeText={(value) =>
-                          setIdentityField("nrc_township_mm", value)
-                        }
-                      />
-                      <Field
-                        label="Type"
-                        value={identity.nrc_type}
-                        onChangeText={(value) =>
-                          setIdentityField("nrc_type", value)
-                        }
-                      />
-                      <Field
-                        label="Number"
-                        keyboardType="numeric"
-                        value={identity.nrc_number}
-                        onChangeText={(value) =>
-                          setIdentityField("nrc_number", value)
-                        }
-                      />
-                    </View>
                   </View>
                   <View className="items-end">
                     <Pressable
