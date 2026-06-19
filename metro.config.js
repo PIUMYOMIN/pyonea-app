@@ -18,9 +18,9 @@ const blockList = [
   /\.git\//,
   /\.cursor\//,
   /\.expo-perf-check\//,
-  /dist\//,
+  /^dist\//,
   /web-build\//,
-  /scripts\//,
+  /^scripts\//,
   /uploads\//,
   /page\.html$/,
 ];
@@ -51,6 +51,12 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
   }
   if (moduleName === "canvg" || moduleName === "dompurify") {
     return { type: "empty" };
+  }
+  if (moduleName === "whatwg-fetch") {
+    return {
+      type: "sourceFile",
+      filePath: path.resolve(__dirname, "node_modules/whatwg-fetch/dist/fetch.umd.js"),
+    };
   }
   return (defaultResolveRequest ?? context.resolveRequest)(context, moduleName, platform);
 };

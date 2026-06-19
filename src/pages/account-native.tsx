@@ -283,6 +283,32 @@ export function AccountNative() {
           </View>
         ) : null}
 
+        {!auth.isLoading && !user ? (
+          <View className="gap-4 rounded-2xl border border-gray-200 bg-white px-4 py-4 dark:border-slate-700 dark:bg-slate-900">
+            <Text className="font-sans text-sm leading-6 text-gray-600 dark:text-slate-300">
+              {t('account_page.guest_prompt', {
+                defaultValue: 'Sign in to access your dashboard, orders, and saved items.',
+              })}
+            </Text>
+            <View className="flex-row gap-3">
+              <Pressable
+                onPress={() => router.push(authHref('/account'))}
+                className="flex-1 items-center rounded-xl bg-green-600 px-4 py-3 active:bg-green-700">
+                <Text className="font-sans text-sm font-bold text-white">
+                  {t('account_page.sign_in', { defaultValue: 'Sign In' })}
+                </Text>
+              </Pressable>
+              <Pressable
+                onPress={() => router.push(href('/register'))}
+                className="flex-1 items-center rounded-xl border border-green-600 px-4 py-3 active:bg-green-50 dark:active:bg-green-950/20">
+                <Text className="font-sans text-sm font-bold text-green-600">
+                  {t('account_page.create_account', { defaultValue: 'Create Account' })}
+                </Text>
+              </Pressable>
+            </View>
+          </View>
+        ) : null}
+
         {!auth.isLoading && user && accountLinks.length > 0 ? (
           <AccountSection title={t('account_page.section_account', { defaultValue: 'My Account' })}>
             {accountLinks.map((link, index) => (

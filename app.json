@@ -8,6 +8,7 @@
     "scheme": "pyoneaapp",
     "userInterfaceStyle": "automatic",
     "ios": {
+      "bundleIdentifier": "com.pyonea.app",
       "icon": "./assets/expo.icon"
     },
     "android": {
@@ -27,6 +28,7 @@
       [
         "expo-router",
         {
+          "origin": "https://pyonea.com",
           "asyncRoutes": {
             "web": false,
             "default": false
