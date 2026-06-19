@@ -1,7 +1,7 @@
 {
   "expo": {
-    "name": "pyonea-app",
-    "slug": "pyonea-app",
+    "name": "Pyonea",
+    "slug": "pyonea",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/images/Logo_on_payslip.png",
@@ -17,7 +17,8 @@
         "foregroundImage": "./assets/images/Logo_on_payslip.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.pyoneaapp"
+      "package": "com.anonymous.pyoneaapp",
+      "googleServicesFile": "./google-services.json"
     },
     "web": {
       "bundler": "metro",
