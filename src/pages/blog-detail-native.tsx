@@ -1,13 +1,13 @@
-import Feather from '@expo/vector-icons/Feather';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
+import Feather from '@expo/vector-icons/Feather';
 import { Link, useLocalSearchParams, type Href } from 'expo-router';
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import {
-  Platform,
-  Pressable,
-  Text,
-  useWindowDimensions,
-  View,
+    Platform,
+    Pressable,
+    Text,
+    useWindowDimensions,
+    View,
 } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
@@ -32,9 +32,9 @@ function BlogDetailSkeleton() {
       <View className="bg-white px-4 py-10 dark:bg-slate-950 sm:px-6 lg:px-8">
         <View className="mx-auto w-full max-w-4xl">
           <View className="h-5 w-32 rounded bg-gray-200 dark:bg-slate-800" />
-          <View className="mt-8 h-5 w-52 rounded bg-gray-200 dark:bg-slate-800" />
+          <View className={Platform.OS === 'web' ? 'mt-8 h-5 w-52 rounded bg-gray-200 dark:bg-slate-800' : 'mt-6 h-5 w-52 rounded bg-gray-200 dark:bg-slate-800'} />
           <View className="mt-4 h-12 w-full rounded bg-gray-200 dark:bg-slate-800" />
-          <View className="mt-8 aspect-[16/7] rounded-lg bg-gray-200 dark:bg-slate-800" />
+          <View className={Platform.OS === 'web' ? 'mt-8 aspect-[16/7] rounded-lg bg-gray-200 dark:bg-slate-800' : 'mt-6 aspect-[16/7] rounded-lg bg-gray-200 dark:bg-slate-800'} />
           <View className="mt-10 gap-4">
             {Array.from({ length: 6 }).map((_, index) => (
               <View

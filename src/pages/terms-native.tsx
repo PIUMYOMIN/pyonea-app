@@ -1,4 +1,4 @@
-import { Text, View } from 'react-native';
+import { Platform, Text, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { useAppTranslation } from '@/i18n';
@@ -38,7 +38,7 @@ export function TermsNative() {
             <Paragraphs content={t('legal.terms.content')} />
           </View>
 
-          <View className="mt-8 rounded-lg bg-white p-6 shadow-md shadow-gray-200/70 dark:bg-slate-800 dark:shadow-slate-900/50">
+          <View className={Platform.OS === 'web' ? 'mt-8 rounded-lg bg-white p-6 shadow-md shadow-gray-200/70 dark:bg-slate-800 dark:shadow-slate-900/50' : 'mt-6 rounded-lg bg-white p-6 shadow-md shadow-gray-200/70 dark:bg-slate-800 dark:shadow-slate-900/50'}>
             <Text className="mb-4 font-sans text-xl font-bold text-gray-950 dark:text-slate-100">
               {t('legal.contact.title')}
             </Text>

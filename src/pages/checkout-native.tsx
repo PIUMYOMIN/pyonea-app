@@ -1301,7 +1301,7 @@ export function CheckoutNative() {
               {t("checkout.empty_cart_message")}
             </Text>
             <Link href="/products" asChild>
-              <Pressable className="mt-8 rounded-lg bg-green-600 px-6 py-3">
+              <Pressable className={Platform.OS === 'web' ? 'mt-8 rounded-lg bg-green-600 px-6 py-3' : 'mt-6 rounded-lg bg-green-600 px-6 py-3'}>
                 <Text className="font-sans text-sm font-semibold text-white">
                   {t("checkout.continue_shopping")}
                 </Text>

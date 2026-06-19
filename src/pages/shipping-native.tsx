@@ -1,5 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
-import { Link, type Href } from 'expo-router';
+import { Link } from 'expo-router';
 import { createElement, useState } from 'react';
 import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 
@@ -534,7 +534,7 @@ export function ShippingNative() {
               <Text className="mt-4 max-w-2xl font-sans text-base leading-7 text-green-100 sm:text-lg">
                 {t('shipping_page.hero.desc')}
               </Text>
-              <View className="mt-8 flex-row flex-wrap gap-3">
+              <View className={Platform.OS === 'web' ? 'mt-8 flex-row flex-wrap gap-3' : 'mt-6 flex-row flex-wrap gap-3'}>
                 <Link href={href('/track-order')} asChild>
                   <Pressable className="flex-row items-center gap-2 rounded-lg bg-white px-5 py-2.5">
                     <Text className="font-sans text-sm font-semibold text-green-700">

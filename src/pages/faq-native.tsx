@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
-import { Link, type Href } from 'expo-router';
+import { Link } from 'expo-router';
 import { ComponentProps, useMemo, useState } from 'react';
-import { Pressable, ScrollView, Text, TextInput, View } from 'react-native';
+import { Platform, Pressable, ScrollView, Text, TextInput, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { useAppTranslation, useLocalizedHref } from '@/i18n';
@@ -186,7 +186,7 @@ export function FaqNative() {
               {t('faq_page.hero.desc')}
             </Text>
 
-            <View className="mt-8 max-w-lg flex-row items-center rounded-xl border border-white/30 bg-white/15 px-4 py-3">
+            <View className={Platform.OS === 'web' ? 'mt-8 max-w-lg flex-row items-center rounded-xl border border-white/30 bg-white/15 px-4 py-3' : 'mt-6 max-w-lg flex-row items-center rounded-xl border border-white/30 bg-white/15 px-4 py-3'}>
               <Feather name="search" color="#86efac" size={20} />
               <TextInput
                 value={search}

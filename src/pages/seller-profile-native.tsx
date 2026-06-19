@@ -1,17 +1,17 @@
+import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import Feather from '@expo/vector-icons/Feather';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { Link, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
-  ActivityIndicator,
-  Linking,
-  Platform,
-  Pressable,
-  ScrollView,
-  Text,
-  TextInput,
-  View,
+    ActivityIndicator,
+    Linking,
+    Platform,
+    Pressable,
+    ScrollView,
+    Text,
+    TextInput,
+    View,
 } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
@@ -19,23 +19,22 @@ import { ProductMarketplaceGrid } from '@/components/marketplace/marketplace-gri
 import { SocialShareModal } from '@/components/ui/social-share-modal';
 import { useNativeAuth } from '@/context/native-auth';
 import { useAppTranslation } from '@/i18n';
-import {
-  fetchSellerDeliveryAreas,
-  fetchSellerProfile,
-  fetchSellerReviews,
-  computeReviewStatsFromReviews,
-  submitSellerReview,
-  type HomeProduct,
-  type SellerDeliveryArea,
-  type SellerProfile,
-  type SellerProfileResult,
-  type SellerReview,
-  type SellerReviewStats,
-
-  formatApiErrorMessage,
-} from '@/utils/native-api';
-import { getThumbUrl } from '@/utils/image-thumbs';
 import { hasUserRole } from '@/utils/auth-routing';
+import { getThumbUrl } from '@/utils/image-thumbs';
+import {
+    computeReviewStatsFromReviews,
+    fetchSellerDeliveryAreas,
+    fetchSellerProfile,
+    fetchSellerReviews,
+    formatApiErrorMessage,
+    submitSellerReview,
+    type HomeProduct,
+    type SellerDeliveryArea,
+    type SellerProfile,
+    type SellerProfileResult,
+    type SellerReview,
+    type SellerReviewStats,
+} from '@/utils/native-api';
 import { buildSocialSharePayload } from '@/utils/social-share';
 
 const tabKeys = ['products', 'reviews', 'about', 'policies', 'delivery'] as const;
@@ -129,7 +128,7 @@ function SellerSkeleton() {
             <View className="h-4 w-1/2 rounded bg-gray-200 dark:bg-slate-800" />
             <View className="h-20 rounded bg-gray-200 dark:bg-slate-800" />
           </View>
-          <View className="mt-8">
+          <View className={Platform.OS === 'web' ? 'mt-8' : 'mt-6'}>
             <ProductMarketplaceGrid products={[]} loading skeletonCount={6} skeletonRows={2} />
           </View>
         </View>

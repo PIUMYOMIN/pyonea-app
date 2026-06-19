@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
-import { Link, type Href } from 'expo-router';
+import { Link } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Modal, Pressable, Text, TextInput, View } from 'react-native';
+import { Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { useAppTranslation, useLocalizedHref } from '@/i18n';
@@ -355,7 +355,7 @@ export function LocalDealsNative() {
                   ))}
                 </View>
                 {page < lastPage ? (
-                  <View className="mt-8 items-center">
+                  <View className={Platform.OS === 'web' ? 'mt-8 items-center' : 'mt-6 items-center'}>
                     <Pressable
                       onPress={loadMore}
                       disabled={loadingMore}

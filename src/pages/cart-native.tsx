@@ -1,32 +1,31 @@
-import Feather from '@expo/vector-icons/Feather';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
+import Feather from '@expo/vector-icons/Feather';
 import { Link, usePathname, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Platform, Pressable, Text, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
+import { CategoryListCard } from '@/components/marketplace-list-screen';
 import { CategoryMarketplaceGrid, ProductMarketplaceGrid } from '@/components/marketplace/marketplace-grid';
 import { SITE_CONTAINER_CLASS } from '@/constants/layout';
-import { CategoryListCard } from '@/components/marketplace-list-screen';
 import { useCartCount } from '@/context/cart-count-context';
 import { useAppTranslation } from '@/i18n';
-import {
-  ApiError,
-  clearCartItems,
-  fetchCart,
-  fetchFeaturedProducts,
-  fetchHomeCategories,
-  removeCartItem,
-  updateCartItemQuantity,
-  type CartItem,
-  type CartResult,
-  type CartSummary,
-  type HomeCategory,
-  type HomeProduct,
-
-  formatApiErrorMessage,
-} from '@/utils/native-api';
 import { getThumbUrl } from '@/utils/image-thumbs';
+import {
+    ApiError,
+    clearCartItems,
+    fetchCart,
+    fetchFeaturedProducts,
+    fetchHomeCategories,
+    formatApiErrorMessage,
+    removeCartItem,
+    updateCartItemQuantity,
+    type CartItem,
+    type CartResult,
+    type CartSummary,
+    type HomeCategory,
+    type HomeProduct,
+} from '@/utils/native-api';
 import { emitCartCountChanged } from '@/utils/native-cart-events';
 import { getScreenCache, setScreenCache } from '@/utils/screen-cache';
 
@@ -684,7 +683,7 @@ export function CartNative() {
           ) : null}
 
           {cart.items.length === 0 ? (
-            <View className="mt-8">
+            <View className={Platform.OS === 'web' ? 'mt-8' : 'mt-6'}>
               <View className="items-center rounded-2xl border border-gray-100 bg-gray-50 px-5 py-10 dark:border-slate-800 dark:bg-slate-900">
                 <View className="h-24 w-24 items-center justify-center rounded-full border-2 border-dashed border-gray-300 bg-white dark:border-slate-600 dark:bg-slate-800">
                   <Feather name="shopping-cart" color="#9ca3af" size={42} />
@@ -731,7 +730,7 @@ export function CartNative() {
                 </View>
               ) : null}
 
-              <View className="mt-8 gap-12 lg:flex-row">
+              <View className={Platform.OS === 'web' ? 'mt-8 gap-12 lg:flex-row' : 'mt-6 gap-12 lg:flex-row'}>
                 <View className="min-w-0 flex-1">
                   {cart.items.map((item) => (
                     <CartItemRow

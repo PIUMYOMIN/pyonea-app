@@ -13,6 +13,7 @@ import {
   View,
 } from 'react-native';
 
+
 import { AppLayout } from '@/components/layout/app-layout';
 import { useNativeAuth } from '@/context/native-auth';
 import { useTheme } from '@/context/theme';
@@ -261,21 +262,30 @@ export function AccountNative() {
 
   return (
     <AppLayout>
-      <View className="mx-auto w-full max-w-lg gap-6 px-4 py-6">
-        <View className="gap-1 px-1">
-          <Text className="font-sans text-2xl font-bold text-gray-950 dark:text-slate-50">
-            {t('account_page.title', { defaultValue: 'Account' })}
-          </Text>
-          <Text className="font-sans text-sm leading-6 text-gray-500 dark:text-slate-400">
-            {user
-              ? t('account_page.subtitle_signed_in', {
-                  defaultValue: 'Manage your account and app settings',
-                })
-              : t('account_page.subtitle_guest', {
-                  defaultValue: 'Sign in to manage orders and preferences',
-                })}
-          </Text>
-        </View>
+      <View className="bg-gray-50 dark:bg-gray-900">
+        <View className="mx-auto w-full max-w-lg gap-6 px-4 py-4">
+          {Platform.OS !== 'ios' ? (
+            <View className="gap-1 px-1">
+              <Text
+                className="font-sans text-2xl font-bold text-gray-950 dark:text-slate-50"
+                style={{ lineHeight: 40 }}
+              >
+                {t('account_page.title', { defaultValue: 'Account' })}
+              </Text>
+              <Text
+                className="font-sans text-sm leading-6 text-gray-500 dark:text-slate-400"
+                style={{ lineHeight: 24 }}
+              >
+                {user
+                  ? t('account_page.subtitle_signed_in', {
+                      defaultValue: 'Manage your account and app settings',
+                    })
+                  : t('account_page.subtitle_guest', {
+                      defaultValue: 'Sign in to manage orders and preferences',
+                    })}
+              </Text>
+            </View>
+          ) : null}
 
         {auth.isLoading ? (
           <View className="items-center py-12">
@@ -483,6 +493,7 @@ export function AccountNative() {
           Pyonea · {t('footer.rights_reserved', { defaultValue: 'All rights reserved.' })}
         </Text>
       </View>
+    </View>
     </AppLayout>
   );
 }

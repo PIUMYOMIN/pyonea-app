@@ -1,46 +1,46 @@
+import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import Feather from '@expo/vector-icons/Feather';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
-import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { Link, type Href } from 'expo-router';
-import { useEffect, useMemo, useRef, useState } from 'react';
 import type { ComponentProps, ReactNode } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, Text, useWindowDimensions, View } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppLayout } from '@/components/layout/app-layout';
-import {
-  HOME_PRODUCT_GRID_CLASS,
-  HOME_SELLER_GRID_CLASS,
-  HOME_VALUE_GRID_CLASS,
-  SITE_CONTAINER_CLASS,
-} from '@/constants/layout';
-import {
-  CategoryMarketplaceGrid,
-  chunkMarketplaceItems,
-  isMarketplaceWeb,
-  MarketplaceGridRow,
-  ProductMarketplaceGrid,
-  useSellerGridColumns,
-} from '@/components/marketplace/marketplace-grid';
 import { LocalDealCard } from '@/components/marketplace-list-screen';
 import {
-  CategoryCardFromHome,
-  CategoryCardSkeleton,
+    CategoryMarketplaceGrid,
+    chunkMarketplaceItems,
+    isMarketplaceWeb,
+    MarketplaceGridRow,
+    ProductMarketplaceGrid,
+    useSellerGridColumns,
+} from '@/components/marketplace/marketplace-grid';
+import {
+    CategoryCardFromHome
 } from '@/components/ui/category-card';
+import {
+    HOME_PRODUCT_GRID_CLASS,
+    HOME_SELLER_GRID_CLASS,
+    HOME_VALUE_GRID_CLASS,
+    SITE_CONTAINER_CLASS,
+} from '@/constants/layout';
 import { useNativeAuth } from '@/context/native-auth';
 import { useAppTranslation, useLocalizedHref } from '@/i18n';
 import { hasUserRole } from '@/utils/auth-routing';
-import {
-  fetchFeaturedProducts,
-  fetchHomeCategories,
-  fetchLocalDeals,
-  fetchTopSellers,
-  isAbortError,
-  type HomeCategory,
-  type HomeProduct,
-  type HomeSeller,
-  type LocalDeal,
-} from '@/utils/native-api';
 import { getThumbUrl } from '@/utils/image-thumbs';
+import {
+    fetchFeaturedProducts,
+    fetchHomeCategories,
+    fetchLocalDeals,
+    fetchTopSellers,
+    isAbortError,
+    type HomeCategory,
+    type HomeProduct,
+    type HomeSeller,
+    type LocalDeal,
+} from '@/utils/native-api';
 import { getScreenCache, setScreenCache } from '@/utils/screen-cache';
 
 const HOME_CACHE_KEY = 'home-feed';
@@ -154,7 +154,7 @@ function SectionShell({
         : 'bg-white dark:bg-gray-900';
 
   return (
-    <View className={`${toneClass} min-w-0 py-10 sm:py-12`}>
+    <View className={`${toneClass} min-w-0 ${Platform.OS === 'web' ? 'py-10 sm:py-12' : 'py-8 sm:py-10'}`}>
       <View className={`${SITE_CONTAINER_CLASS} min-w-0`}>{children}</View>
     </View>
   );
@@ -325,6 +325,7 @@ export default function HomeNative() {
   const { user, isAuthenticated } = useNativeAuth();
   const { width } = useWindowDimensions();
   const sellerColumns = useSellerGridColumns();
+  const insets = useSafeAreaInsets();
   const valueColumns = width >= 768 ? 2 : 1;
   // Snapshot the cache once per mount; reading it on every render would change
   // the reference after the fetch writes the cache and retrigger the effect.
@@ -491,15 +492,24 @@ export default function HomeNative() {
 
   return (
     <AppLayout>
-      <View className="bg-gray-50 dark:bg-gray-900">
-        <View className="relative bg-gradient-to-r from-green-600 to-emerald-700">
-          <View className="absolute inset-0 bg-gray-950 opacity-40" />
-          <View className={`relative ${SITE_CONTAINER_CLASS} py-16 sm:py-24 md:py-32`}>
+      <View className="bg-transparent dark:bg-transparent">
+        <View className="relative bg-green-700">
+          <View className="absolute inset-0 bg-transparent" />
+          <View
+            className={`relative ${SITE_CONTAINER_CLASS} py-16 sm:py-24 md:py-32`}
+            style={insets.top ? { paddingTop: insets.top + 16 } : undefined}
+          >
             <View className="items-center">
-              <Text className="max-w-5xl text-center font-sans text-2xl font-bold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl lg:text-6xl">
+              <Text
+                className="max-w-5xl text-center font-sans text-2xl font-bold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl lg:text-6xl"
+                style={{ lineHeight: 72 }}
+              >
                 {t('home.hero_title')}
               </Text>
-              <Text className="mt-3 max-w-3xl px-4 text-center font-sans text-sm leading-6 text-green-100 sm:mt-6 sm:text-lg md:text-xl">
+              <Text
+                className="mt-3 max-w-3xl px-4 text-center font-sans text-sm leading-6 text-green-50 sm:mt-6 sm:text-lg md:text-xl"
+                style={{ lineHeight: 32 }}
+              >
                 {t('home.hero_subtitle')}
               </Text>
               <View className="mt-8 w-full flex-col gap-4 sm:mt-10 sm:flex-row sm:justify-center">
@@ -531,7 +541,8 @@ export default function HomeNative() {
           </View>
         </View>
 
-        {!isMarketplaceWeb ? (
+          <View className="bg-gray-50 dark:bg-gray-900">
+          {!isMarketplaceWeb ? (
           <SectionShell tone="muted">
             <Text className="font-sans text-lg font-black text-gray-950 dark:text-slate-100">
               {t('home.quick_access', { defaultValue: 'Explore the app' })}
@@ -551,7 +562,7 @@ export default function HomeNative() {
               <ArrowLink href={href('/categories')} label={t('home.browse_all_categories')} />
             </View>
           </View>
-          <View className="mt-8 sm:mt-10">
+            <View className={Platform.OS === 'web' ? 'mt-8 sm:mt-10' : 'mt-6 sm:mt-8'}>
             {loading.categories ? (
               <CategoryMarketplaceGrid
                 items={[]}
@@ -586,7 +597,7 @@ export default function HomeNative() {
               </Text>
               <ArrowLink href={href('/local-deals')} label={t('home.view_all')} />
             </View>
-            <View className="mt-8 sm:mt-10">
+            <View className={Platform.OS === 'web' ? 'mt-8 sm:mt-10' : 'mt-6 sm:mt-8'}>
               {dealsLoading ? (
                 <View className="items-center py-10">
                   <ActivityIndicator color="#16a34a" />
@@ -611,7 +622,7 @@ export default function HomeNative() {
             </Text>
             <ArrowLink href={href('/products')} label={t('home.view_all')} />
           </View>
-          <View className="mt-8 sm:mt-10">
+          <View className={Platform.OS === 'web' ? 'mt-8 sm:mt-10' : 'mt-6 sm:mt-8'}>
             {loading.products ? (
               <ProductMarketplaceGrid products={[]} loading webGridClass={HOME_PRODUCT_GRID_CLASS} />
             ) : products.length > 0 ? (
@@ -679,7 +690,7 @@ export default function HomeNative() {
             </Text>
           </View>
 
-          <View className={`mt-8 sm:mt-10 ${isMarketplaceWeb ? HOME_VALUE_GRID_CLASS : ''}`}>
+          <View className={`${Platform.OS === 'web' ? 'mt-8 sm:mt-10' : 'mt-6 sm:mt-8'} ${isMarketplaceWeb ? HOME_VALUE_GRID_CLASS : ''}`}>
             {isMarketplaceWeb
               ? values.map((value) => <ValueItem key={value.titleKey} value={value} />)
               : valueRows.map((row, rowIndex) => (
@@ -716,6 +727,7 @@ export default function HomeNative() {
           </View>
         </SectionShell>
       </View>
+    </View>
     </AppLayout>
   );
 }

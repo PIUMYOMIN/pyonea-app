@@ -1,23 +1,23 @@
-import Feather from '@expo/vector-icons/Feather';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
+import Feather from '@expo/vector-icons/Feather';
 import { Link, useGlobalSearchParams, useRouter, type Href } from 'expo-router';
 import { createElement, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import {
-  Modal,
-  Platform,
-  Pressable,
-  Text,
-  TextInput,
-  useWindowDimensions,
-  View,
+    Modal,
+    Platform,
+    Pressable,
+    Text,
+    TextInput,
+    useWindowDimensions,
+    View,
 } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
-import { NativeSeo } from '@/components/SEO/native-seo';
-import { useTheme } from '@/context/theme';
 import { chunkMarketplaceItems } from '@/components/marketplace/marketplace-grid';
-import { BLOG_POST_GRID_CLASS } from '@/constants/layout';
+import { NativeSeo } from '@/components/SEO/native-seo';
 import { SITE_PUBLIC_URL } from '@/config/native';
+import { BLOG_POST_GRID_CLASS } from '@/constants/layout';
+import { useTheme } from '@/context/theme';
 import { mergeRouteLang, normalizeLanguage, useAppTranslation } from '@/i18n';
 import { fetchBlogPagePosts, type BlogPost } from '@/utils/native-api';
 
@@ -463,7 +463,7 @@ export function BlogNative() {
               </Text>
             </View>
 
-            <View className="mt-8 flex-col gap-3 sm:flex-row">
+            <View className={Platform.OS === 'web' ? 'mt-8 flex-col gap-3 sm:flex-row' : 'mt-6 flex-col gap-3 sm:flex-row'}>
               <BlogSearchField value={search} onChange={setSearch} />
               <BlogCategorySelect value={category} categories={categories} onChange={setCategory} />
             </View>
