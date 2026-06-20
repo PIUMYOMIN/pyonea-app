@@ -226,6 +226,8 @@ export type HomeSeller = {
   rating: string;
   reviews: number;
   city: string;
+  status: string;
+  verificationStatus: string;
   verified: boolean;
   imageUrl?: string;
   joined?: string;
@@ -827,6 +829,8 @@ export type SellerWholesaleTier = {
 
 export type SellerProductFormData = {
   id?: string | number | null;
+  approval_status?: string;
+  status?: string;
   name_en: string;
   name_mm: string;
   description_en: string;
@@ -3805,6 +3809,8 @@ const mapSellerProductForm = (
   return {
     product: {
       id: getString(product.id),
+      approval_status: getString(product.approval_status),
+      status: getString(product.status),
       name_en: getString(product.name_en || product.name),
       name_mm: getString(product.name_mm),
       description_en: getString(product.description_en || product.description),
@@ -4912,6 +4918,13 @@ export const mapHomeProduct = (
 
 const mapHomeSeller = (seller: UnknownRecord, index = 0): HomeSeller => {
   const user = isRecord(seller.user) ? seller.user : undefined;
+  const status = getString(seller.status, "pending");
+  const verificationStatus = getString(seller.verification_status);
+  const verified =
+    status === "approved" ||
+    status === "active" ||
+    seller.is_verified === true ||
+    verificationStatus === "verified";
 
   return {
     id: getString(seller.id, `seller-${index}`),
@@ -4934,11 +4947,9 @@ const mapHomeSeller = (seller: UnknownRecord, index = 0): HomeSeller => {
     ),
     reviews: getNumber(seller.reviews_count || seller.review_count),
     city: getString(seller.city || user?.city, "Unknown City"),
-    verified:
-      seller.status === "approved" ||
-      seller.status === "active" ||
-      seller.is_verified === true ||
-      seller.verification_status === "verified",
+    status,
+    verificationStatus,
+    verified,
     imageUrl: getNativeImageUrl(
       seller.store_logo ||
         seller.logo ||
@@ -4950,6 +4961,12 @@ const mapHomeSeller = (seller: UnknownRecord, index = 0): HomeSeller => {
     joined: getString(seller.created_at || seller.createdAt),
   };
 };
+
+const isPublicSellerProfileVisible = (seller: HomeSeller) =>
+  seller.verified ||
+  ["pending", "setup_pending", "under_review"].includes(
+    seller.status.toLowerCase(),
+  );
 
 const mapSellerProfile = (
   seller: UnknownRecord,
@@ -5642,25 +5659,29 @@ export async function fetchTopSellers(
   limit = 4,
 ): Promise<HomeSeller[]> {
   const payload = await apiGet(
-    `/sellers?top=true&limit=${Math.max(limit, 4)}&fields=id,store_name,store_slug,business_name,business_type,category,city,user,reviews_avg_rating,reviews_count,products_count,total_products,status,is_verified,logo,profile_image,store_logo`,
+    `/sellers?top=true&limit=${Math.max(limit, 4)}&status=all&include_pending=1&fields=id,store_name,store_slug,business_name,business_type,category,city,user,reviews_avg_rating,reviews_count,products_count,total_products,status,verification_status,is_verified,logo,profile_image,store_logo`,
     signal,
   );
 
   return getArrayPayload(payload)
     .filter(isRecord)
+    .map(mapHomeSeller)
+    .filter(isPublicSellerProfileVisible)
     .slice(0, limit)
-    .map(mapHomeSeller);
 }
 
 export async function fetchSellers(
   signal?: AbortSignal,
 ): Promise<HomeSeller[]> {
   const payload = await apiGet(
-    "/sellers?per_page=50&fields=id,store_name,store_slug,business_name,business_type,category,city,user,reviews_avg_rating,reviews_count,products_count,total_products,status,is_verified,logo,profile_image,store_logo,created_at",
+    "/sellers?per_page=50&status=all&include_pending=1&fields=id,store_name,store_slug,business_name,business_type,category,city,user,reviews_avg_rating,reviews_count,products_count,total_products,status,verification_status,is_verified,logo,profile_image,store_logo,created_at",
     signal,
   );
 
-  return getArrayPayload(payload).filter(isRecord).map(mapHomeSeller);
+  return getArrayPayload(payload)
+    .filter(isRecord)
+    .map(mapHomeSeller)
+    .filter(isPublicSellerProfileVisible);
 }
 
 export async function fetchSellerProfile(

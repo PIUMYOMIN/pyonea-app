@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
-import { Link, type Href } from 'expo-router';
+import { Link } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
 import { ActivityIndicator, Modal, Platform, Pressable, Text, TextInput, View } from 'react-native';
 
@@ -55,6 +55,26 @@ function SellerStarRow({ rating, reviews }: { rating: number; reviews: number })
   );
 }
 
+function SellerStatusBadge({ seller }: { seller: HomeSeller }) {
+  if (seller.verified) {
+    return (
+      <View className="self-start rounded-full bg-green-100 px-2 py-0.5 dark:bg-green-900/30">
+        <Text className="font-sans text-[11px] font-bold text-green-700 dark:text-green-300">
+          Approved
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View className="self-start rounded-full bg-amber-100 px-2 py-0.5 dark:bg-amber-900/30">
+      <Text className="font-sans text-[11px] font-bold text-amber-700 dark:text-amber-300">
+        Pending review
+      </Text>
+    </View>
+  );
+}
+
 function SellerDirectoryCard({ seller }: { seller: HomeSeller }) {
   const { t } = useAppTranslation();
   const href = useLocalizedHref();
@@ -78,13 +98,13 @@ function SellerDirectoryCard({ seller }: { seller: HomeSeller }) {
                 <Text className="font-sans text-base font-semibold text-gray-500 dark:text-slate-400 sm:text-lg">
                   {seller.name.charAt(0).toUpperCase()}
                 </Text>
-                {seller.verified ? (
-                  <View className="absolute -bottom-1 -right-1 rounded-full bg-white p-0.5 dark:bg-slate-900">
-                    <Feather name="check-circle" color="#22c55e" size={15} />
-                  </View>
-                ) : null}
               </View>
             )}
+            {seller.verified ? (
+              <View className="absolute -bottom-1 -right-1 rounded-full bg-white p-0.5 dark:bg-slate-900">
+                <Feather name="check-circle" color="#22c55e" size={15} />
+              </View>
+            ) : null}
           </View>
 
           <View className="min-w-0 flex-1">
@@ -97,6 +117,10 @@ function SellerDirectoryCard({ seller }: { seller: HomeSeller }) {
                 </Text>
               </Pressable>
             </Link>
+
+            <View className="mt-1">
+              <SellerStatusBadge seller={seller} />
+            </View>
 
             <View className="mt-1 gap-0.5 sm:flex-row sm:flex-wrap sm:items-center sm:gap-1">
               <View className="max-w-[120px] self-start rounded bg-blue-100 px-1.5 py-0.5 dark:bg-blue-900/30 sm:max-w-none sm:px-2">
