@@ -34,11 +34,10 @@ const nativeGridStyles = StyleSheet.create({
   },
   columnWrapper: {
     gap: 12,
-    marginBottom: 12,
   },
   content: {
     flexGrow: 1,
-    paddingBottom: 8,
+    paddingBottom: 0,
   },
 });
 
@@ -82,9 +81,11 @@ export function useSellerDirectoryColumns() {
 export function MarketplaceGridRow({
   columns,
   children,
+  className = '',
 }: {
   columns: number;
   children: ReactNode;
+  className?: string;
 }) {
   const cells = useMemo(() => {
     const list = Array.isArray(children)
@@ -97,7 +98,7 @@ export function MarketplaceGridRow({
   const emptySlots = Math.max(0, columns - cells.length);
 
   return (
-    <View className="mb-3 flex-row items-stretch gap-3 sm:mb-4 sm:gap-4">
+    <View className={`flex-row items-stretch gap-3 sm:gap-4 ${className}`}>
       {cells.map((child, index) => (
         <View
           key={`marketplace-grid-cell-${index}`}
@@ -211,7 +212,7 @@ export function ProductMarketplaceGrid({
 
   if (loading) {
     return (
-      <>
+      <View className="gap-y-3 sm:gap-y-4">
         {Array.from({ length: skeletonRows }).map((_, rowIndex) => (
           <ProductListRowSkeleton
             key={`product-grid-skeleton-row-${rowIndex}`}
@@ -219,7 +220,7 @@ export function ProductMarketplaceGrid({
           />
         ))}
         {footer}
-      </>
+      </View>
     );
   }
 
@@ -236,6 +237,7 @@ export function ProductMarketplaceGrid({
       ListHeaderComponent={listHeaderComponent ? renderListHeader : undefined}
       ListFooterComponent={listFooter ? () => listFooter : undefined}
       ListEmptyComponent={listEmptyComponent ? renderListEmpty : undefined}
+      ItemSeparatorComponent={() => <View style={{ height: 12 }} />}
       columnWrapperStyle={
         columns > 1 ? nativeGridStyles.columnWrapper : undefined
       }
@@ -316,7 +318,7 @@ export function CategoryMarketplaceGrid<T>({
   }
 
   return (
-    <>
+    <View className="gap-y-3 sm:gap-y-4">
       {rows.map((row, rowIndex) => (
         <MarketplaceGridRow
           key={`category-grid-row-${rowIndex}`}
@@ -335,7 +337,7 @@ export function CategoryMarketplaceGrid<T>({
           })}
         </MarketplaceGridRow>
       ))}
-    </>
+    </View>
   );
 }
 

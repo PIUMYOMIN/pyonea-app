@@ -3,4 +3,60 @@
   <component name="AutoImportSettings">
     <option name="autoReloadType" value="NONE" />
   </component>
+  <component name="ChangeListManager">
+    <list default="true" id="d60ec0ce-6c81-4f20-bec7-073ec1bfac13" name="Changes" comment="">
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/metro.config.js" beforeDir="false" afterPath="$PROJECT_DIR$/metro.config.js" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/public/sitemap.xml" beforeDir="false" afterPath="$PROJECT_DIR$/public/sitemap.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/layout/app-layout.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/layout/app-layout.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/marketplace/marketplace-grid.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/marketplace/marketplace-grid.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/components/marketplace/product-list-cards.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/components/marketplace/product-list-cards.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/pages/account-native.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/account-native.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/pages/home-native.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/home-native.tsx" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/src/pages/product-list-native.tsx" beforeDir="false" afterPath="$PROJECT_DIR$/src/pages/product-list-native.tsx" afterDir="false" />
+    </list>
+    <option name="SHOW_DIALOG" value="false" />
+    <option name="HIGHLIGHT_CONFLICTS" value="true" />
+    <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
+    <option name="LAST_RESOLUTION" value="IGNORE" />
+  </component>
+  <component name="ClangdSettings">
+    <option name="formatViaClangd" value="false" />
+  </component>
+  <component name="Git.Settings">
+    <option name="RECENT_GIT_ROOT_PATH" value="$PROJECT_DIR$" />
+  </component>
+  <component name="ProjectColorInfo"><![CDATA[{
+  "customColor": "",
+  "associatedIndex": 0
+}]]></component>
+  <component name="ProjectId" id="3FMdwzN1uODOrCxYke1ZWCIyAwr" />
+  <component name="ProjectViewState">
+    <option name="hideEmptyMiddlePackages" value="true" />
+    <option name="showLibraryContents" value="true" />
+  </component>
+  <component name="PropertiesComponent"><![CDATA[{
+  "keyToString": {
+    "ModuleVcsDetector.initialDetectionPerformed": "true",
+    "RunOnceActivity.ShowReadmeOnStart": "true",
+    "RunOnceActivity.TerminalTabsStorage.copyFrom.TerminalArrangementManager.252": "true",
+    "RunOnceActivity.cidr.known.project.marker": "true",
+    "RunOnceActivity.git.unshallow": "true",
+    "RunOnceActivity.readMode.enableVisualFormatting": "true",
+    "cf.first.check.clang-format": "false",
+    "cidr.known.project.marker": "true",
+    "git-widget-placeholder": "Reverting in mgmyomin",
+    "kotlin-language-version-configured": "true"
+  }
+}]]></component>
+  <component name="TaskManager">
+    <task active="true" id="Default" summary="Default task">
+      <changelist id="d60ec0ce-6c81-4f20-bec7-073ec1bfac13" name="Changes" comment="" />
+      <created>1781889119043</created>
+      <option name="number" value="Default" />
+      <option name="presentableId" value="Default" />
+      <updated>1781889119043</updated>
+    </task>
+    <servers />
+  </component>
 </project>

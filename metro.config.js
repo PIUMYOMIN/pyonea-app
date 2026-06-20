@@ -4,6 +4,22 @@ const { FileStore } = require("@expo/metro-config/build/binary-file-store");
 const { withNativeWind } = require("nativewind/metro");
 const os = require("os");
 
+/**
+ * Custom FileStore that prevents build crashes on Windows when clearing cache.
+ * Metro sometimes hits ENOTEMPTY errors on Windows due to file locks from background processes.
+ */
+class SafeFileStore extends FileStore {
+  clear() {
+    try {
+      super.clear();
+    } catch (error) {
+      console.warn(
+        `[Metro] Warning: Could not fully clear cache directory: ${error.message}. Proceeding with build...`
+      );
+    }
+  }
+}
+
 const projectRoot = __dirname;
 
 /** @type {import('expo/metro-config').MetroConfig} */
@@ -33,7 +49,7 @@ config.watchFolders = [projectRoot];
 
 // Keep transform cache inside the project (avoids Windows Temp EMFILE storms).
 config.cacheStores = [
-  new FileStore({
+  new SafeFileStore({
     root: path.join(projectRoot, "node_modules", ".cache", "metro"),
   }),
 ];

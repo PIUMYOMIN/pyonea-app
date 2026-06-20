@@ -31,11 +31,18 @@ const WHATSAPP_CHAT_URL = 'https://wa.me/959792115547';
 
 /** NativeWind shadow-* on conditional Pressable classNames breaks Expo Router nav context. */
 const languagePillActiveStyle = {
-  shadowColor: '#000',
-  shadowOffset: { width: 0, height: 1 },
-  shadowOpacity: 0.08,
-  shadowRadius: 2,
-  elevation: 2,
+  ...Platform.select({
+    web: {
+      boxShadow: '0px 1px 2px rgba(0, 0, 0, 0.08)',
+    },
+    default: {
+      shadowColor: '#000',
+      shadowOffset: { width: 0, height: 1 },
+      shadowOpacity: 0.08,
+      shadowRadius: 2,
+      elevation: 2,
+    },
+  }),
 } as const;
 
 type AccountRowProps = {

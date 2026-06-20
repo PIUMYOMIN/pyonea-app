@@ -154,7 +154,7 @@ function SectionShell({
         : 'bg-white dark:bg-gray-900';
 
   return (
-    <View className={`${toneClass} min-w-0 ${Platform.OS === 'web' ? 'py-10 sm:py-12' : 'py-8 sm:py-10'}`}>
+    <View className={`${toneClass} min-w-0 ${Platform.OS === 'web' ? 'py-10 sm:py-12' : 'py-5 sm:py-8'}`}>
       <View className={`${SITE_CONTAINER_CLASS} min-w-0`}>{children}</View>
     </View>
   );
@@ -496,19 +496,18 @@ export default function HomeNative() {
         <View className="relative bg-green-700">
           <View className="absolute inset-0 bg-transparent" />
           <View
-            className={`relative ${SITE_CONTAINER_CLASS} py-16 sm:py-24 md:py-32`}
-            style={insets.top ? { paddingTop: insets.top + 16 } : undefined}
+            className={`relative ${SITE_CONTAINER_CLASS} ${Platform.OS === 'web' ? 'py-16 sm:py-24 md:py-32' : 'pb-12 pt-8 sm:py-20'}`}
           >
             <View className="items-center">
               <Text
                 className="max-w-5xl text-center font-sans text-2xl font-bold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl lg:text-6xl"
-                style={{ lineHeight: 72 }}
+                style={{ lineHeight: width >= 1024 ? 72 : width >= 768 ? 52 : 36 }}
               >
                 {t('home.hero_title')}
               </Text>
               <Text
                 className="mt-3 max-w-3xl px-4 text-center font-sans text-sm leading-6 text-green-50 sm:mt-6 sm:text-lg md:text-xl"
-                style={{ lineHeight: 32 }}
+                style={{ lineHeight: width >= 768 ? 32 : 24 }}
               >
                 {t('home.hero_subtitle')}
               </Text>
@@ -562,7 +561,7 @@ export default function HomeNative() {
               <ArrowLink href={href('/categories')} label={t('home.browse_all_categories')} />
             </View>
           </View>
-            <View className={Platform.OS === 'web' ? 'mt-8 sm:mt-10' : 'mt-6 sm:mt-8'}>
+          <View className={Platform.OS === 'web' ? 'mt-8 sm:mt-10' : 'mt-5 sm:mt-8'}>
             {loading.categories ? (
               <CategoryMarketplaceGrid
                 items={[]}
@@ -589,7 +588,7 @@ export default function HomeNative() {
           </View>
         </SectionShell>
 
-        {!isMarketplaceWeb ? (
+        {!isMarketplaceWeb && (dealsLoading || deals.length > 0) ? (
           <SectionShell>
             <View className="gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
               <Text className="font-sans text-xl font-black text-gray-950 dark:text-slate-100 sm:text-2xl md:text-3xl">
@@ -597,19 +596,17 @@ export default function HomeNative() {
               </Text>
               <ArrowLink href={href('/local-deals')} label={t('home.view_all')} />
             </View>
-            <View className={Platform.OS === 'web' ? 'mt-8 sm:mt-10' : 'mt-6 sm:mt-8'}>
+            <View className={Platform.OS === 'web' ? 'mt-8 sm:mt-10' : 'mt-5 sm:mt-8'}>
               {dealsLoading ? (
                 <View className="items-center py-10">
                   <ActivityIndicator color="#16a34a" />
                 </View>
-              ) : deals.length > 0 ? (
+              ) : (
                 <View className="flex-row flex-wrap justify-between gap-y-4">
                   {deals.map((deal) => (
                     <LocalDealCard key={String(deal.id)} deal={deal} />
                   ))}
                 </View>
-              ) : (
-                <EmptyState message={t('localDeals.empty', { defaultValue: 'No deals available right now.' })} />
               )}
             </View>
           </SectionShell>
@@ -622,7 +619,7 @@ export default function HomeNative() {
             </Text>
             <ArrowLink href={href('/products')} label={t('home.view_all')} />
           </View>
-          <View className={Platform.OS === 'web' ? 'mt-8 sm:mt-10' : 'mt-6 sm:mt-8'}>
+          <View className={Platform.OS === 'web' ? 'mt-8 sm:mt-10' : 'mt-5 sm:mt-8'}>
             {loading.products ? (
               <ProductMarketplaceGrid products={[]} loading webGridClass={HOME_PRODUCT_GRID_CLASS} />
             ) : products.length > 0 ? (
@@ -644,7 +641,7 @@ export default function HomeNative() {
             </Text>
             <ArrowLink href={href('/sellers')} label={t('home.view_all')} />
           </View>
-          <View className={`mt-6 ${isMarketplaceWeb ? HOME_SELLER_GRID_CLASS : ''}`}>
+          <View className={`mt-5 ${isMarketplaceWeb ? HOME_SELLER_GRID_CLASS : 'gap-y-3 sm:gap-y-4'}`}>
             {loading.sellers ? (
               isMarketplaceWeb ? (
                 Array.from({ length: 4 }).map((_, index) => (
@@ -690,7 +687,7 @@ export default function HomeNative() {
             </Text>
           </View>
 
-          <View className={`${Platform.OS === 'web' ? 'mt-8 sm:mt-10' : 'mt-6 sm:mt-8'} ${isMarketplaceWeb ? HOME_VALUE_GRID_CLASS : ''}`}>
+          <View className={`${Platform.OS === 'web' ? 'mt-8 sm:mt-10' : 'mt-5 sm:mt-8'} ${isMarketplaceWeb ? HOME_VALUE_GRID_CLASS : 'gap-y-6 sm:gap-y-8'}`}>
             {isMarketplaceWeb
               ? values.map((value) => <ValueItem key={value.titleKey} value={value} />)
               : valueRows.map((row, rowIndex) => (
