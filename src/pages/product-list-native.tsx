@@ -607,14 +607,18 @@ export function ProductListNative() {
 
   const productListFooter = useMemo(
     () => (
-      <>
-        {loadingMore ? <ProductListRowSkeleton productColumns={productColumns} /> : null}
+      <View className="py-4">
+        {loadingMore ? (
+          <View className="mb-4">
+            <ProductListRowSkeleton productColumns={productColumns} />
+          </View>
+        ) : null}
         {!hasMore && products.length > 0 ? (
-          <Text className="py-8 text-center font-sans text-sm text-gray-400 dark:text-gray-500">
+          <Text className="py-4 text-center font-sans text-sm text-gray-400 dark:text-gray-500">
             {t('products.no_more_products')}
           </Text>
         ) : null}
-      </>
+      </View>
     ),
     [hasMore, loadingMore, productColumns, products.length, t],
   );

@@ -41,7 +41,7 @@ export function ProductListRow({
   const eagerRow = rowIndex < EAGER_PRODUCT_ROWS;
 
   return (
-    <View className="product-list-row mb-3 flex-row items-stretch gap-3 sm:mb-4 sm:gap-4">
+    <View className="product-list-row flex-row items-stretch gap-3 sm:gap-4">
       {row.map((product) => (
         <ProductListCard
           key={String(product.id)}
@@ -67,7 +67,7 @@ export function ProductListRowSkeleton({
   productColumns: number;
 }) {
   return (
-    <View className="product-list-row mb-3 flex-row items-stretch gap-3 sm:mb-4 sm:gap-4">
+    <View className="product-list-row flex-row items-stretch gap-3 sm:gap-4">
       {Array.from({ length: productColumns }).map((_, index) => (
         <CardSkeleton
           key={`product-row-skeleton-${index}`}
