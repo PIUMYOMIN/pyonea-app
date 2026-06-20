@@ -1,7 +1,17 @@
 import Feather from '@expo/vector-icons/Feather';
 import { useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
-import { ActivityIndicator, Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import {
+  ActivityIndicator,
+  AppState,
+  Modal,
+  Platform,
+  Pressable,
+  ScrollView,
+  Text,
+  View,
+  type AppStateStatus,
+} from 'react-native';
 
 import { useNativeAuth } from '@/context/native-auth';
 import { useTheme } from '@/context/theme';
@@ -348,8 +358,25 @@ export function NativeNotificationBell({
   }, [refreshCount]);
 
   useEffect(() => {
+    if (!user || Platform.OS === 'web') return;
+
+    const handleAppStateChange = (nextAppState: AppStateStatus) => {
+      if (nextAppState === 'active') {
+        void refreshCount();
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', handleAppStateChange);
+    return () => subscription.remove();
+  }, [refreshCount, user]);
+
+  useEffect(() => {
     if (!user) return;
-    const id = setInterval(() => void refreshCount(), POLL_MS);
+    const id = setInterval(() => {
+      if (Platform.OS === 'web' || AppState.currentState === 'active') {
+        void refreshCount();
+      }
+    }, POLL_MS);
     return () => clearInterval(id);
   }, [refreshCount, user]);
 

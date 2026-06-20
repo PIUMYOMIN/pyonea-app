@@ -53,7 +53,7 @@ export function chunkMarketplaceItems<T>(items: T[], columns: number) {
 /** Product list pages — 2 cols phone, 3 tablet, 4 desktop. */
 export function useProductGridColumns() {
   const { width } = useWindowDimensions();
-  return useMemo(() => (width >= 1280 ? 4 : width >= 640 ? 3 : 2), [width]);
+  return useMemo(() => (width >= 1024 ? 4 : width >= 640 ? 3 : 2), [width]);
 }
 
 /** Category cards — 2 cols phone, 3 sm, 4 md, 6 lg (matches home/browser). */
@@ -67,7 +67,7 @@ export function useCategoryGridColumns() {
 
 export function useSellerGridColumns() {
   const { width } = useWindowDimensions();
-  return useMemo(() => (width >= 1024 ? 4 : 2), [width]);
+  return useMemo(() => (width >= 1024 ? 4 : width >= 768 ? 3 : 2), [width]);
 }
 
 /** Seller directory — 1 col phone, 2 tablet, 3–4 desktop (matches pyonea Sellers.jsx). */

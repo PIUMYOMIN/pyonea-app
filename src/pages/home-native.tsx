@@ -511,7 +511,7 @@ export default function HomeNative() {
             <View className="items-center">
               <Text
                 className="max-w-5xl text-center font-sans text-2xl font-bold leading-tight tracking-tight text-white sm:text-4xl md:text-5xl lg:text-6xl"
-                style={{ lineHeight: width >= 1024 ? 72 : width >= 768 ? 52 : 36 }}
+                style={{ lineHeight: width >= 1024 ? 72 : width >= 768 ? 60 : 36 }}
               >
                 {t('home.hero_title')}
               </Text>

@@ -202,7 +202,7 @@ export function Header() {
             </Pressable>
           </Link>
 
-          <View className="hidden flex-row items-center gap-1 md:flex">
+          <View className="hidden flex-row items-center gap-1 lg:flex">
             {navItems.map((item) => (
               <HeaderAction
                 key={String(item.href)}
@@ -388,7 +388,7 @@ export function Header() {
               onPress={() => setMobileOpen((value) => !value)}
               accessibilityLabel="Open menu"
               accessibilityState={{ expanded: mobileOpen }}
-              className="h-10 w-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-slate-800 md:hidden"
+              className="h-10 w-10 items-center justify-center rounded-lg bg-gray-100 dark:bg-slate-800 lg:hidden"
             >
               <Feather
                 name={mobileOpen ? "x" : "menu"}
@@ -443,7 +443,7 @@ export function Header() {
       )}
 
       {mobileOpen && (
-        <View className="relative z-50 border-t border-gray-100 bg-white px-3 pb-4 pt-3 shadow-lg dark:border-slate-800 dark:bg-slate-900 md:hidden">
+        <View className="relative z-50 border-t border-gray-100 bg-white px-3 pb-4 pt-3 shadow-lg dark:border-slate-800 dark:bg-slate-900 lg:hidden">
           <View className="gap-1">
             {navItems.map((item) => (
               <Link key={String(item.href)} href={item.href} asChild>

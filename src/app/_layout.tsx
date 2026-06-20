@@ -8,6 +8,7 @@ import { Platform } from 'react-native';
 import { AnalyticsPageTracker } from '@/components/analytics-page-tracker';
 import { AuthDeepLinkHandler } from '@/components/auth-deep-link-handler';
 import { NativeSeo } from '@/components/SEO/native-seo';
+import { PushNotificationHandler } from '@/components/notifications/push-notification-handler';
 import { CookieBannerNative } from '@/components/ui/cookie-banner-native';
 import { CookieProvider } from '@/context/cookies';
 import { CartCountProvider } from '@/context/cart-count-context';
@@ -30,6 +31,7 @@ function RootStack() {
       <NativeSeo />
       <AnalyticsPageTracker />
       <AuthDeepLinkHandler />
+      <PushNotificationHandler />
       <Stack screenOptions={{ headerShown: false }} />
       <CookieBannerNative />
       <StatusBar style={isDark ? 'light' : 'dark'} />
