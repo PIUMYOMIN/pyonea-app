@@ -3,24 +3,24 @@ import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { Link, useRouter, type Href } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
-  ActivityIndicator,
   Platform,
   Pressable,
   ScrollView,
   Text,
   TextInput,
   useWindowDimensions,
-  View,
+  View
 } from "react-native";
 
 import { AppLayout } from "@/components/layout/app-layout";
-import { SITE_CONTAINER_CLASS } from "@/constants/layout";
+import { Footer } from "@/components/layout/site-footer";
 import { ProductDetailActions } from "@/components/product/product-detail-actions";
 import { ProductDetailGallery } from "@/components/product/product-detail-gallery";
-import { ProductDetailToast } from "@/components/product/product-detail-toast";
 import { ProductDetailSecondarySections } from "@/components/product/product-detail-secondary-sections";
+import { ProductDetailToast } from "@/components/product/product-detail-toast";
 import { ProductVariantPicker } from "@/components/product/product-variant-picker";
 import { SITE_PUBLIC_URL } from "@/config/native";
+import { SITE_CONTAINER_CLASS } from "@/constants/layout";
 import { useNativeAuth } from "@/context/native-auth";
 import { useTheme } from "@/context/theme";
 import { useWishlist } from "@/context/wishlist-context";
@@ -30,28 +30,27 @@ import {
   useAppTranslation,
 } from "@/i18n";
 import { hasUserRole } from "@/utils/auth-routing";
-import { emitCartCountChanged } from "@/utils/native-cart-events";
 import {
   addToCompare,
   isProductCompared,
   removeCompareItem,
   subscribeCompareChanged,
 } from "@/utils/compare-native";
-import { Footer } from "@/components/layout/site-footer";
 import {
   addProductToCart,
   fetchMoreProductsFromSeller,
   fetchProductDetail,
   fetchProductReviews,
   fetchSellerDeliveryAreas,
+  formatApiErrorMessage,
   submitProductReview,
   type HomeProduct,
   type ProductDetail,
-  type ProductVariant,
   type ProductReview,
+  type ProductVariant,
   type SellerDeliveryArea,
-  formatApiErrorMessage,
 } from "@/utils/native-api";
+import { emitCartCountChanged } from "@/utils/native-cart-events";
 import {
   formatSpecKey,
   getMaxValidQuantity,
@@ -1092,13 +1091,13 @@ export function ProductDetailNative({
                 <Text className="mb-2 font-sans text-lg font-semibold text-gray-950 dark:text-slate-100">
                   {t("productDetail.specifications")}
                 </Text>
-                <View className="gap-2 sm:flex-row sm:flex-wrap">
-                  {Object.entries(product.specifications).map(
-                    ([key, value]) => (
-                      <View
-                        key={key}
-                        className="border-t border-gray-200 pt-2 dark:border-slate-700 sm:w-[48%]"
-                      >
+              <View className="flex-col gap-0 sm:flex-row sm:flex-wrap">
+                {Object.entries(product.specifications).map(
+                  ([key, value]) => (
+                    <View
+                      key={key}
+                      className="border-t border-gray-200 py-2 dark:border-slate-700 sm:w-[48%]"
+                    >
                         <Text className="font-sans text-sm font-semibold text-gray-900 dark:text-slate-100">
                           {formatSpecKey(key)}
                         </Text>
@@ -1186,49 +1185,52 @@ export function ProductDetailNative({
             ) : null}
 
             <View className="gap-2">
-              <View className="flex-row flex-wrap items-center gap-3">
+              <View className="flex-row flex-wrap items-center gap-2.5">
                 <Text className="font-sans font-medium text-gray-800 dark:text-slate-200">
                   {t("productDetail.quantity")}
                 </Text>
-                <Pressable
-                  onPress={decrementQuantity}
-                  disabled={quantity <= effectiveMoq}
-                  className="h-8 w-8 items-center justify-center rounded border border-gray-300 bg-white dark:border-slate-600 dark:bg-slate-800"
-                >
-                  <Text className="font-sans text-xl text-gray-700 dark:text-slate-200">
-                    −
-                  </Text>
-                </Pressable>
-                <TextInput
-                  value={String(quantity)}
-                  onChangeText={(value) => {
-                    const snapped = snapQuantityToStep(
-                      value,
-                      effectiveMoq,
-                      effectiveStep,
-                    );
-                    setQuantity(
-                      maxValidQuantity !== undefined && maxValidQuantity > 0
-                        ? Math.min(snapped, maxValidQuantity)
-                        : snapped,
-                    );
-                  }}
-                  keyboardType="number-pad"
-                  className="h-8 min-w-[80px] rounded-md border border-gray-300 bg-white px-2 text-center font-sans text-base font-semibold text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100"
-                />
-                <Pressable
-                  onPress={incrementQuantity}
-                  disabled={
-                    maxValidQuantity !== undefined &&
-                    maxValidQuantity > 0 &&
-                    quantity + effectiveStep > maxValidQuantity
-                  }
-                  className="h-8 w-8 items-center justify-center rounded border border-gray-300 bg-white dark:border-slate-600 dark:bg-slate-800"
-                >
-                  <Text className="font-sans text-xl text-gray-700 dark:text-slate-200">
-                    +
-                  </Text>
-                </Pressable>
+                <View className="flex-row items-center gap-0">
+                  <Pressable
+                    onPress={decrementQuantity}
+                    disabled={quantity <= effectiveMoq}
+                    className="h-9 w-9 items-center justify-center rounded-l-lg border border-r-0 border-gray-300 bg-white dark:border-slate-600 dark:bg-slate-800 sm:h-8 sm:w-8"
+                  >
+                    <Text className="font-sans text-xl text-gray-700 dark:text-slate-200">
+                      −
+                    </Text>
+                  </Pressable>
+                  <TextInput
+                    value={String(quantity)}
+                    onChangeText={(value) => {
+                      const snapped = snapQuantityToStep(
+                        value,
+                        effectiveMoq,
+                        effectiveStep,
+                      );
+                      setQuantity(
+                        maxValidQuantity !== undefined && maxValidQuantity > 0
+                          ? Math.min(snapped, maxValidQuantity)
+                          : snapped,
+                      );
+                    }}
+                    keyboardType="number-pad"
+                    textAlignVertical="center"
+                    className="h-9 w-20 border border-gray-300 bg-white py-0 px-0 text-center font-sans text-base font-bold text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 sm:h-8 sm:w-16"
+                  />
+                  <Pressable
+                    onPress={incrementQuantity}
+                    disabled={
+                      maxValidQuantity !== undefined &&
+                      maxValidQuantity > 0 &&
+                      quantity + effectiveStep > maxValidQuantity
+                    }
+                    className="h-9 w-9 items-center justify-center rounded-r-lg border border-l-0 border-gray-300 bg-white dark:border-slate-600 dark:bg-slate-800 sm:h-8 sm:w-8"
+                  >
+                    <Text className="font-sans text-xl text-gray-700 dark:text-slate-200">
+                      +
+                    </Text>
+                  </Pressable>
+                </View>
                 <Text className="font-sans text-sm text-gray-500 dark:text-slate-400">
                   {product.quantityUnit}
                 </Text>

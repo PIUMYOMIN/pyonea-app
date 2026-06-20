@@ -15,29 +15,28 @@ import {
   useState,
 } from "react";
 import {
-  Linking,
-  type NativeScrollEvent,
-  type NativeSyntheticEvent,
   Platform,
   Pressable,
   ScrollView,
   Text,
   TextInput,
   View,
+  type NativeScrollEvent,
+  type NativeSyntheticEvent
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 
+import { Footer } from "@/components/layout/site-footer";
 import { NativeNotificationBell } from "@/components/notifications/native-notification-bell";
 import { AnnouncementNative } from "@/components/ui/announcement-native";
 import { BrandLogo } from "@/components/ui/brand-logo";
 import { FloatingCompareButtonNative } from "@/components/ui/floating-compare-button-native";
 import { WebLoadMoreSentinel } from "@/components/ui/web-load-more-sentinel";
-import { mainRoutes } from "@/constants/routes";
 import { SITE_CONTAINER_CLASS } from "@/constants/layout";
-import { Footer } from "@/components/layout/site-footer";
+import { mainRoutes } from "@/constants/routes";
+import { useCartCount } from "@/context/cart-count-context";
 import { useNativeAuth } from "@/context/native-auth";
 import { useTheme } from "@/context/theme";
-import { useCartCount } from "@/context/cart-count-context";
 import { useWishlist } from "@/context/wishlist-context";
 import {
   mergeRouteLang,
@@ -706,7 +705,7 @@ export function AppLayout({
         <SafeAreaView edges={["top"]} className="min-w-0 flex-1 bg-gray-50 dark:bg-slate-950">
           <ScrollView
             className="min-w-0 flex-1"
-            contentContainerClassName={showNativeBottomTabs ? "min-w-0 grow pb-24" : "min-w-0 grow"}
+            contentContainerClassName={showNativeBottomTabs ? "min-w-0 pb-24" : "min-w-0"}
             keyboardDismissMode="on-drag"
             keyboardShouldPersistTaps="handled"
             nestedScrollEnabled

@@ -12,6 +12,7 @@ import {
   CardSkeleton,
   PRODUCT_CARD_ROW_CLASS,
   ProductListCard,
+  ProductListRow,
   ProductListRowSkeleton,
 } from "@/components/marketplace/product-list-cards";
 import { CategoryCardSkeleton } from "@/components/ui/category-card";
@@ -149,6 +150,10 @@ export function ProductMarketplaceGrid({
 }: ProductMarketplaceGridProps) {
   const columns = useProductGridColumns();
   const { width } = useWindowDimensions();
+  const rows = useMemo(
+    () => chunkMarketplaceItems(products, columns),
+    [columns, products],
+  );
   const estimatedItemSize = useMemo(() => {
     const horizontalPadding = 32;
     const gap = 12 * Math.max(0, columns - 1);
@@ -217,6 +222,32 @@ export function ProductMarketplaceGrid({
           <ProductListRowSkeleton
             key={`product-grid-skeleton-row-${rowIndex}`}
             productColumns={columns}
+          />
+        ))}
+        {footer}
+      </View>
+    );
+  }
+
+  if (!scrollEnabled) {
+    if (products.length === 0) {
+      return (
+        <>
+          {listEmptyComponent}
+          {footer}
+        </>
+      );
+    }
+
+    return (
+      <View className="gap-y-3 sm:gap-y-4">
+        {listHeaderComponent}
+        {rows.map((row, rowIndex) => (
+          <ProductListRow
+            key={`product-grid-row-${rowIndex}`}
+            row={row}
+            productColumns={columns}
+            rowIndex={rowIndex}
           />
         ))}
         {footer}
