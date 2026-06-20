@@ -1,5 +1,4 @@
 import Feather from '@expo/vector-icons/Feather';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { Link } from 'expo-router';
 import { useCallback, useEffect, useMemo, useState } from 'react';
@@ -26,10 +25,11 @@ function SellerStarRow({ rating, reviews }: { rating: number; reviews: number })
     <View className="mt-1 flex-row items-center sm:mt-2">
       <View className="flex-row items-center">
         {[1, 2, 3, 4, 5].map((star) => (
-          <FontAwesome
+          <Feather
             key={star}
             name="star"
             color={star <= fullStars || (star === fullStars + 1 && hasHalfStar) ? '#facc15' : '#d1d5db'}
+            fill={star <= fullStars || (star === fullStars + 1 && hasHalfStar) ? '#facc15' : 'transparent'}
             size={13}
           />
         ))}

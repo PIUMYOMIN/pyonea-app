@@ -54,25 +54,11 @@ config.cacheStores = [
   }),
 ];
 
-// jspdf's "node" build uses AMD requires that Metro cannot parse (breaks SSG export),
-// so always resolve it to the browser ES build. Its optional peers (canvg, dompurify)
-// are only needed for features we don't use — resolve them as empty modules.
+// Some libraries' "node" build uses AMD requires that Metro cannot parse (breaks SSG export).
 const defaultResolveRequest = config.resolver.resolveRequest;
 config.resolver.resolveRequest = (context, moduleName, platform) => {
-  if (moduleName === "jspdf") {
-    return {
-      type: "sourceFile",
-      filePath: path.resolve(__dirname, "node_modules/jspdf/dist/jspdf.es.min.js"),
-    };
-  }
   if (moduleName === "canvg" || moduleName === "dompurify") {
     return { type: "empty" };
-  }
-  if (moduleName === "whatwg-fetch") {
-    return {
-      type: "sourceFile",
-      filePath: path.resolve(__dirname, "node_modules/whatwg-fetch/dist/fetch.umd.js"),
-    };
   }
   return (defaultResolveRequest ?? context.resolveRequest)(context, moduleName, platform);
 };

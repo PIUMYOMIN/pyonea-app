@@ -1,6 +1,5 @@
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import Feather from '@expo/vector-icons/Feather';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Link, type Href } from 'expo-router';
 import type { ComponentProps, ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
@@ -229,10 +228,11 @@ function SellerCard({ seller }: { seller: HomeSeller }) {
             <View className="mt-1 flex-row items-center sm:mt-2">
               <View className="flex-row items-center">
                 {[1, 2, 3, 4, 5].map((star) => (
-                  <FontAwesome
+                  <Feather
                     key={star}
                     name="star"
                     color={rating > 0 && star <= roundedRating ? '#facc15' : '#d1d5db'}
+                    fill={rating > 0 && star <= roundedRating ? '#facc15' : 'transparent'}
                     size={13}
                   />
                 ))}

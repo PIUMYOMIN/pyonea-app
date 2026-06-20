@@ -1,9 +1,12 @@
+import * as Print from "expo-print";
+import * as Sharing from "expo-sharing";
 import { OptimizedImage as Image } from "@/components/ui/optimized-image";
 import Feather from "@expo/vector-icons/Feather";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
   Modal,
+  Platform,
   Pressable,
   ScrollView,
   Text,
@@ -993,89 +996,54 @@ export function OrderManagementNative() {
         </section>
       </main>`;
 
-    const printHtml = `<!doctype html><html><head><meta charset="utf-8"/><title>Order Slip #${escHtml(order.orderNumber)}</title>
-      <style>body{margin:0;padding:24px;background:#f3f4f6}${css}@media print{body{padding:0;background:#fff}.pyo-slip .receipt{border:0;border-radius:0;box-shadow:none}}</style>
-      </head><body><div class="pyo-slip">${body}</div>
-      <script>window.addEventListener('load',function(){window.focus();window.print()});<\/script></body></html>`;
+    const printHtml = `
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8"/>
+          <style>
+            ${css}
+            @media print {
+              body { margin: 0; padding: 0; background: #fff; }
+              .pyo-slip .receipt { border: 0; border-radius: 0; box-shadow: none; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="pyo-slip">${body}</div>
+        </body>
+      </html>
+    `;
 
     try {
-      const [{ jsPDF }, { default: html2canvas }] = await Promise.all([
-        import("jspdf"),
-        import("html2canvas"),
-      ]);
+      const { uri } = await Print.printToFileAsync({
+        html: printHtml,
+        base64: false,
+      });
 
-      const mount = document.createElement("div");
-      mount.className = "pyo-slip";
-      mount.style.cssText =
-        "position:fixed;left:-10000px;top:0;width:760px;background:#ffffff;pointer-events:none;";
-      mount.innerHTML = `<style>${css}
-.pyo-slip .receipt{box-shadow:none!important}</style>${body}`;
-      document.body.appendChild(mount);
-
-      try {
-        await document.fonts?.ready;
-        await Promise.all(
-          Array.from(mount.querySelectorAll("img")).map((img) =>
-            (img as HTMLImageElement).complete
-              ? Promise.resolve()
-              : new Promise((resolve) => {
-                  (img as HTMLImageElement).onload = () => resolve(undefined);
-                  (img as HTMLImageElement).onerror = () => resolve(undefined);
-                }),
-          ),
-        );
-
-        const target = mount.querySelector(".receipt") as HTMLElement;
-        const canvas = await html2canvas(target, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: "#ffffff",
-          windowWidth: 900,
-          width: target.scrollWidth,
-          height: target.scrollHeight,
-        });
-        const imgData = canvas.toDataURL("image/png");
-        const pdf = new jsPDF("p", "mm", "a4");
-        const margin = 10;
-        const pageWidth = pdf.internal.pageSize.getWidth();
-        const pageHeight = pdf.internal.pageSize.getHeight();
-        const usableHeight = pageHeight - margin * 2;
-        const imgWidth = pageWidth - margin * 2;
-        const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-        if (imgHeight <= usableHeight) {
-          pdf.addImage(imgData, "PNG", margin, margin, imgWidth, imgHeight);
-        } else {
-          let heightLeft = imgHeight;
-          let position = margin;
-          pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
-          heightLeft -= usableHeight;
-          while (heightLeft > 0) {
-            position = margin - (imgHeight - heightLeft);
-            pdf.addPage();
-            pdf.addImage(imgData, "PNG", margin, position, imgWidth, imgHeight);
-            heightLeft -= usableHeight;
-          }
-        }
-        pdf.save(`pyonea-order-slip-${order.orderNumber}.pdf`);
-      } finally {
-        mount.remove();
-      }
+      await Sharing.shareAsync(uri, {
+        UTI: ".pdf",
+        mimeType: "application/pdf",
+        dialogTitle: `pyonea-order-slip-${order.orderNumber}.pdf`,
+      });
     } catch {
-      // Fallback: open print dialog
-      const win = window.open(
-        "",
-        "_blank",
-        "noopener,noreferrer,width=900,height=900",
-      );
-      if (!win) {
-        setError(t("seller.order.download_order_slip"));
-        return;
+      // Fallback: open print dialog on web
+      if (Platform.OS === "web") {
+        const win = window.open(
+          "",
+          "_blank",
+          "noopener,noreferrer,width=900,height=900",
+        );
+        if (!win) {
+          setError(t("seller.order.download_order_slip"));
+          return;
+        }
+        win.document.open();
+        win.document.write(printHtml);
+        win.document.close();
+      } else {
+        setError(t("seller.order.errors.load_failed"));
       }
-      win.document.open();
-      win.document.write(printHtml);
-      win.document.close();
     }
   };
 

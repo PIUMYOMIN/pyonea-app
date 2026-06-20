@@ -1,5 +1,4 @@
 import Feather from '@expo/vector-icons/Feather';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { router, type Href } from 'expo-router';
 import { useCallback, useMemo, type ReactNode } from 'react';
 import {
@@ -148,7 +147,7 @@ function ChatRow({
       onPress={onPress}
       className="min-h-[56px] flex-row items-center gap-3 px-4 py-3 active:bg-gray-50 dark:active:bg-slate-800/80">
       <View className="h-9 w-9 items-center justify-center rounded-xl bg-gray-100 dark:bg-slate-800">
-        <FontAwesome name={icon} size={18} color={iconColor} />
+        <Feather name={icon === 'telegram' ? 'send' : 'message-circle'} size={18} color={iconColor} />
       </View>
       <View className="min-w-0 flex-1">
         <Text className="font-sans text-sm font-semibold text-gray-900 dark:text-slate-100">{label}</Text>

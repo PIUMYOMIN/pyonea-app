@@ -1852,6 +1852,19 @@ const fetchWithTimeout = async (path: string, init: RequestInit = {}) => {
       ...init,
       signal: controller.signal,
     });
+  } catch (error) {
+    if (isAbortError(error, controller.signal)) {
+      throw error;
+    }
+
+    if (Platform.OS === 'web' && error instanceof TypeError && error.message === 'Failed to fetch') {
+      throw new Error(
+        'Network error: Failed to fetch. This is likely a CORS issue or the API server is unreachable from your browser. ' +
+        'Ensure the API allows requests from your current origin.'
+      );
+    }
+
+    throw error;
   } finally {
     clearTimeout(timeout);
     externalSignal?.removeEventListener("abort", abortFromExternalSignal);

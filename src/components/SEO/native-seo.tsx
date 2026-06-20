@@ -301,7 +301,7 @@ export function NativeSeo({
       <meta name="apple-mobile-web-app-title" content="Pyonea" />
       <meta name="format-detection" content="telephone=no" />
       <link rel="icon" href="/favicon.ico" />
-      <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+      <link rel="apple-touch-icon" href="/logo.png" />
       <link rel="manifest" href="/manifest.json" />
 
       {schemaItems.map((item, index) => (

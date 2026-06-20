@@ -1,6 +1,5 @@
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import Feather from '@expo/vector-icons/Feather';
-import FontAwesome from '@expo/vector-icons/FontAwesome';
 import { Link, useRouter, type Href } from 'expo-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
@@ -81,10 +80,11 @@ function Stars({ rating, count }: { rating: number; count?: number }) {
     <View className="flex-row items-center gap-2">
       <View className="flex-row">
         {[1, 2, 3, 4, 5].map((star) => (
-          <FontAwesome
+          <Feather
             key={star}
-            name={star <= filled ? 'star' : 'star-o'}
+            name="star"
             color={star <= filled ? '#f59e0b' : '#cbd5e1'}
+            fill={star <= filled ? '#f59e0b' : 'transparent'}
             size={14}
           />
         ))}
@@ -225,7 +225,7 @@ function StarDistribution({
         return (
           <View key={star} className="flex-row items-center gap-2">
             <Text className="w-3 font-sans text-xs text-gray-500 dark:text-slate-500">{star}</Text>
-            <FontAwesome name="star" color="#facc15" size={12} />
+            <Feather name="star" color="#facc15" fill="#facc15" size={12} />
             <View className="h-1.5 min-w-0 flex-1 overflow-hidden rounded-full bg-gray-100 dark:bg-slate-800">
               <View className="h-full rounded-full bg-yellow-400" style={{ width: `${pct}%` }} />
             </View>
@@ -279,9 +279,10 @@ function SellerReviewForm({
       <View className="mt-3 flex-row gap-1">
         {[1, 2, 3, 4, 5].map((star) => (
           <Pressable key={star} onPress={() => onRatingChange(star)} className="p-1">
-            <FontAwesome
+            <Feather
               name="star"
               color={star <= rating ? '#facc15' : '#e5e7eb'}
+              fill={star <= rating ? '#facc15' : 'transparent'}
               size={28}
             />
           </Pressable>

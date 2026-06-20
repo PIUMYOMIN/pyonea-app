@@ -1,5 +1,4 @@
 import Feather from "@expo/vector-icons/Feather";
-import FontAwesome from "@expo/vector-icons/FontAwesome";
 import { Link, useRouter, type Href } from "expo-router";
 import { useEffect, useMemo, useRef, useState } from "react";
 import {
@@ -83,10 +82,11 @@ function Stars({
     <View className="flex-row flex-wrap items-center gap-y-1">
       <View className="flex-row items-center">
         {[1, 2, 3, 4, 5].map((star) => (
-          <FontAwesome
+          <Feather
             key={star}
-            name={star <= filled ? "star" : "star-o"}
+            name="star"
             color={star <= filled ? "#facc15" : emptyStarColor}
+            fill={star <= filled ? "#facc15" : "transparent"}
             size={18}
           />
         ))}

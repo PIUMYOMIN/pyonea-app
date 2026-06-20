@@ -10,7 +10,7 @@ type BrandLogoProps = {
 };
 
 /**
- * Logo_on_payslip.png is a square canvas with a centered green disc.
+ * logo.png is a square canvas with a centered green disc.
  * Cover + center fill inside a round clip; brand green backs any sub-pixel gaps.
  */
 export function BrandLogo({ size = 36, className = '', opacity }: BrandLogoProps) {

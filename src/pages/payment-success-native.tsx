@@ -1,3 +1,5 @@
+import * as Print from 'expo-print';
+import * as Sharing from 'expo-sharing';
 import Feather from '@expo/vector-icons/Feather';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -90,73 +92,41 @@ const formatPaymentMethod = (value: string, fallback: string) => {
     .join(' ');
 };
 
-/** Renders the receipt markup offscreen and saves it as a real multi-page A4 PDF. */
+/** Renders the receipt markup to a high-quality PDF and opens the system share/save dialog. */
 const generateReceiptPdf = async (css: string, bodyHtml: string, fileName: string) => {
-  const [{ jsPDF }, { default: html2canvas }] = await Promise.all([
-    import('jspdf'),
-    import('html2canvas'),
-  ]);
-
-  const mount = document.createElement('div');
-  mount.className = 'pyo-slip';
-  mount.style.cssText =
-    'position:fixed;left:-10000px;top:0;width:760px;background:#ffffff;pointer-events:none;';
-  mount.innerHTML = `<style>${css}\n.pyo-slip .receipt { box-shadow: none !important; }</style>${bodyHtml}`;
-  document.body.appendChild(mount);
-
   try {
-    await document.fonts?.ready;
-    await Promise.all(
-      Array.from(mount.querySelectorAll('img')).map((img) =>
-        img.complete
-          ? Promise.resolve()
-          : new Promise((resolve) => {
-              img.onload = () => resolve(undefined);
-              img.onerror = () => resolve(undefined);
-            }),
-      ),
-    );
+    const html = `
+      <!doctype html>
+      <html>
+        <head>
+          <meta charset="utf-8" />
+          <style>
+            ${css}
+            @media print {
+              body { margin: 0; padding: 0; background: #fff; }
+              .pyo-slip .receipt { border: 0; border-radius: 0; box-shadow: none !important; }
+            }
+          </style>
+        </head>
+        <body>
+          <div class="pyo-slip">${bodyHtml}</div>
+        </body>
+      </html>
+    `;
 
-    const target = mount.querySelector('.receipt') as HTMLElement;
-    const canvas = await html2canvas(target, {
-      scale: 2,
-      useCORS: true,
-      logging: false,
-      backgroundColor: '#ffffff',
-      windowWidth: 900,
-      width: target.scrollWidth,
-      height: target.scrollHeight,
+    const { uri } = await Print.printToFileAsync({
+      html,
+      base64: false,
     });
 
-    const imgData = canvas.toDataURL('image/png');
-    const pdf = new jsPDF('p', 'mm', 'a4');
-    const margin = 10;
-    const pageWidth = pdf.internal.pageSize.getWidth();
-    const pageHeight = pdf.internal.pageSize.getHeight();
-    const usableHeight = pageHeight - margin * 2;
-    const imgWidth = pageWidth - margin * 2;
-    const imgHeight = (canvas.height * imgWidth) / canvas.width;
-
-    if (imgHeight <= usableHeight) {
-      pdf.addImage(imgData, 'PNG', margin, margin, imgWidth, imgHeight);
-    } else {
-      let heightLeft = imgHeight;
-      let position = margin;
-
-      pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
-      heightLeft -= usableHeight;
-
-      while (heightLeft > 0) {
-        position = margin - (imgHeight - heightLeft);
-        pdf.addPage();
-        pdf.addImage(imgData, 'PNG', margin, position, imgWidth, imgHeight);
-        heightLeft -= usableHeight;
-      }
-    }
-
-    pdf.save(fileName);
-  } finally {
-    mount.remove();
+    await Sharing.shareAsync(uri, {
+      UTI: '.pdf',
+      mimeType: 'application/pdf',
+      dialogTitle: fileName,
+    });
+  } catch (error) {
+    console.error('Failed to generate or share PDF:', error);
+    throw error;
   }
 };
 
