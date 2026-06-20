@@ -5,7 +5,6 @@ import { Link, type Href } from 'expo-router';
 import type { ComponentProps, ReactNode } from 'react';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { ActivityIndicator, Platform, Pressable, Text, useWindowDimensions, View } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { LocalDealCard } from '@/components/marketplace-list-screen';
@@ -92,8 +91,6 @@ const values = [
   icon: FeatherIconName;
 }[];
 
-const placeholderProduct = require('@/assets/images/placeholder-product.png');
-
 type LoadingState = {
   categories: boolean;
   products: boolean;
@@ -142,9 +139,11 @@ function ArrowLink({ href, label }: { href: Href; label: string }) {
 function SectionShell({
   children,
   tone = 'white',
+  spacing = 'normal',
 }: {
   children: ReactNode;
   tone?: 'white' | 'muted' | 'green';
+  spacing?: 'normal' | 'compactTop' | 'compactBottom';
 }) {
   const toneClass =
     tone === 'muted'
@@ -152,9 +151,21 @@ function SectionShell({
       : tone === 'green'
         ? 'bg-gradient-to-r from-green-50 to-emerald-100 dark:from-gray-800 dark:to-gray-800'
         : 'bg-white dark:bg-gray-900';
+  const spacingClass =
+    spacing === 'compactTop'
+      ? Platform.OS === 'web'
+        ? 'pb-10 pt-4 sm:pb-12 sm:pt-5'
+        : 'pb-5 pt-2 sm:pb-8 sm:pt-3'
+      : spacing === 'compactBottom'
+        ? Platform.OS === 'web'
+          ? 'pb-4 pt-10 sm:pb-5 sm:pt-12'
+          : 'pb-2 pt-5 sm:pb-3 sm:pt-8'
+      : Platform.OS === 'web'
+        ? 'py-10 sm:py-12'
+        : 'py-5 sm:py-8';
 
   return (
-    <View className={`${toneClass} min-w-0 ${Platform.OS === 'web' ? 'py-10 sm:py-12' : 'py-5 sm:py-8'}`}>
+    <View className={`${toneClass} min-w-0 ${spacingClass}`}>
       <View className={`${SITE_CONTAINER_CLASS} min-w-0`}>{children}</View>
     </View>
   );
@@ -325,7 +336,6 @@ export default function HomeNative() {
   const { user, isAuthenticated } = useNativeAuth();
   const { width } = useWindowDimensions();
   const sellerColumns = useSellerGridColumns();
-  const insets = useSafeAreaInsets();
   const valueColumns = width >= 768 ? 2 : 1;
   // Snapshot the cache once per mount; reading it on every render would change
   // the reference after the fetch writes the cache and retrigger the effect.
@@ -612,7 +622,7 @@ export default function HomeNative() {
           </SectionShell>
         ) : null}
 
-        <SectionShell tone="muted">
+        <SectionShell tone="muted" spacing="compactBottom">
           <View className="gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
             <Text className="font-sans text-xl font-black text-gray-950 dark:text-slate-100 sm:text-2xl md:text-3xl">
               {t('home.featured_products')}
@@ -634,7 +644,7 @@ export default function HomeNative() {
           </View>
         </SectionShell>
 
-        <SectionShell>
+        <SectionShell spacing="compactTop">
           <View className="gap-4 sm:flex-row sm:items-center sm:justify-between sm:gap-0">
             <Text className="font-sans text-xl font-black text-gray-950 dark:text-slate-100 sm:text-2xl md:text-3xl">
               {t('home.top_sellers')}
