@@ -182,7 +182,7 @@ export function ProductVariantPicker({
                 className="w-full rounded-lg border border-gray-300 bg-white px-3 py-2 font-sans text-sm text-gray-900 dark:border-slate-600 dark:bg-slate-800 dark:text-slate-100 sm:max-w-xl"
               />
             ) : (
-              <View className="-mx-0.5 flex-row flex-nowrap gap-2 overflow-x-auto pb-1 sm:-mx-0 sm:flex-wrap sm:overflow-visible sm:pb-0 sm:gap-3">
+              <View className="-mx-0.5 flex-row flex-wrap gap-2 pb-1 sm:-mx-0 sm:pb-0 sm:gap-3">
                 {option.values.map((value) => {
                   const selectedItem =
                     String(selected[optionKey]) === String(value.id);
@@ -199,12 +199,12 @@ export function ProductVariantPicker({
                         if (!disabled) handleSelect(option.id, value.id);
                       }}
                       disabled={disabled}
-                      className={`min-h-10 min-w-0 shrink-0 items-center justify-center rounded-lg border ${
+                      className={`min-h-10 min-w-0 items-center justify-center rounded-lg border ${
                         isColor
-                          ? "h-11 w-11 rounded-full p-1 sm:h-12 sm:w-12"
+                          ? "h-11 w-11 shrink-0 rounded-full p-1 sm:h-12 sm:w-12"
                           : isImage
-                            ? "w-20 p-1 sm:w-24"
-                            : "max-w-full px-3 py-2 sm:px-4"
+                            ? "w-20 shrink-0 p-1 sm:w-24"
+                            : "max-w-full shrink px-3 py-2 sm:px-4"
                       } ${
                         selectedItem
                           ? "border-green-500 bg-green-50 dark:bg-green-900/30"

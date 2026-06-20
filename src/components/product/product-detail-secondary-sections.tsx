@@ -1,10 +1,10 @@
 import Feather from '@expo/vector-icons/Feather';
 import { Link, type Href } from 'expo-router';
-import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 import { useState } from 'react';
+import { ActivityIndicator, Pressable, Text, TextInput, View } from 'react-native';
 
-import { MoreFromSellerCarousel } from '@/components/product/more-from-seller-carousel';
 import { ProductMarketplaceGrid } from '@/components/marketplace/marketplace-grid';
+import { MoreFromSellerCarousel } from '@/components/product/more-from-seller-carousel';
 import { useTheme } from '@/context/theme';
 import { useAppTranslation } from '@/i18n';
 import type { HomeProduct, ProductDetail, ProductReview } from '@/utils/native-api';
@@ -127,7 +127,7 @@ export function ProductDetailSecondarySections({
   return (
     <View className="min-w-0">
       {moreProductsLoading || moreProducts.length > 0 ? (
-        <View className="mt-14 min-w-0">
+        <View className="mt-8 min-w-0 sm:mt-14">
           <View className="mb-5 gap-3 sm:flex-row sm:items-end sm:justify-between">
             <View className="min-w-0 flex-1">
               <Text className="font-sans text-xl font-bold text-gray-900 dark:text-slate-100">
@@ -155,7 +155,7 @@ export function ProductDetailSecondarySections({
         </View>
       ) : null}
 
-      <View className="mt-16 min-w-0">
+      <View className="mt-10 min-w-0 sm:mt-16">
         <View className="mb-6 gap-3 sm:flex-row sm:items-center sm:justify-between">
           <Text className="font-sans text-xl font-bold text-gray-900 dark:text-slate-100 sm:text-2xl">
             {t('productDetail.customer_reviews')} ({product.reviewCount || reviews.length})

@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 import { ProductImageBrandPlaceholder } from "@/components/ui/product-image-brand-placeholder";
 import { getThumbUrl } from "@/utils/image-thumbs";
@@ -290,7 +290,7 @@ const ProductImageGallery = ({
                 type="button"
                 data-thumb-idx={idx}
                 onClick={() => go(idx)}
-                className={`relative flex-shrink-0 h-16 w-16 sm:h-18 sm:w-18 rounded-lg overflow-hidden
+                className={`relative flex-shrink-0 h-14 w-14 sm:h-16 sm:w-16 lg:h-18 lg:w-18 rounded-lg overflow-hidden
                             border-2 transition-colors ${
                               selected
                                 ? "border-green-500"
