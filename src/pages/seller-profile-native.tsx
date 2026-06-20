@@ -149,6 +149,26 @@ function StatChip({ icon, value, label }: { icon: keyof typeof Feather.glyphMap;
   );
 }
 
+function SellerStatusBadge({ seller }: { seller: SellerProfile }) {
+  if (seller.verified) {
+    return (
+      <View className="rounded-full bg-green-100 px-2.5 py-1 dark:bg-green-900/30">
+        <Text className="font-sans text-xs font-bold text-green-700 dark:text-green-300">
+          Approved
+        </Text>
+      </View>
+    );
+  }
+
+  return (
+    <View className="rounded-full bg-amber-100 px-2.5 py-1 dark:bg-amber-900/30">
+      <Text className="font-sans text-xs font-bold text-amber-700 dark:text-amber-300">
+        Pending admin review
+      </Text>
+    </View>
+  );
+}
+
 function ReviewItem({ review }: { review: SellerReview }) {
   return (
     <View className="rounded-2xl border border-gray-100 bg-white p-5 dark:border-slate-800 dark:bg-slate-900">
@@ -901,6 +921,7 @@ export function SellerProfileNative({
                     {seller.name}
                   </Text>
                   {seller.verified ? <Feather name="check-circle" color="#16a34a" size={20} /> : null}
+                  <SellerStatusBadge seller={seller} />
                 </View>
                 <View className="mt-2 flex-row flex-wrap items-center gap-3">
                   <Stars rating={rating} count={seller.reviews} />

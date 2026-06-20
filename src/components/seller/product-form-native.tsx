@@ -52,6 +52,7 @@ import {
   saveProductDraftImages,
   shouldAutoSaveProductDraft,
 } from "@/utils/product-draft-storage";
+import { invalidateScreenCache } from "@/utils/screen-cache";
 
 const productTypes = [
   {
@@ -1304,27 +1305,40 @@ export function ProductFormNative({
     });
   };
 
-  const payload = () => ({
-    ...form,
-    price: Number(form.price),
-    moq: Number(form.moq || 1),
-    quantity_step: Number(form.moq || 1),
-    category_id: Number(form.category_id),
-    discount_price: form.discount_price ? Number(form.discount_price) : null,
-    weight_kg: form.weight_kg ? Number(form.weight_kg) : null,
-    shipping_cost: form.free_shipping
-      ? 0
-      : form.shipping_cost
-        ? Number(form.shipping_cost)
-        : null,
-    file_url: form.product_type === "digital" ? form.file_url || null : null,
-    file_type: form.product_type === "digital" ? form.file_type || null : null,
-    images: images.map((image) => ({
-      url: image.path || image.url,
-      angle: image.angle,
-      is_primary: image.isPrimary,
-    })),
-  });
+  const payload = () => {
+    const nextPayload = {
+      ...form,
+      price: Number(form.price),
+      moq: Number(form.moq || 1),
+      quantity_step: Number(form.moq || 1),
+      category_id: Number(form.category_id),
+      discount_price: form.discount_price ? Number(form.discount_price) : null,
+      weight_kg: form.weight_kg ? Number(form.weight_kg) : null,
+      shipping_cost: form.free_shipping
+        ? 0
+        : form.shipping_cost
+          ? Number(form.shipping_cost)
+          : null,
+      file_url: form.product_type === "digital" ? form.file_url || null : null,
+      file_type: form.product_type === "digital" ? form.file_type || null : null,
+      images: images.map((image) => ({
+        url: image.path || image.url,
+        angle: image.angle,
+        is_primary: image.isPrimary,
+      })),
+    };
+
+    if (!editing && !isAdminMode) {
+      return {
+        ...nextPayload,
+        approval_status: "approved",
+        status: "approved",
+        is_active: true,
+      };
+    }
+
+    return nextPayload;
+  };
 
   const saveCore = async () => {
     if (saving || isUploadingImages) return;
@@ -1381,6 +1395,7 @@ export function ProductFormNative({
       }));
       if (result.images.length) setImages(result.images);
       setCompletedSteps(new Set([1, 2, 3, 4]));
+      invalidateScreenCache();
 
       if (isAdminMode) {
         setSuccess(
