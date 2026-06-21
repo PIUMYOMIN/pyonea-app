@@ -9,7 +9,6 @@ import { hasSeenWelcomeLoader } from '@/utils/welcome-loader-storage';
 const WELCOME_MAX_WAIT_MS = 3_000;
 
 export function WelcomeLoaderProvider({ children }: PropsWithChildren) {
-  const pathname = usePathname();
   const [contentDisplayed, setContentDisplayed] = useState(false);
 
   const markWelcomeContentDisplayed = useCallback(() => {
@@ -17,11 +16,10 @@ export function WelcomeLoaderProvider({ children }: PropsWithChildren) {
   }, []);
 
   useEffect(() => {
-    setContentDisplayed(false);
-  }, [pathname]);
-
-  useEffect(() => {
-    if (Platform.OS !== 'web' || hasSeenWelcomeLoader()) return;
+    if (Platform.OS !== 'web' || hasSeenWelcomeLoader()) {
+      setContentDisplayed(true);
+      return;
+    }
 
     let raf = 0;
     raf = requestAnimationFrame(() => {
@@ -31,7 +29,7 @@ export function WelcomeLoaderProvider({ children }: PropsWithChildren) {
     return () => {
       if (raf) cancelAnimationFrame(raf);
     };
-  }, [pathname, markWelcomeContentDisplayed]);
+  }, [markWelcomeContentDisplayed]);
 
   useEffect(() => {
     if (Platform.OS !== 'web' || hasSeenWelcomeLoader() || contentDisplayed) return;
@@ -41,7 +39,7 @@ export function WelcomeLoaderProvider({ children }: PropsWithChildren) {
     }, WELCOME_MAX_WAIT_MS);
 
     return () => window.clearTimeout(timeout);
-  }, [pathname, contentDisplayed, markWelcomeContentDisplayed]);
+  }, [contentDisplayed, markWelcomeContentDisplayed]);
 
   usePyoneaWelcomeLoader(contentDisplayed, Platform.OS === 'web');
 

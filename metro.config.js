@@ -1,6 +1,6 @@
 const path = require("path");
 const { getDefaultConfig } = require("expo/metro-config");
-const { FileStore } = require("@expo/metro-config/build/binary-file-store");
+const { FileStore } = require("@expo/metro-config/build/file-store");
 const { withNativeWind } = require("nativewind/metro");
 const os = require("os");
 

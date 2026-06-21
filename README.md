@@ -54,4 +54,22 @@ Join our community of developers creating universal apps.
 
 - [Expo on GitHub](https://github.com/expo/expo): View our open source platform and contribute.
 - [Discord community](https://chat.expo.dev): Chat with Expo users and ask questions.
-"# pyonea-app" 
+
+---
+
+## Android Build
+
+For detailed Android build configuration, package versions, and troubleshooting guide, see the [Android Build Documentation](./docs/ANDROID_BUILD.md).
+
+### Quick Android Build
+
+```bash
+cd android
+.\gradlew clean assembleRelease
+```
+
+The release APK will be generated at `android/app/build/outputs/apk/release/app-release.apk`.
+
+---
+
+"# pyonea-app"

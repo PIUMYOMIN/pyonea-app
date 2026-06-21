@@ -204,25 +204,28 @@ function RouteLanguageSyncWeb() {
 
   useEffect(() => {
     const fromUrl = readLangFromUrl();
+    const currentLanguage = normalizeLanguage(i18n.resolvedLanguage || i18n.language);
 
     if (fromUrl) {
-      if (normalizeLanguage(i18n.resolvedLanguage || i18n.language) === fromUrl) return;
-      void i18n.changeLanguage(fromUrl);
+      if (currentLanguage !== fromUrl) {
+        void i18n.changeLanguage(fromUrl);
+      }
       return;
     }
 
     const preferred = getPreferredLanguage();
-    if (normalizeLanguage(i18n.resolvedLanguage || i18n.language) !== preferred) {
+    if (currentLanguage !== preferred) {
       void i18n.changeLanguage(preferred);
     }
 
-    if (typeof window !== 'undefined') {
-      const currentLang = new URLSearchParams(window.location.search).get('lang');
-      if (currentLang === preferred) return;
-    }
+    const currentUrlParams = new URLSearchParams(window.location.search);
+    const langInUrl = currentUrlParams.get('lang');
 
-    router.replace(mergeRouteLangFromLocation(pathname, params, preferred) as Href);
-  }, [i18n, params, pathname, router]);
+    // Only replace if the URL is actually missing the correct lang param
+    if (langInUrl !== preferred) {
+      router.replace(mergeRouteLangFromLocation(pathname, params, preferred) as Href);
+    }
+  }, [i18n, pathname, router]); // Removed 'params' to avoid infinite loops/unnecessary refreshes on param changes
 
   useEffect(() => {
     const syncUrlToLanguage = (nextLanguage: string) => {

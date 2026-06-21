@@ -8,6 +8,7 @@ import {
 } from "expo-router";
 import {
   PropsWithChildren,
+  memo,
   useCallback,
   useEffect,
   useMemo,
@@ -109,7 +110,7 @@ function HeaderAction({
   );
 }
 
-export function Header() {
+export const Header = memo(function Header() {
   const { t, i18n } = useAppTranslation();
   const { isDark, toggleTheme } = useTheme();
   const auth = useNativeAuth();
@@ -547,7 +548,7 @@ export function Header() {
       )}
     </SafeAreaView>
   );
-}
+})
 
 type AppLayoutProps = PropsWithChildren<{
   scrollEnabled?: boolean;

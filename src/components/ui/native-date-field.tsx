@@ -1,20 +1,23 @@
-import ExpoDateTimePicker from '@expo/ui/community/datetime-picker';
-import Feather from '@expo/vector-icons/Feather';
-import { createElement, useEffect, useMemo, useState } from 'react';
-import { Modal, Platform, Pressable, Text, View } from 'react-native';
+import Feather from "@expo/vector-icons/Feather";
+import DateTimePicker from "@react-native-community/datetimepicker";
+import { createElement, useEffect, useMemo, useState } from "react";
+import { Modal, Platform, Pressable, Text, View } from "react-native";
 
-import { FORM_DATE_FIELD_CLASS, FORM_DATE_TRIGGER_CLASS } from '@/components/ui/form-field-styles';
+import {
+  FORM_DATE_FIELD_CLASS,
+  FORM_DATE_TRIGGER_CLASS,
+} from "@/components/ui/form-field-styles";
 
 const toDateValue = (value: string) => {
-  const [year, month, day] = value.split('-').map((part) => Number(part));
+  const [year, month, day] = value.split("-").map((part) => Number(part));
   if (!year || !month || !day) return new Date();
   return new Date(year, month - 1, day);
 };
 
 const toInputValue = (date: Date) => {
   const year = date.getFullYear();
-  const month = String(date.getMonth() + 1).padStart(2, '0');
-  const day = String(date.getDate()).padStart(2, '0');
+  const month = String(date.getMonth() + 1).padStart(2, "0");
+  const day = String(date.getDate()).padStart(2, "0");
   return `${year}-${month}-${day}`;
 };
 
@@ -44,10 +47,10 @@ function WebDateInput({
   maximumDate,
   disabled,
 }: NativeDateFieldProps) {
-  return createElement('input', {
-    type: 'date',
-    'aria-label': label,
-    value: value || '',
+  return createElement("input", {
+    type: "date",
+    "aria-label": label,
+    value: value || "",
     min: minimumDate,
     max: maximumDate,
     disabled,
@@ -56,7 +59,7 @@ function WebDateInput({
       onChange(target.value);
     },
     className:
-      'native-date-field-input w-full min-h-10 border-0 bg-transparent font-sans text-sm font-semibold text-gray-900 outline-none dark:text-slate-100 disabled:cursor-not-allowed disabled:opacity-60',
+      "native-date-field-input w-full min-h-10 border-0 bg-transparent font-sans text-sm font-semibold text-gray-900 outline-none dark:text-slate-100 disabled:cursor-not-allowed disabled:opacity-60",
   });
 }
 
@@ -88,17 +91,23 @@ function DateTrigger({
     <Pressable
       disabled={disabled}
       onPress={onPress}
-      className={`${FORM_DATE_TRIGGER_CLASS} ${disabled ? 'opacity-60' : ''}`}
+      className={`${FORM_DATE_TRIGGER_CLASS} ${disabled ? "opacity-60" : ""}`}
     >
       <Text
         className={`min-w-0 flex-1 font-sans text-sm font-semibold ${
-          value ? 'text-gray-900 dark:text-slate-100' : 'text-gray-400 dark:text-slate-500'
+          value
+            ? "text-gray-900 dark:text-slate-100"
+            : "text-gray-400 dark:text-slate-500"
         }`}
         numberOfLines={1}
       >
         {value || placeholder}
       </Text>
-      <Feather name="calendar" color={disabled ? '#94a3b8' : '#16a34a'} size={18} />
+      <Feather
+        name="calendar"
+        color={disabled ? "#94a3b8" : "#16a34a"}
+        size={18}
+      />
     </Pressable>
   );
 }
@@ -107,7 +116,7 @@ export function NativeDateField({
   label,
   value,
   onChange,
-  placeholder = 'YYYY-MM-DD',
+  placeholder = "YYYY-MM-DD",
   minimumDate,
   maximumDate,
   disabled,
@@ -115,18 +124,20 @@ export function NativeDateField({
   const selectedDate = useMemo(() => toDateValue(value), [value]);
   const minDate = useMemo(
     () => (minimumDate ? toDateValue(minimumDate) : undefined),
-    [minimumDate]
+    [minimumDate],
   );
   const maxDate = useMemo(
     () => (maximumDate ? toDateValue(maximumDate) : undefined),
-    [maximumDate]
+    [maximumDate],
   );
 
-  if (Platform.OS === 'web') {
+  if (Platform.OS === "web") {
     return (
       <View className="w-full gap-2 md:flex-1">
         <DateFieldLabel label={label} />
-        <View className={`${FORM_DATE_FIELD_CLASS} ${disabled ? 'opacity-60' : ''}`}>
+        <View
+          className={`${FORM_DATE_FIELD_CLASS} ${disabled ? "opacity-60" : ""}`}
+        >
           <WebDateInput
             label={label}
             value={value}
@@ -137,12 +148,12 @@ export function NativeDateField({
             placeholder={placeholder}
           />
         </View>
-        {value ? <ClearDateButton onPress={() => onChange('')} /> : null}
+        {value ? <ClearDateButton onPress={() => onChange("")} /> : null}
       </View>
     );
   }
 
-  if (Platform.OS === 'android') {
+  if (Platform.OS === "android") {
     return (
       <AndroidDateField
         label={label}
@@ -201,18 +212,17 @@ function AndroidDateField({
         disabled={disabled}
         onPress={() => setShowPicker(true)}
       />
-      {value ? <ClearDateButton onPress={() => onChange('')} /> : null}
+      {value ? <ClearDateButton onPress={() => onChange("")} /> : null}
       {showPicker ? (
-        <ExpoDateTimePicker
+        <DateTimePicker
           value={selectedDate}
           mode="date"
-          presentation="dialog"
+          display="default"
           minimumDate={minDate}
           maximumDate={maxDate}
           accentColor="#16a34a"
-          onDismiss={() => setShowPicker(false)}
-          onValueChange={(_event, nextDate) => {
-            onChange(toInputValue(nextDate));
+          onChange={(_event, nextDate) => {
+            onChange(toInputValue(nextDate || selectedDate));
             setShowPicker(false);
           }}
         />
@@ -258,9 +268,14 @@ function IosDateField({
         disabled={disabled}
         onPress={() => setOpen(true)}
       />
-      {value ? <ClearDateButton onPress={() => onChange('')} /> : null}
+      {value ? <ClearDateButton onPress={() => onChange("")} /> : null}
 
-      <Modal visible={open} transparent animationType="fade" onRequestClose={close}>
+      <Modal
+        visible={open}
+        transparent
+        animationType="fade"
+        onRequestClose={close}
+      >
         <Pressable className="flex-1 justify-end bg-black/45" onPress={close}>
           <Pressable
             onPress={(event) => event.stopPropagation()}
@@ -283,22 +298,21 @@ function IosDateField({
               </Pressable>
             </View>
 
-            <ExpoDateTimePicker
+            <DateTimePicker
               value={draft}
               mode="date"
               display="spinner"
-              presentation="inline"
               minimumDate={minDate}
               maximumDate={maxDate}
               accentColor="#16a34a"
-              onValueChange={(_event, nextDate) => setDraft(nextDate)}
+              onChange={(_event, nextDate) => setDraft(nextDate || draft)}
             />
 
             <View className="mt-4 flex-row gap-3">
               {value ? (
                 <Pressable
                   onPress={() => {
-                    onChange('');
+                    onChange("");
                     close();
                   }}
                   className="flex-1 rounded-xl border border-gray-200 px-4 py-3 dark:border-slate-700"
@@ -315,7 +329,9 @@ function IosDateField({
                 }}
                 className="flex-1 rounded-xl bg-green-600 px-4 py-3"
               >
-                <Text className="text-center font-sans text-sm font-bold text-white">Done</Text>
+                <Text className="text-center font-sans text-sm font-bold text-white">
+                  Done
+                </Text>
               </Pressable>
             </View>
           </Pressable>
