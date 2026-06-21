@@ -22,7 +22,7 @@ import { useMergedRouteParams } from '@/utils/route-params';
 
 import { BRAND_LOGO, BRAND_LOGO_PUBLIC_URL } from '@/constants/brand';
 
-const placeholderProduct = require('@/assets/images/placeholder-product.png');
+const placeholderProduct = require('@/assets/images/placeholder-product.webp');
 
 const escapeHtml = (value: string | number | undefined | null) =>
   String(value ?? '')

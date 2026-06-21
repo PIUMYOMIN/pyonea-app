@@ -1,6 +1,6 @@
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
-import { StyleSheet, View } from 'react-native';
-import Animated, { Keyframe, Easing } from 'react-native-reanimated';
+import { useEffect, useRef } from 'react';
+import { Animated, Easing, StyleSheet, View } from 'react-native';
 
 import classes from './animated-icon.module.css';
 const DURATION = 300;
@@ -9,59 +9,58 @@ export function AnimatedSplashOverlay() {
   return null;
 }
 
-const keyframe = new Keyframe({
-  0: {
-    transform: [{ scale: 0 }],
-  },
-  60: {
-    transform: [{ scale: 1.2 }],
-    easing: Easing.elastic(1.2),
-  },
-  100: {
-    transform: [{ scale: 1 }],
-    easing: Easing.elastic(1.2),
-  },
-});
-
-const logoKeyframe = new Keyframe({
-  0: {
-    opacity: 0,
-  },
-  60: {
-    transform: [{ scale: 1.2 }],
-    opacity: 0,
-    easing: Easing.elastic(1.2),
-  },
-  100: {
-    transform: [{ scale: 1 }],
-    opacity: 1,
-    easing: Easing.elastic(1.2),
-  },
-});
-
-const glowKeyframe = new Keyframe({
-  0: {
-    transform: [{ rotateZ: '-180deg' }, { scale: 0.8 }],
-    opacity: 0,
-  },
-  [DURATION / 1000]: {
-    transform: [{ rotateZ: '0deg' }, { scale: 1 }],
-    opacity: 1,
-    easing: Easing.elastic(0.7),
-  },
-  100: {
-    transform: [{ rotateZ: '7200deg' }],
-  },
-});
-
 export function AnimatedIcon() {
+  const backgroundScale = useRef(new Animated.Value(0)).current;
+  const imageScale = useRef(new Animated.Value(1.2)).current;
+  const imageOpacity = useRef(new Animated.Value(0)).current;
+
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(backgroundScale, {
+        toValue: 1,
+        duration: DURATION,
+        easing: Easing.elastic(1.2),
+        useNativeDriver: true,
+      }),
+      Animated.sequence([
+        Animated.delay(DURATION * 0.6),
+        Animated.parallel([
+          Animated.timing(imageScale, {
+            toValue: 1,
+            duration: DURATION * 0.4,
+            easing: Easing.elastic(1.2),
+            useNativeDriver: true,
+          }),
+          Animated.timing(imageOpacity, {
+            toValue: 1,
+            duration: DURATION * 0.4,
+            useNativeDriver: true,
+          }),
+        ]),
+      ]),
+    ]).start();
+  }, [backgroundScale, imageOpacity, imageScale]);
+
   return (
     <View style={styles.iconContainer}>
-      <Animated.View style={styles.background} entering={keyframe.duration(DURATION)}>
+      <Animated.View
+        style={[
+          styles.background,
+          { transform: [{ scale: backgroundScale }] }
+        ]}
+      >
         <div className={classes.expoLogoBackground} />
       </Animated.View>
 
-      <Animated.View style={styles.imageContainer} entering={logoKeyframe.duration(DURATION)}>
+      <Animated.View
+        style={[
+          styles.imageContainer,
+          {
+            opacity: imageOpacity,
+            transform: [{ scale: imageScale }]
+          }
+        ]}
+      >
         <Image style={styles.image} source={require('@/assets/images/logo.png')} />
       </Animated.View>
     </View>
@@ -69,21 +68,9 @@ export function AnimatedIcon() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    alignItems: 'center',
-    width: '100%',
-    zIndex: 1000,
-    position: 'absolute',
-    top: 128 / 2 + 138,
-  },
   imageContainer: {
     justifyContent: 'center',
     alignItems: 'center',
-  },
-  glow: {
-    width: 201,
-    height: 201,
-    position: 'absolute',
   },
   iconContainer: {
     justifyContent: 'center',

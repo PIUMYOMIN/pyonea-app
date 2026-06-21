@@ -1,5 +1,5 @@
 import { OptimizedImage as Image } from "@/components/ui/optimized-image";
-import { Feather } from "@expo/vector-icons";
+import Feather from "@expo/vector-icons/Feather";
 import { router, type Href } from "expo-router";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {

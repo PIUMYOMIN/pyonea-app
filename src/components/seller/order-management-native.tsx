@@ -35,7 +35,7 @@ type OrderStatus =
   | "cancelled";
 type DeliveryMethod = "supplier" | "platform";
 
-const placeholderProduct = require("@/assets/images/placeholder-product.png");
+const placeholderProduct = require("@/assets/images/placeholder-product.webp");
 
 const statusTone: Record<string, string> = {
   pending: "bg-yellow-100 dark:bg-yellow-900/30",

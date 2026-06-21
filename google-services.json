@@ -1,0 +1,29 @@
+{
+  "project_info": {
+    "project_number": "189763724118",
+    "project_id": "pyonea-74083",
+    "storage_bucket": "pyonea-74083.firebasestorage.app"
+  },
+  "client": [
+    {
+      "client_info": {
+        "mobilesdk_app_id": "1:189763724118:android:42ce6c69e4449f8d2dacf7",
+        "android_client_info": {
+          "package_name": "com.pyonea.app"
+        }
+      },
+      "oauth_client": [],
+      "api_key": [
+        {
+          "current_key": "AIzaSyAhRa6PCpiJtTJnV08cLB0Yxbz70x6bGao"
+        }
+      ],
+      "services": {
+        "appinvite_service": {
+          "other_platform_oauth_client": []
+        }
+      }
+    }
+  ],
+  "configuration_version": "1"
+}

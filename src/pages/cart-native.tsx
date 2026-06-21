@@ -33,7 +33,7 @@ const HOME_PRODUCTS_CACHE_KEY = 'home-feed:products';
 const HOME_CATEGORIES_CACHE_KEY = 'home-feed:categories';
 const HOME_CACHE_TTL_MS = 2 * 60 * 1000;
 
-const placeholderProduct = require('@/assets/images/placeholder-product.png');
+const placeholderProduct = require('@/assets/images/placeholder-product.webp');
 
 const emptySummary: CartSummary = {
   subtotalValue: 0,

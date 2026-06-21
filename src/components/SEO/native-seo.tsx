@@ -38,7 +38,7 @@ type RouteSeo = {
 const defaultTitle = 'Pyonea | Myanmar B2B Wholesale Marketplace & Suppliers';
 const defaultDescription =
   'Pyonea connects Myanmar businesses with verified suppliers. Find wholesale products, MOQ pricing, bulk orders, and trusted sellers across Myanmar.';
-const defaultImage = '/og-image.png';
+const defaultImage = '/og-image.webp';
 
 const indexableRoutes: Record<string, RouteSeo> = {
   '/': {

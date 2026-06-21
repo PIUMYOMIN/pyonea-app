@@ -14,11 +14,6 @@ type PaymentQrDisplayProps = {
 const buildWebQrImageUrl = (qrString: string, size: number) =>
   `https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(qrString)}&ecc=M`;
 
-const NativeQRCode =
-  Platform.OS === 'web'
-    ? null
-    : (require('react-native-qrcode-svg').default as typeof import('react-native-qrcode-svg').default);
-
 function QrImage({
   uri,
   size,
@@ -53,9 +48,7 @@ export function PaymentQrDisplay({
       return <QrImage uri={buildWebQrImageUrl(qrString, size)} size={size} />;
     }
 
-    if (!NativeQRCode) {
-      return <QrImage uri={buildWebQrImageUrl(qrString, size)} size={size} />;
-    }
+    const NativeQRCode = require('react-native-qrcode-svg').default as typeof import('react-native-qrcode-svg').default;
 
     return (
       <View style={{ width: size, height: size }} className="items-center justify-center">

@@ -4,7 +4,7 @@ import { getThumbUrl } from '@/utils/image-thumbs';
 import { useEffect, useState } from 'react';
 import { Platform, Pressable, ScrollView, Text, View } from 'react-native';
 
-const placeholderProduct = require('@/../assets/images/placeholder-product.png');
+const placeholderProduct = require('@/../assets/images/placeholder-product.webp');
 
 type ProductDetailGalleryProps = {
   images: string[];

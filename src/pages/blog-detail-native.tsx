@@ -18,7 +18,7 @@ import { mergeRouteLang, useAppTranslation } from '@/i18n';
 import { fetchBlogDetail, type BlogDetail, type BlogPost } from '@/utils/native-api';
 import { buildSocialSharePayload } from '@/utils/social-share';
 
-const fallbackImage = require('@/assets/images/og-image.png');
+const fallbackImage = require('@/assets/images/og-image.webp');
 
 const paragraphize = (text = '') =>
   String(text)

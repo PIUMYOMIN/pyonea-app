@@ -17,13 +17,12 @@
         "foregroundImage": "./assets/images/logo.png"
       },
       "predictiveBackGestureEnabled": false,
-      "package": "com.anonymous.pyoneaapp",
-      "googleServicesFile": "./google-services.json"
+      "package": "com.pyonea.app"
     },
     "web": {
       "bundler": "metro",
       "output": "static",
-      "favicon": "./assets/images/pyonea-touch-icon.png"
+      "favicon": "./public/logo.png"
     },
     "plugins": [
       [

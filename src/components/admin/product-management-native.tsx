@@ -28,7 +28,7 @@ import {
   type AdminProductFilters,
 } from "@/utils/native-api";
 
-const placeholderProduct = require("@/assets/images/placeholder-product.png");
+const placeholderProduct = require("@/assets/images/placeholder-product.webp");
 
 type ApprovalFilter = "all" | "approved" | "pending" | "rejected";
 type ActiveFilter = "all" | "active" | "inactive";

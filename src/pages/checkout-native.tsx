@@ -56,7 +56,7 @@ import {
 } from "@/utils/native-api";
 import { emitCartCountChanged } from "@/utils/native-cart-events";
 
-const placeholderProduct = require("@/assets/images/placeholder-product.png");
+const placeholderProduct = require("@/assets/images/placeholder-product.webp");
 
 const paymentColors: Record<string, string> = {
   mmqr: "#3b82f6",

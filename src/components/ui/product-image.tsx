@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/optimized-image';
 import { getThumbUrl } from '@/utils/image-thumbs';
 
-const placeholderProduct = require('@/assets/images/placeholder-product.png');
+const placeholderProduct = require('@/assets/images/placeholder-product.webp');
 
 const getSourceUri = (source: ImageProps['source']): string | null => {
   if (!source) return null;

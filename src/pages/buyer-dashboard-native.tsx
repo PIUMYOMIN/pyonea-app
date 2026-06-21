@@ -57,7 +57,7 @@ import {
 } from '@/utils/native-api';
 import { getThumbUrl } from '@/utils/image-thumbs';
 
-const placeholderProduct = require('@/assets/images/placeholder-product.png');
+const placeholderProduct = require('@/assets/images/placeholder-product.webp');
 
 const orderStatuses = ['all', 'pending', 'confirmed', 'processing', 'shipped', 'delivered', 'cancelled'];
 

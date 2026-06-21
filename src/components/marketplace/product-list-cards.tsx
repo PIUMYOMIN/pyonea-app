@@ -17,7 +17,7 @@ import { getThumbUrl } from '@/utils/image-thumbs';
 import { addProductToCart, getProductApiId, type HomeProduct } from '@/utils/native-api';
 import { emitCartCountChanged } from '@/utils/native-cart-events';
 
-const placeholderProduct = require('@/assets/images/placeholder-product.png');
+const placeholderProduct = require('@/assets/images/placeholder-product.webp');
 
 /** Full width inside PRODUCT_LIST_GRID_CLASS — height grows with content. */
 export const PRODUCT_CARD_GRID_CLASS = 'w-full min-w-0';

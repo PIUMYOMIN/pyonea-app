@@ -3,9 +3,8 @@ import { useAppTranslation } from '@/i18n';
 import { getThumbUrl } from '@/utils/image-thumbs';
 import type { BrowserCategory, HomeCategory } from '@/utils/native-api';
 import { Link, type Href } from 'expo-router';
-import { useEffect, useState } from 'react';
-import { Platform, Pressable, Text, View } from 'react-native';
-import Animated, { FadeInUp, SlideInUp, SlideOutUp } from 'react-native-reanimated';
+import { useEffect, useRef, useState } from 'react';
+import { Animated, Platform, Pressable, Text, View } from 'react-native';
 
 /** Full width inside a CSS grid parent — do not use percentage widths with flex-wrap. */
 export const CATEGORY_CARD_WIDTH_CLASS = 'w-full min-w-0';
@@ -131,16 +130,60 @@ function CategorySlidingText({
   animate?: boolean;
 }) {
   const [index, setIndex] = useState(0);
+  const slideAnim = useRef(new Animated.Value(20)).current;
+  const opacityAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     if (!animate || items.length <= 1) return undefined;
 
     const timer = setInterval(() => {
-      setIndex((current) => (current + 1) % items.length);
+      // Out
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: -20,
+          duration: 350,
+          useNativeDriver: true,
+        }),
+        Animated.timing(opacityAnim, {
+          toValue: 0,
+          duration: 350,
+          useNativeDriver: true,
+        }),
+      ]).start(() => {
+        setIndex((current) => (current + 1) % items.length);
+        slideAnim.setValue(20);
+        // In
+        Animated.parallel([
+          Animated.timing(slideAnim, {
+            toValue: 0,
+            duration: 350,
+            useNativeDriver: true,
+          }),
+          Animated.timing(opacityAnim, {
+            toValue: 1,
+            duration: 350,
+            useNativeDriver: true,
+          }),
+        ]).start();
+      });
     }, 2200);
 
+    // Initial in
+    Animated.parallel([
+      Animated.timing(slideAnim, {
+        toValue: 0,
+        duration: 350,
+        useNativeDriver: true,
+      }),
+      Animated.timing(opacityAnim, {
+        toValue: 1,
+        duration: 350,
+        useNativeDriver: true,
+      }),
+    ]).start();
+
     return () => clearInterval(timer);
-  }, [animate, items.length]);
+  }, [animate, items.length, opacityAnim, slideAnim]);
 
   if (items.length === 0) return null;
 
@@ -149,9 +192,10 @@ function CategorySlidingText({
   return (
     <View className="relative h-5 overflow-hidden">
       <Animated.View
-        key={`${index}-${label}`}
-        entering={SlideInUp.duration(350)}
-        exiting={SlideOutUp.duration(350)}
+        style={{
+          opacity: opacityAnim,
+          transform: [{ translateY: slideAnim }],
+        }}
         className="absolute inset-0 justify-center">
         <Text className="font-sans text-xs font-medium text-green-700 dark:text-green-800" numberOfLines={1}>
           {label}
@@ -170,6 +214,26 @@ function CategoryCardShell({
   className: string;
   animate?: boolean;
 }) {
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const slideAnim = useRef(new Animated.Value(10)).current;
+
+  useEffect(() => {
+    if (animate && Platform.OS !== 'web') {
+      Animated.parallel([
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+      ]).start();
+    }
+  }, [animate, fadeAnim, slideAnim]);
+
   if (Platform.OS === 'web') {
     return <View className={`${animate ? 'animate-card-in ' : ''}${className}`}>{children}</View>;
   }
@@ -179,7 +243,13 @@ function CategoryCardShell({
   }
 
   return (
-    <Animated.View entering={FadeInUp.duration(300)} className={className}>
+    <Animated.View
+      style={{
+        opacity: fadeAnim,
+        transform: [{ translateY: slideAnim }]
+      }}
+      className={className}
+    >
       {children}
     </Animated.View>
   );

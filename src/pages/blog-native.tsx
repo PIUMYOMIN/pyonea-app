@@ -21,7 +21,7 @@ import { useTheme } from '@/context/theme';
 import { mergeRouteLang, normalizeLanguage, useAppTranslation } from '@/i18n';
 import { fetchBlogPagePosts, type BlogPost } from '@/utils/native-api';
 
-const fallbackImage = require('@/assets/images/og-image.png');
+const fallbackImage = require('@/assets/images/og-image.webp');
 const blogSearchInputClass =
   'h-11 w-full rounded-lg border border-gray-200 bg-white pl-10 pr-3 font-sans text-sm text-gray-900 outline-none focus:border-green-500 focus:ring-2 focus:ring-green-500/20 dark:border-slate-700 dark:bg-slate-950 dark:text-white';
 const blogFilterSelectClass =

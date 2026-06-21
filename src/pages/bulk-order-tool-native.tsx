@@ -158,7 +158,7 @@ function SearchResultCard({
     <View className="flex-row gap-3 rounded-xl border border-gray-100 p-3 transition-colors hover:border-green-300 dark:border-slate-600 dark:hover:border-green-700">
       <View className="h-14 w-14 overflow-hidden rounded-lg bg-gray-100 dark:bg-slate-700">
         <Image
-          source={product.imageUrl ? { uri: product.imageUrl } : require('@/assets/images/placeholder-product.png')}
+          source={product.imageUrl ? { uri: product.imageUrl } : require('@/assets/images/placeholder-product.webp')}
           className="h-full w-full"
           contentFit="cover"
         />
@@ -236,7 +236,7 @@ function BulkOrderLineRow({
         <View className="w-44 flex-row gap-2">
           <View className="h-9 w-9 overflow-hidden rounded-md bg-gray-100 dark:bg-slate-700">
             <Image
-              source={line.imageUrl ? { uri: line.imageUrl } : require('@/assets/images/placeholder-product.png')}
+              source={line.imageUrl ? { uri: line.imageUrl } : require('@/assets/images/placeholder-product.webp')}
               className="h-full w-full"
               contentFit="cover"
             />
