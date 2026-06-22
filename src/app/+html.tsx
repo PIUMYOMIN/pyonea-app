@@ -1,11 +1,8 @@
-import {
-  ScrollViewStyleReset,
-  useServerDocumentContext,
-} from "expo-router/html";
+import { ScrollViewStyleReset } from "expo-router/html";
 import type { PropsWithChildren } from "react";
 
-import { BRAND_FONT_FAMILY, BRAND_LOGO_BACKGROUND } from "@/constants/brand";
 import { IMAGE_BASE_URL, SITE_PUBLIC_URL } from "@/config/native";
+import { BRAND_FONT_FAMILY, BRAND_LOGO_BACKGROUND } from "@/constants/brand";
 
 const loaderStyles = `
 @font-face {
@@ -203,22 +200,22 @@ const themeBootstrapScript = `
 `;
 
 export default function RootHtml({ children }: PropsWithChildren) {
-  const { htmlAttributes, bodyAttributes, headNodes, bodyNodes } =
-    useServerDocumentContext();
-  const preconnectOrigins = [...new Set(
-    [SITE_PUBLIC_URL, IMAGE_BASE_URL]
-      .map((value) => {
-        try {
-          return new URL(value).origin;
-        } catch {
-          return null;
-        }
-      })
-      .filter((origin): origin is string => Boolean(origin)),
-  )];
+  const preconnectOrigins = [
+    ...new Set(
+      [SITE_PUBLIC_URL, IMAGE_BASE_URL]
+        .map((value) => {
+          try {
+            return new URL(value).origin;
+          } catch {
+            return null;
+          }
+        })
+        .filter((origin): origin is string => Boolean(origin)),
+    ),
+  ];
 
   return (
-    <html {...htmlAttributes} lang="my">
+    <html lang="my">
       <head>
         <meta charSet="utf-8" />
         <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
@@ -238,7 +235,6 @@ export default function RootHtml({ children }: PropsWithChildren) {
         {preconnectOrigins.map((origin) => (
           <link key={`${origin}-dns`} rel="dns-prefetch" href={origin} />
         ))}
-        {headNodes}
         <link
           rel="preload"
           href="/fonts/Torus-SemiBold.woff2"
@@ -254,7 +250,7 @@ export default function RootHtml({ children }: PropsWithChildren) {
         <script dangerouslySetInnerHTML={{ __html: themeBootstrapScript }} />
         <style dangerouslySetInnerHTML={{ __html: loaderStyles }} />
       </head>
-      <body {...bodyAttributes}>
+      <body>
         <div
           id="pyonea-web-loader"
           role="status"
@@ -271,7 +267,6 @@ export default function RootHtml({ children }: PropsWithChildren) {
           </div>
         </div>
         {children}
-        {bodyNodes}
         <script dangerouslySetInnerHTML={{ __html: loaderScript }} />
       </body>
     </html>

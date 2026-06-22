@@ -1,4 +1,4 @@
-import { useGlobalSearchParams, useLoaderData } from "expo-router";
+import { useGlobalSearchParams } from "expo-router";
 
 import { NativeSeo } from "@/components/SEO/native-seo";
 import { SITE_PUBLIC_URL } from "@/config/native";
@@ -6,6 +6,7 @@ import { BlogDetailNative } from "@/pages/blog-detail-native";
 import {
   fetchBlogDetail,
   fetchBlogPagePosts,
+  type BlogDetail,
   type BlogPost,
 } from "@/utils/native-api";
 import { buildBlogPageSeo, resolveSeoLanguage } from "@/utils/seo-localization";
@@ -89,7 +90,8 @@ export async function loader(
 }
 
 export default function BlogDetailRoute() {
-  const initialDetail = useLoaderData<typeof loader>();
+  // Note: useLoaderData is not available, data will be fetched by BlogDetailNative
+  const initialDetail = null as BlogDetail | null;
   const params = useGlobalSearchParams<{ lang?: string | string[] }>();
   const post = initialDetail?.post || null;
   const seoLanguage = resolveSeoLanguage(params.lang);

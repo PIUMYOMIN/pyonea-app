@@ -1,8 +1,4 @@
-import {
-  useGlobalSearchParams,
-  useLoaderData,
-  useLocalSearchParams,
-} from "expo-router";
+import { useGlobalSearchParams, useLocalSearchParams } from "expo-router";
 
 import { NativeSeo } from "@/components/SEO/native-seo";
 import { SITE_PUBLIC_URL } from "@/config/native";
@@ -99,7 +95,8 @@ export default function SellerProfileRoute() {
   const { slug } = useLocalSearchParams<{ slug?: string | string[] }>();
   const params = useGlobalSearchParams<{ lang?: string | string[] }>();
   const sellerSlug = firstParam(slug);
-  const initialProfile = useLoaderData<typeof loader>();
+  // Note: useLoaderData is not available, data will be fetched by SellerProfileNative
+  const initialProfile: { seller: SellerProfile | null } | null = null;
   const seller = initialProfile?.seller || null;
   const resolvedSlug = seller?.slug || sellerSlug || "";
   const seoLanguage = resolveSeoLanguage(params.lang);

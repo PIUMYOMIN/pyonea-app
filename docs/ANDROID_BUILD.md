@@ -20,7 +20,7 @@ This document provides detailed information about the Android build configuratio
 | Node.js               | v20.19.0                       |
 | npm                   | Latest (included with Node.js) |
 | Expo                  | ~52.0.23                       |
-| React Native          | 0.76.5                         |
+| React Native          | 0.76.9                         |
 | React                 | 18.3.1                         |
 | TypeScript            | ~5.3.3                         |
 | Kotlin                | 1.9.25                         |
@@ -29,7 +29,7 @@ This document provides detailed information about the Android build configuratio
 | Build Tools           | 35.0.0                         |
 | Min SDK               | 24                             |
 | Target SDK            | 34                             |
-| Compile SDK           | 36                             |
+| Compile SDK           | 35                             |
 | NDK                   | 26.1.10909125                  |
 
 ---
@@ -144,15 +144,23 @@ configurations.all {
 ### `android/gradle.properties` Configuration
 
 ```properties
-# JVM Arguments
-org.gradle.jvmargs=-Xmx2048m -XX:MaxMetaspaceSize=512m
+# JVM Arguments & Network Fixes
+org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -XX:+HeapDumpOnOutOfMemoryError -Dhttps.protocols=TLSv1.2,TLSv1.3 -Djava.net.preferIPv4Stack=true -Dcom.sun.net.ssl.checkRevocation=false -Dfile.encoding=UTF-8
+
+# Limit parallel tasks to save RAM on Windows
+org.gradle.parallel=false
+org.gradle.workers.max=1
+
+# Network timeouts
+systemProp.org.gradle.internal.http.connectionTimeout=120000
+systemProp.org.gradle.internal.http.socketTimeout=120000
 
 # Android Settings
 android.useAndroidX=true
 android.enablePngCrunchInReleaseBuilds=true
 
-# Architectures
-reactNativeArchitectures=armeabi-v7a,arm64-v8a,x86,x86_64
+# Architectures (Limited to arm64-v8a for faster local builds)
+reactNativeArchitectures=arm64-v8a
 
 # Architecture Settings
 newArchEnabled=false
@@ -422,15 +430,27 @@ Expected build time: ~30 minutes on a standard development machine.
 
 **Solution:** This is just a warning and can be safely ignored. The build will still succeed. To suppress it, ensure `android.suppressUnsupportedCompileSdk=36` is set in `gradle.properties`.
 
-#### 5. Out of Memory errors during build
+#### 5. Out of Memory or Connection Handshake errors during build
 
-**Cause:** Gradle daemon doesn't have enough memory.
+**Cause:** Gradle daemon doesn't have enough memory or is blocked by network filters (especially in Myanmar).
 
-**Solution:** Increase JVM memory in `gradle.properties`:
+**Solution:** Use optimized JVM arguments and TLS protocols in `gradle.properties`:
 
 ```properties
-org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m
+org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dhttps.protocols=TLSv1.2,TLSv1.3 -Djava.net.preferIPv4Stack=true
 ```
+
+#### 6. Emulator Stuck on Logo or Boot Loop
+
+**Solution:**
+1. Open Device Manager in Android Studio.
+2. Right-click the device and select **Wipe Data**.
+3. Select **Cold Boot Now**.
+4. If still slow, change Graphics to **Software - GLES 2.0** in device settings.
+
+#### 7. ADB Server out of date
+
+**Solution:** Ensure you are using the latest ADB (1.0.41+). Point your Windows PATH to the latest SDK platform-tools: `C:\Users\USER\AppData\Local\Android\Sdk\platform-tools`.
 
 ### Clean Build
 
@@ -495,10 +515,11 @@ EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=your-ios-client-id.apps.googleusercontent.com
 3. **Android Client**:
    - Application type: **Android**
    - Name: `Pyonea Android`
-   - Package name: `com.yourcompany.pyonea` (check your `app.json` for the actual package name)
+   - Package name: `com.pyonea.app`
    - SHA-1 certificate fingerprint: Get this from your upload keystore or debug keystore
      ```bash
-     keytool -list -v -keystore ~/.android/debug.keystore -alias androiddebugkey -storepass android -keypass android
+     cd android
+     .\gradlew signingReport
      ```
 
 4. **iOS Client** (if building for iOS):
@@ -565,6 +586,7 @@ The `google-services.json` file is required for Android builds and should be pla
 
 | Date       | Changes                                                              |
 | ---------- | -------------------------------------------------------------------- |
+| 2026-06-21 | Updated for Expo 52, standard port 8082, and local build optimizations |
 | 2026-06-21 | Initial documentation of Android build configuration and workarounds |
 
 ---

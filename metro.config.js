@@ -66,10 +66,7 @@ config.resolver.resolveRequest = (context, moduleName, platform) => {
 if (process.platform === "win32") {
   // Windows can hit EMFILE when Metro opens too many cache files in parallel during HMR.
   config.maxWorkers = 1;
-  config.server = {
-    ...config.server,
-    useWatchman: false,
-  };
+  config.useWatchman = false;
   config.watcher = {
     ...config.watcher,
     healthCheck: {

@@ -1,6 +1,5 @@
 import {
   useGlobalSearchParams,
-  useLoaderData,
   useLocalSearchParams,
   type ErrorBoundaryProps,
 } from "expo-router";
@@ -120,7 +119,8 @@ export default function ProductDetailRoute() {
   const { slug } = useLocalSearchParams<{ slug?: string | string[] }>();
   const params = useGlobalSearchParams<{ lang?: string | string[] }>();
   const productSlug = firstParam(slug);
-  const initialProduct = useLoaderData<typeof loader>();
+  // Note: useLoaderData is not available, data will be fetched by ProductDetailNative
+  const initialProduct = null as ProductDetail | null;
   const product = initialProduct || null;
   const resolvedSlug = product?.slug || productSlug || "";
   const seoLanguage = resolveSeoLanguage(params.lang);

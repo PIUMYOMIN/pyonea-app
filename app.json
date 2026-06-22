@@ -7,6 +7,9 @@
     "icon": "./assets/images/logo.png",
     "scheme": "pyoneaapp",
     "userInterfaceStyle": "automatic",
+    "server": {
+      "port": 8082
+    },
     "ios": {
       "bundleIdentifier": "com.pyonea.app",
       "icon": "./assets/expo.icon"
@@ -54,7 +57,8 @@
           "color": "#16a34a",
           "defaultChannel": "default"
         }
-      ]
+      ],
+      "@react-native-community/datetimepicker"
     ],
     "experiments": {
       "typedRoutes": false,

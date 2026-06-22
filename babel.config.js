@@ -13,7 +13,6 @@ module.exports = function (api) {
           alias: {
             "@/assets": "./assets",
             "@": "./src",
-            "react-native-worklets/plugin": "./babel-plugin-worklets-shim.js",
           },
         },
       ],
