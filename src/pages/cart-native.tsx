@@ -746,7 +746,7 @@ export function CartNative() {
                     />
                   ))}
 
-                  <View className="mt-6">
+                  <View className="mt-6 flex-row items-center justify-between gap-4">
                     {confirmClear ? (
                       <View className="flex-row flex-wrap items-center gap-3">
                         <Text className="font-sans text-sm text-gray-600 dark:text-slate-400">
@@ -771,6 +771,15 @@ export function CartNative() {
                         </Text>
                       </Pressable>
                     )}
+
+                    <Pressable
+                      onPress={() => router.push('/report')}
+                      className="flex-row items-center gap-1.5">
+                      <Feather name="alert-circle" color="#ef4444" size={15} />
+                      <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-200">
+                        {t('footer.report_issue')}
+                      </Text>
+                    </Pressable>
                   </View>
                 </View>
 

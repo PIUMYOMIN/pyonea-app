@@ -317,6 +317,7 @@ function OtpModal({
                   <View className="mb-3 h-14 w-14 items-center justify-center rounded-full bg-green-100 dark:bg-green-900/40">
                     <Feather name="check-circle" color="#16a34a" size={32} />
                   </View>
+
                   <Text className="text-center font-sans text-base font-semibold text-green-700 dark:text-green-300">
                     {t("checkout.otp_verified")}
                   </Text>
@@ -379,6 +380,7 @@ function OtpModal({
                       </Text>
                     </View>
                   ) : null}
+
                   <View className="flex-row justify-center">
                     {countdown > 0 ? (
                       <Text className="text-center font-sans text-xs text-gray-400 dark:text-slate-600">
@@ -393,6 +395,7 @@ function OtpModal({
                       </Text>
                     )}
                   </View>
+
                   <Pressable
                     onPress={onVerify}
                     disabled={loading || otp.length !== 6 || countdown === 0}
@@ -405,6 +408,7 @@ function OtpModal({
                         : t("checkout.confirm_order")}
                     </Text>
                   </Pressable>
+
                   <Pressable onPress={onResend} disabled={countdown > 0}>
                     <Text
                       className={`text-center font-sans text-sm font-medium text-green-600 dark:text-green-300 ${
@@ -1301,7 +1305,13 @@ export function CheckoutNative() {
               {t("checkout.empty_cart_message")}
             </Text>
             <Link href="/products" asChild>
-              <Pressable className={Platform.OS === 'web' ? 'mt-8 rounded-lg bg-green-600 px-6 py-3' : 'mt-6 rounded-lg bg-green-600 px-6 py-3'}>
+              <Pressable
+                className={
+                  Platform.OS === "web"
+                    ? "mt-8 rounded-lg bg-green-600 px-6 py-3"
+                    : "mt-6 rounded-lg bg-green-600 px-6 py-3"
+                }
+              >
                 <Text className="font-sans text-sm font-semibold text-white">
                   {t("checkout.continue_shopping")}
                 </Text>

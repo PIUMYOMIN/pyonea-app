@@ -1283,6 +1283,7 @@ export function ProductDetailNative({
                 shareViber: t("productDetail.share_viber"),
                 shareTelegram: t("productDetail.share_telegram"),
                 shareX: t("productDetail.share_x"),
+                reportIssue: t("footer.report_issue"),
               }}
             />
 

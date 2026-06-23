@@ -964,6 +964,14 @@ export function SellerProfileNative({
                   </Text>
                 </Pressable>
               ) : null}
+              <Pressable
+                onPress={() => router.push('/report')}
+                className="flex-row items-center gap-2 rounded-lg border border-gray-200 bg-white px-4 py-2.5 dark:border-slate-700 dark:bg-slate-900">
+                <Feather name="alert-circle" color="#ef4444" size={16} />
+                <Text className="font-sans text-sm font-semibold text-gray-700 dark:text-slate-200">
+                  {t('footer.report_issue')}
+                </Text>
+              </Pressable>
             </View>
           </View>
 

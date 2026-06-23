@@ -71,7 +71,7 @@ This document provides detailed information about the Android build configuratio
   "nativewind": "^4.1.23",
   "react": "18.3.1",
   "react-dom": "18.3.1",
-  "react-ga4": "^3.0.1",
+  "react-ga4": "^2.1.0",
   "react-native": "0.76.5",
   "react-native-gesture-handler": "~2.20.2",
   "react-native-qrcode-svg": "^6.3.21",
@@ -443,6 +443,7 @@ org.gradle.jvmargs=-Xmx4096m -XX:MaxMetaspaceSize=1024m -Dhttps.protocols=TLSv1.
 #### 6. Emulator Stuck on Logo or Boot Loop
 
 **Solution:**
+
 1. Open Device Manager in Android Studio.
 2. Right-click the device and select **Wipe Data**.
 3. Select **Cold Boot Now**.
@@ -584,11 +585,38 @@ The `google-services.json` file is required for Android builds and should be pla
 
 ## Version History
 
-| Date       | Changes                                                              |
-| ---------- | -------------------------------------------------------------------- |
-| 2026-06-21 | Updated for Expo 52, standard port 8082, and local build optimizations |
-| 2026-06-21 | Initial documentation of Android build configuration and workarounds |
+| Date       | Changes                                                                                                                             |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------- |
+| 2026-06-23 | Added Report navigation to account page; Created react-native-worklets shim for Babel compatibility; Downgraded react-ga4 to v2.1.0 |
+| 2026-06-21 | Updated for Expo 52, standard port 8082, and local build optimizations                                                              |
+| 2026-06-21 | Initial documentation of Android build configuration and workarounds                                                                |
 
 ---
 
-**Last Updated:** June 21, 2026
+## Recent Changes (June 23, 2026)
+
+### 1. Report Page Navigation Added to Mobile App
+
+Added a "Report" navigation item to the Account page in the mobile app under the "Support & Contact" section. Users can now access the report page directly from:
+
+- Account page → Support & Contact → Report
+- Product detail page (existing)
+- Seller profile page (existing)
+
+### 2. Babel Compatibility Fix (react-native-worklets)
+
+Created a shim package for `react-native-worklets/plugin` to resolve Babel compatibility issues:
+
+- Location: `node_modules/react-native-worklets/`
+- The shim provides a no-op Babel plugin that satisfies the dependency required by nativewind
+- This workaround is needed because the actual `react-native-worklets` package (v0.9.2) is incompatible with React Native 0.76.9
+
+### 3. react-ga4 Module Resolution Fix
+
+Downgraded `react-ga4` from v3.0.1 to v2.1.0:
+
+- v3.0.1 uses ESM-only format with `"type": "module"` and lacks a `main` field
+- This caused Metro bundler to fail resolving the module
+- v2.1.0 is fully compatible with the Metro bundler
+
+**Last Updated:** June 23, 2026

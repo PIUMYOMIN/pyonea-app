@@ -1,4 +1,5 @@
 import Feather from '@expo/vector-icons/Feather';
+import { useRouter } from 'expo-router';
 import { ActivityIndicator, Pressable, Text, View } from 'react-native';
 
 import { SocialShareModal } from '@/components/ui/social-share-modal';
@@ -40,8 +41,20 @@ type ProductDetailActionsProps = {
     shareViber: string;
     shareTelegram: string;
     shareX: string;
+    reportIssue: string;
   };
 };
+
+function ReportButton({ label }: { label: string }) {
+  const router = useRouter();
+  return (
+    <Pressable
+      onPress={() => router.push('/report')}
+      className="h-8 w-8 items-center justify-center rounded-md border border-gray-300 bg-white dark:border-slate-600 dark:bg-slate-800 sm:h-9 sm:w-9">
+      <Feather name="alert-circle" color="#ef4444" size={16} />
+    </Pressable>
+  );
+}
 
 function IconActionsRow({
   compared,
@@ -110,6 +123,8 @@ function IconActionsRow({
           {compared ? labels.compared : labels.compare}
         </Text>
       </Pressable>
+
+      <ReportButton label={labels.reportIssue} />
     </View>
   );
 }
@@ -171,13 +186,16 @@ export function ProductDetailActions(props: ProductDetailActionsProps) {
   if (stockIsOut) {
     return (
       <View className="gap-2 pt-4">
-        <Pressable
-          disabled
-          className="min-h-9 items-center justify-center rounded-md bg-gray-300 px-3 py-1.5 dark:bg-slate-700">
-          <Text className="font-sans text-xs font-semibold text-gray-500 dark:text-slate-400 sm:text-sm">
-            🚫 {labels.outOfStock}
-          </Text>
-        </Pressable>
+        <View className="flex-row items-center gap-2">
+          <Pressable
+            disabled
+            className="min-h-9 flex-1 items-center justify-center rounded-md bg-gray-300 px-3 py-1.5 dark:bg-slate-700">
+            <Text className="font-sans text-xs font-semibold text-gray-500 dark:text-slate-400 sm:text-sm">
+              🚫 {labels.outOfStock}
+            </Text>
+          </Pressable>
+          <ReportButton label={labels.reportIssue} />
+        </View>
       </View>
     );
   }
