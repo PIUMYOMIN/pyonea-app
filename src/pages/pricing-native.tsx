@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import { useRouter } from 'expo-router';
 import { useEffect, useMemo, useState } from 'react';
-import { Pressable, Text, View } from 'react-native';
+import { Linking, Pressable, Text, View } from 'react-native';
 
 import { AppLayout } from '@/components/layout/app-layout';
 import { useNativeAuth } from '@/context/native-auth';
@@ -13,6 +13,9 @@ import {
   formatMMK,
   type SubscriptionPlan,
 } from '@/utils/native-api';
+import { SITE_PUBLIC_URL } from '@/config/native';
+
+const SELLER_WEB_SUBSCRIPTION_URL = `${SITE_PUBLIC_URL}/seller/dashboard?tab=subscription`;
 
 const staticPlans: SubscriptionPlan[] = [
   {
@@ -334,7 +337,9 @@ export function PricingNative() {
   }, [plans]);
 
   const goSellerRegister = () =>
-    router.push(isSeller ? '/seller/dashboard?tab=subscription' : '/register?role=seller');
+    isSeller
+      ? void Linking.openURL(SELLER_WEB_SUBSCRIPTION_URL)
+      : router.push('/register?role=seller');
 
   return (
     <AppLayout>

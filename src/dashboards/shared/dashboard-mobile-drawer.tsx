@@ -1,7 +1,7 @@
 import Feather from '@expo/vector-icons/Feather';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import type { ReactNode } from 'react';
-import { Modal, Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, Modal, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { BRAND_LOGO } from '@/constants/brand';
 
@@ -37,8 +37,13 @@ export function DashboardMobileDrawer({
   const { isDark } = useTheme();
   const isSeller = navVariant === 'seller';
 
-  const handleTab = (tab: string) => {
-    onTab(tab);
+  const handleTab = (item: DashboardNavItem) => {
+    if (item.url) {
+      void Linking.openURL(item.url);
+      onClose();
+      return;
+    }
+    onTab(item.id);
     onClose();
   };
 
@@ -91,7 +96,7 @@ export function DashboardMobileDrawer({
               return (
                 <Pressable
                   key={item.id}
-                  onPress={() => handleTab(item.id)}
+                  onPress={() => handleTab(item)}
                   className={`flex-row items-center gap-3 rounded-xl px-3 py-2.5 ${
                     active
                       ? isSeller

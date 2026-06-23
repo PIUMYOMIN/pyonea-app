@@ -9,6 +9,7 @@ export type DashboardNavItem = {
   label: string;
   icon: keyof typeof Feather.glyphMap;
   locked?: boolean;
+  url?: string;
 };
 
 export type DashboardNavVariant = 'list' | 'pill' | 'seller';

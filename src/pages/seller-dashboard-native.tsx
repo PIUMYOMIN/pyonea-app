@@ -53,6 +53,9 @@ import {
 
   formatApiErrorMessage,
 } from '@/utils/native-api';
+import { SITE_PUBLIC_URL } from '@/config/native';
+
+const SELLER_WEB_SUBSCRIPTION_URL = `${SITE_PUBLIC_URL}/seller/dashboard?tab=subscription`;
 
 const ProductManagementNative = lazy(() =>
   import("@/components/seller/product-management-native").then((module) => ({
@@ -99,12 +102,6 @@ const DeliveryZonesNative = lazy(() =>
 const ReviewManagementNative = lazy(() =>
   import("@/components/seller/review-management-native").then((module) => ({
     default: module.ReviewManagementNative,
-  })),
-);
-
-const SubscriptionNative = lazy(() =>
-  import("@/components/seller/subscription-native").then((module) => ({
-    default: module.SubscriptionNative,
   })),
 );
 
@@ -1240,7 +1237,7 @@ function SellerDashboardOverviewPanel({
         store={store}
         stats={stats}
         subscription={subscription}
-        onUpgrade={() => onTab("subscription")}
+        onUpgrade={() => void Linking.openURL(SELLER_WEB_SUBSCRIPTION_URL)}
       />
 
       <View>
@@ -1526,8 +1523,12 @@ export function SellerDashboardNative() {
     () =>
       sellerTabs.map((item) => {
         const feature = protectedSellerTabs[item.id];
+        const isSubscription = item.id === "subscription";
+
         return {
           ...item,
+          label: isSubscription ? "Manage My Plan" : item.label,
+          url: isSubscription ? SELLER_WEB_SUBSCRIPTION_URL : undefined,
           locked: feature ? !sellerPlanHasFeature(subscription, feature) : false,
         };
       }),
@@ -1793,10 +1794,6 @@ export function SellerDashboardNative() {
               <Suspense fallback={<DashboardContentLoader label="Loading reviews..." />}>
                 <ReviewManagementNative />
               </Suspense>
-            ) : activeTab === "subscription" ? (
-              <Suspense fallback={<DashboardContentLoader label="Loading subscription..." />}>
-                <SubscriptionNative />
-              </Suspense>
             ) : activeTab === "wallet" ? (
               <Suspense fallback={<DashboardContentLoader label="Loading wallet..." />}>
                 <SellerWalletNative onRefresh={() => loadDashboard(true)} />
@@ -1810,7 +1807,7 @@ export function SellerDashboardNative() {
                 feature="bulk_import_enabled"
                 subscription={subscription}
                 loading={subscriptionLoading}
-                onUpgrade={() => selectTab("subscription")}
+                onUpgrade={() => void Linking.openURL(SELLER_WEB_SUBSCRIPTION_URL)}
               >
                 <Suspense fallback={<DashboardContentLoader label="Loading bulk import..." />}>
                   <BulkImportNative onImported={() => loadDashboard(true)} />
@@ -1821,7 +1818,7 @@ export function SellerDashboardNative() {
                 feature="analytics_enabled"
                 subscription={subscription}
                 loading={subscriptionLoading}
-                onUpgrade={() => selectTab("subscription")}
+                onUpgrade={() => void Linking.openURL(SELLER_WEB_SUBSCRIPTION_URL)}
               >
                 <Suspense fallback={<DashboardContentLoader label="Loading sales reports..." />}>
                   <SalesReportsNative />
@@ -1832,7 +1829,7 @@ export function SellerDashboardNative() {
                 feature="analytics_enabled"
                 subscription={subscription}
                 loading={subscriptionLoading}
-                onUpgrade={() => selectTab("subscription")}
+                onUpgrade={() => void Linking.openURL(SELLER_WEB_SUBSCRIPTION_URL)}
               >
                 <Suspense fallback={<DashboardContentLoader label="Loading financial reports..." />}>
                   <FinancialReportsNative storeName={overview?.store?.name} />

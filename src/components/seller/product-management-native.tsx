@@ -4,6 +4,7 @@ import { useRouter, type Href } from "expo-router";
 import { useEffect, useMemo, useState } from "react";
 import {
   ActivityIndicator,
+  Linking,
   Modal,
   Pressable,
   ScrollView,
@@ -20,6 +21,9 @@ import {
   type SellerManagedProduct,
   type SellerProductLimitUsage,
 } from "@/utils/native-api";
+import { SITE_PUBLIC_URL } from "@/config/native";
+
+const SELLER_WEB_SUBSCRIPTION_URL = `${SITE_PUBLIC_URL}/seller/dashboard?tab=subscription`;
 
 type StatusFilter = "all" | "active" | "inactive";
 
@@ -461,9 +465,7 @@ export function ProductManagementNative() {
               </View>
             </View>
             <Pressable
-              onPress={() =>
-                router.push("/seller/dashboard?tab=subscription" as Href)
-              }
+              onPress={() => void Linking.openURL(SELLER_WEB_SUBSCRIPTION_URL)}
               className="h-9 items-center justify-center rounded-md bg-amber-600 px-3"
             >
               <Text className="font-sans text-sm font-semibold text-white">

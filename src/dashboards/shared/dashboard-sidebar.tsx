@@ -2,7 +2,7 @@ import Feather from '@expo/vector-icons/Feather';
 import { OptimizedImage as Image } from '@/components/ui/optimized-image';
 import { Link } from 'expo-router';
 import type { ReactNode } from 'react';
-import { Pressable, ScrollView, Text, View } from 'react-native';
+import { Linking, Pressable, ScrollView, Text, View } from 'react-native';
 
 import { BRAND_LOGO } from '@/constants/brand';
 
@@ -80,7 +80,13 @@ export function DashboardSidebar({
           return (
             <Pressable
               key={item.id}
-              onPress={() => onTab(item.id)}
+              onPress={() => {
+                if (item.url) {
+                  void Linking.openURL(item.url);
+                  return;
+                }
+                onTab(item.id);
+              }}
               className={
                 isSeller
                   ? `mb-1 flex-row items-center gap-3 rounded-2xl px-4 py-3 ${

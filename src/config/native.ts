@@ -19,7 +19,7 @@ export const IMAGE_BASE_URL = trimTrailingSlash(
 );
 
 export const DEFAULT_PRODUCT_IMAGE =
-  process.env.EXPO_PUBLIC_DEFAULT_PRODUCT_IMAGE || '/placeholder-product.png';
+  process.env.EXPO_PUBLIC_DEFAULT_PRODUCT_IMAGE || '/placeholder-product.webp';
 
 const DEFAULT_RECAPTCHA_SITE_KEY = '6Lf0iqgsAAAAAFLBjORhgqIsZTxy3msbo5k6totX';
 const DEFAULT_GOOGLE_CLIENT_ID =
